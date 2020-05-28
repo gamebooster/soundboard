@@ -1,0 +1,16 @@
+[package]
+name = "gui"
+version = "0.1.0"
+description = "cross-plattform soundboard: play sounds over your microphone"
+authors = ["Tim Schmidt <timschmidt02@yahoo.com>"]
+categories = ["multimedia::audio"]
+edition = "2018"
+
+[dependencies]
+
+cpal = "0.11"
+rodio = "0.11"
+hotkey = "0.3"
+iced = "0.1"
+clap = "3.0.0-beta.1"
+ringbuf = "0.2.1"
