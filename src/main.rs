@@ -43,6 +43,9 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
     let output_device = devices
         .get(output_device_index)
         .expect("invalid output device specified");
+    let output_device_default = host        //Needs additional flag instead of default device
+        .default_output_device()
+        .expect("no default device available");
     println!("  Using Devices: ");
     println!(
         "  {}. \"{}\"",
@@ -65,6 +68,7 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
     }
 
     let sink = rodio::Sink::new(&output_device);
+    let sounds_only_sink = rodio::Sink::new(&output_device_default);
 
     std::thread::spawn(move || {
         let mut hk = hotkey::Listener::new();
@@ -73,7 +77,9 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
             let file_path_string = file_path.to_str().unwrap();
             let file = std::fs::File::open(&file_path).unwrap();
+            let file2 = std::fs::File::open(&file_path).unwrap();       //Ultra haesslich, wie geht das richtig??
             sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
+            sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
             println!("Playing sound: {}", file_path_string);
         })
         .unwrap();
