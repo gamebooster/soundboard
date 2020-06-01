@@ -20,6 +20,21 @@
 5. `???`
 4. `Press CTRL-C to exit`
 
+### providing virtual sink on linux 
+1. write to `/etc/asound.conf`:
+   ```
+    pcm.pulseDeviceVirtualSink {
+     type pulse
+     device "virtualSink"
+    }
+
+   ``` 
+2. enter command `pactl load-module module-null-sink sink_name=virtualSink`
+3. use soundboard with output **virtual sink**
+4. use applications with input *Monitor of Null Sink*
+
+
+
 #### example
 
 ````
