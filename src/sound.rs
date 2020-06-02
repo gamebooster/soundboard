@@ -1,7 +1,7 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use rodio;
 
-use std::path::Path;
+use std::path::PathBuf;
 use std::io::BufReader;
 use std::thread;
 use std::sync::mpsc;
@@ -27,11 +27,11 @@ fn playFile(filepath : Path){
 }
 */
 
-fn play_thread(rx : Receiver<&Path>, loop_sink : rodio::Sink, sounds_only_sink : rodio::Sink){
+fn play_thread(rx : Receiver<&PathBuf>, loop_sink : rodio::Sink, sounds_only_sink : rodio::Sink){
 
     loop{
 
-        let file_path : &Path = rx.recv().unwrap();
+        let file_path : &PathBuf = rx.recv().unwrap();
 
         let file_path_string = file_path.to_str().unwrap();
         let file = std::fs::File::open(&file_path).unwrap();
@@ -44,14 +44,8 @@ fn play_thread(rx : Receiver<&Path>, loop_sink : rodio::Sink, sounds_only_sink :
 
 }
 
-pub fn init_player(tx: Sender<Sender<&Path>>, input_device_index: usize, output_device_index: usize, loop_device_index: usize) -> std::thread::JoinHandle<()>{
 
-    std::thread::spawn(move || {
-        sound_thread(tx, input_device_index, output_device_index, loop_device_index);
-    })
-}
-
-fn sound_thread(tx: Sender<Sender<&Path>>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
+pub fn sound_thread(rx: Receiver<&PathBuf>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
 
     let host = cpal::default_host();
 
@@ -90,14 +84,10 @@ fn sound_thread(tx: Sender<Sender<&Path>>, input_device_index: usize, output_dev
         println!("    Default input stream format:\n      {:?}", conf);
     }
 
-
     
     let loop_sink = rodio::Sink::new(&loop_device);
     let sounds_only_sink = rodio::Sink::new(&output_device);
 
-
-    //THREAD SPAWN
-    let (tx, rx) : (Sender<&Path>, Receiver<&Path>)= mpsc::channel();
 
     std::thread::spawn(move || {
         play_thread(rx, loop_sink, sounds_only_sink);

@@ -208,19 +208,19 @@ pub fn main() {
         .parse()
         .expect("No number specified");
 
-    let (tx, rx) : (Sender<Sender<&Path>>, Receiver<Sender<&Path>>)= mpsc::channel();
+    let (tx, rx) : (Sender<&PathBuf>, Receiver<&PathBuf>)= mpsc::channel();
 
-    let handle = sound::init_player(tx, input_device_index, output_device_index, output_device_index);
+    let handle = std::thread::spawn(move || {
+        sound::sound_thread(rx, input_device_index, output_device_index, output_device_index);
+    });
     
-
-    let tx_play_thread : Sender<&Path> = rx.recv().unwrap();
 
     std::thread::spawn(move || {
         let mut hk = hotkeyExt::Listener::new();
         hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
-            tx_play_thread.send(&file_path);
+            tx.send(&file_path);
         })
         .unwrap();
 
