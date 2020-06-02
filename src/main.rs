@@ -77,7 +77,7 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
             let file_path_string = file_path.to_str().unwrap();
             let file = std::fs::File::open(&file_path).unwrap();
-            let file2 = std::fs::File::open(&file_path).unwrap();       //Ultra haesslich, wie geht das richtig??
+            let file2 = std::fs::File::open(&file_path).unwrap();       
             sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
             sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
             println!("Playing sound: {}", file_path_string);
