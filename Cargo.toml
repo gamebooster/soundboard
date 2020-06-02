@@ -2,7 +2,7 @@
 name = "soundboard"
 version = "0.1.0"
 description = "cross-plattform soundboard: play sounds over your microphone"
-authors = ["Karl Skomski <karl@skomski.com>", "Elena Frank <elena.frank@protonmail.com>"]
+authors = ["Karl Skomski <karl@skomski.com>", "Corin Baurmann <corin.baurmann@fu-berlin.de>", "Elena Frank <elena.frank@protonmail.com>"]
 categories = ["multimedia::audio"]
 edition = "2018"
 
