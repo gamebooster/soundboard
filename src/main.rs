@@ -7,12 +7,11 @@ use iced::{
 };
 
 use std::sync::mpsc::{Sender, Receiver};
-use std::sync::mpsc;
 use std::path::{Path, PathBuf};
+use std::thread::JoinHandle;
 
 //use rodio;
 
-use std::io::BufReader;
 
 mod gui;
 mod sound;
@@ -221,13 +220,8 @@ pub fn main() {
         .expect("No number specified");
 
 
-    //Create Sender and Receiver, pass Receiver to Soundthread
-    let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>)= mpsc::channel();
-
-    //Spawn sound Thread, pass sounds that should be played
-    let handle = std::thread::spawn(move || {
-        sound::sound_thread(rx, input_device_index, output_device_index, loop_device_index);
-    });
+    //Init Sound Module, get Sender to pass File Paths to 
+    let (tx, handle) : (Sender<PathBuf>, JoinHandle<()>) = sound::init_sound(input_device_index, output_device_index, loop_device_index);
     
 
     std::thread::spawn(move || {

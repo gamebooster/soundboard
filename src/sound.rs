@@ -3,10 +3,11 @@ use rodio;
 
 use std::path::PathBuf;
 use std::io::BufReader;
-use std::thread;
+//use std::thread;
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
-use std::fs::File;
+//use std::fs::File;
+use std::thread::JoinHandle;
 
 
 /*
@@ -26,6 +27,17 @@ fn playFile(filepath : Path){
 
 }
 */
+
+pub fn init_sound(input_device_index: usize, output_device_index: usize, loop_device_index: usize) -> (Sender<PathBuf>, JoinHandle<()>){
+
+    let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>)= mpsc::channel();
+
+    let handle = std::thread::spawn(move || {
+        sound_thread(rx, input_device_index, output_device_index, loop_device_index)
+    });
+
+    return (tx, handle);
+}
 
 
 pub fn sound_thread(rx: Receiver<PathBuf>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
