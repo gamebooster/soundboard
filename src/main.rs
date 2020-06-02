@@ -1,6 +1,6 @@
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-use hotkey;
+use ::hotkey as hotkeyExt;
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
@@ -8,6 +8,11 @@ use iced::{
 use rodio;
 use std::path::PathBuf;
 use std::io::BufReader;
+
+mod gui;
+mod sound;
+mod hotkey;
+mod config;
 
 fn print_possible_devices() {
     let host = cpal::default_host();
@@ -71,8 +76,8 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
     let sounds_only_sink = rodio::Sink::new(&output_device_default);
 
     std::thread::spawn(move || {
-        let mut hk = hotkey::Listener::new();
-        hk.register_hotkey(hotkey::modifiers::CONTROL, 'P' as u32, move || {
+        let mut hk = hotkeyExt::Listener::new();
+        hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
             let file_path_string = file_path.to_str().unwrap();
