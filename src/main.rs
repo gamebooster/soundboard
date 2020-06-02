@@ -1,13 +1,13 @@
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-use ::hotkey as hotkeyExt;
+//use ::hotkey as hotkeyExt;
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
 };
-use rodio;
-use std::path::PathBuf;
-use std::io::BufReader;
+//use rodio;
+//use std::path::PathBuf;
+//use std::io::BufReader;
 
 mod gui;
 mod sound;
@@ -35,6 +35,7 @@ fn print_possible_devices() {
     }
 }
 
+/*
 fn sound_thread(input_device_index: usize, output_device_index: usize) {
     let host = cpal::default_host();
 
@@ -142,6 +143,7 @@ fn sound_thread(input_device_index: usize, output_device_index: usize) {
         }
     });
 }
+*/
 
 pub fn main() {
     let matches = App::new("soundboard")
@@ -201,9 +203,7 @@ pub fn main() {
         .parse()
         .expect("No number specified");
 
-    let handle = std::thread::spawn(move || {
-        sound_thread(input_device_index, output_device_index);
-    });
+    let handle = sound::init_player(input_device_index, output_device_index, output_device_index);
 
     if matches.is_present("no-gui") {
         handle.join().expect("sound_thread join failed");
