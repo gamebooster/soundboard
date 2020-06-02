@@ -179,6 +179,13 @@ pub fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("loopback-device")
+                .short('l')
+                .long("loopback-device")
+                .about("Sets the loopback device to use")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("verbose")
                 .long("verbose")
                 .takes_value(true)
@@ -207,11 +214,19 @@ pub fn main() {
         .expect("No ouput device specified")
         .parse()
         .expect("No number specified");
+    let loop_device_index: usize = matches
+        .value_of("loopback-device")
+        .expect("No loopback device specified")
+        .parse()
+        .expect("No number specified");
 
-    let (tx, rx) : (Sender<&PathBuf>, Receiver<&PathBuf>)= mpsc::channel();
 
+    //Create Sender and Receiver, pass Receiver to Soundthread
+    let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>)= mpsc::channel();
+
+    //Spawn sound Thread, pass sounds that should be played
     let handle = std::thread::spawn(move || {
-        sound::sound_thread(rx, input_device_index, output_device_index, output_device_index);
+        sound::sound_thread(rx, input_device_index, output_device_index, loop_device_index);
     });
     
 
@@ -220,7 +235,7 @@ pub fn main() {
         hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
-            tx.send(&file_path);
+            tx.send(file_path).unwrap();
         })
         .unwrap();
 

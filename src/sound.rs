@@ -27,25 +27,8 @@ fn playFile(filepath : Path){
 }
 */
 
-fn play_thread(rx : Receiver<&PathBuf>, loop_sink : rodio::Sink, sounds_only_sink : rodio::Sink){
 
-    loop{
-
-        let file_path : &PathBuf = rx.recv().unwrap();
-
-        let file_path_string = file_path.to_str().unwrap();
-        let file = std::fs::File::open(&file_path).unwrap();
-        let file2 = std::fs::File::open(&file_path).unwrap();   
-        loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
-        sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
-        println!("Playing sound: {}", file_path_string);
-
-    }
-
-}
-
-
-pub fn sound_thread(rx: Receiver<&PathBuf>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
+pub fn sound_thread(rx: Receiver<PathBuf>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
 
     let host = cpal::default_host();
 
@@ -88,13 +71,7 @@ pub fn sound_thread(rx: Receiver<&PathBuf>, input_device_index: usize, output_de
     let loop_sink = rodio::Sink::new(&loop_device);
     let sounds_only_sink = rodio::Sink::new(&output_device);
 
-
-    std::thread::spawn(move || {
-        play_thread(rx, loop_sink, sounds_only_sink);
-    });
-    
-
-    let sink = rodio::Sink::new(&loop_device);
+    let loop_sink2 = rodio::Sink::new(&loop_device);
 
     let host = cpal::default_host();
     let event_loop = host.event_loop();
@@ -139,10 +116,26 @@ pub fn sound_thread(rx: Receiver<&PathBuf>, input_device_index: usize, output_de
                     input_format.sample_rate.0,
                     new_buffer,
                 );
-                sink.append(buffer);
+                loop_sink.append(buffer);
             }
             _ => panic!("we're expecting f32 data"),
         }
+
+        let receive = rx.try_recv();
+
+        match receive {
+            Ok(file_path) => {
+                let file_path_string = file_path.to_str().unwrap();
+                let file = std::fs::File::open(&file_path).unwrap();
+                let file2 = std::fs::File::open(&file_path).unwrap();   
+                loop_sink2.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
+                sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
+                println!("Playing sound: {}", file_path_string);
+            },
+            Err(_err) => {}
+        };
+
+        
     });
     
     
