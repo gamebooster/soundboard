@@ -1,13 +1,18 @@
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-//use ::hotkey as hotkeyExt;
+use ::hotkey as hotkeyExt;
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
 };
+
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
+use std::path::{Path, PathBuf};
+
 //use rodio;
-//use std::path::PathBuf;
-//use std::io::BufReader;
+
+use std::io::BufReader;
 
 mod gui;
 mod sound;
@@ -203,7 +208,24 @@ pub fn main() {
         .parse()
         .expect("No number specified");
 
-    let handle = sound::init_player(input_device_index, output_device_index, output_device_index);
+    let (tx, rx) : (Sender<Sender<&Path>>, Receiver<Sender<&Path>>)= mpsc::channel();
+
+    let handle = sound::init_player(tx, input_device_index, output_device_index, output_device_index);
+    
+
+    let tx_play_thread : Sender<&Path> = rx.recv().unwrap();
+
+    std::thread::spawn(move || {
+        let mut hk = hotkeyExt::Listener::new();
+        hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
+            let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            file_path.push("resources/nicht-so-tief-rudiger.mp3");
+            tx_play_thread.send(&file_path);
+        })
+        .unwrap();
+
+        hk.listen();
+    });
 
     if matches.is_present("no-gui") {
         handle.join().expect("sound_thread join failed");

@@ -1,16 +1,20 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use rodio;
 
-/*
-use std::path::PathBuf;
+use std::path::Path;
 use std::io::BufReader;
 use std::thread;
 use std::sync::mpsc;
 use std::sync::mpsc::{Sender, Receiver};
 use std::fs::File;
-*/
+
 
 /*
+struct StreamStruct{
+    output_device : Refrodio::Device,
+
+    
+}
 
 fn playFile(filepath : Path){
     let file_path_string = file_path.to_str().unwrap();
@@ -21,16 +25,33 @@ fn playFile(filepath : Path){
     println!("Playing sound: {}", file_path_string);
 
 }
-
 */
 
-pub fn init_player(input_device_index: usize, output_device_index: usize, loop_device_index: usize) -> std::thread::JoinHandle<()>{
+fn play_thread(rx : Receiver<&Path>, loop_sink : rodio::Sink, sounds_only_sink : rodio::Sink){
+
+    loop{
+
+        let file_path : &Path = rx.recv().unwrap();
+
+        let file_path_string = file_path.to_str().unwrap();
+        let file = std::fs::File::open(&file_path).unwrap();
+        let file2 = std::fs::File::open(&file_path).unwrap();   
+        loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
+        sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
+        println!("Playing sound: {}", file_path_string);
+
+    }
+
+}
+
+pub fn init_player(tx: Sender<Sender<&Path>>, input_device_index: usize, output_device_index: usize, loop_device_index: usize) -> std::thread::JoinHandle<()>{
+
     std::thread::spawn(move || {
-        sound_thread(input_device_index, output_device_index, loop_device_index);
+        sound_thread(tx, input_device_index, output_device_index, loop_device_index);
     })
 }
 
-fn sound_thread(input_device_index: usize, output_device_index: usize, loop_device_index: usize){
+fn sound_thread(tx: Sender<Sender<&Path>>, input_device_index: usize, output_device_index: usize, loop_device_index: usize){
 
     let host = cpal::default_host();
 
@@ -70,16 +91,18 @@ fn sound_thread(input_device_index: usize, output_device_index: usize, loop_devi
     }
 
 
-    /*
+    
     let loop_sink = rodio::Sink::new(&loop_device);
     let sounds_only_sink = rodio::Sink::new(&output_device);
 
 
     //THREAD SPAWN
-    let (tx, rx) : (Sender<File>, Receiver<File>)= mpsc::channel();
+    let (tx, rx) : (Sender<&Path>, Receiver<&Path>)= mpsc::channel();
 
-
-    */
+    std::thread::spawn(move || {
+        play_thread(rx, loop_sink, sounds_only_sink);
+    });
+    
 
     let sink = rodio::Sink::new(&loop_device);
 
@@ -131,4 +154,6 @@ fn sound_thread(input_device_index: usize, output_device_index: usize, loop_devi
             _ => panic!("we're expecting f32 data"),
         }
     });
+    
+    
 }
