@@ -1,22 +1,21 @@
-use clap::{crate_authors, crate_version, App, Arg};
-use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use ::hotkey as hotkeyExt;
+use clap::{crate_authors, crate_version, App, Arg};
+use cpal::traits::{DeviceTrait,  HostTrait};
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
 };
 
-use std::sync::mpsc::{Sender, Receiver};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
+use std::sync::mpsc::{Sender};
 use std::thread::JoinHandle;
 
 //use rodio;
 
-
-mod gui;
-mod sound;
-mod hotkey;
 mod config;
+mod gui;
+mod hotkey;
+mod sound;
 
 fn print_possible_devices() {
     let host = cpal::default_host();
@@ -38,7 +37,6 @@ fn print_possible_devices() {
         }
     }
 }
-
 
 pub fn main() {
     let matches = App::new("soundboard")
@@ -94,26 +92,41 @@ pub fn main() {
         return;
     }
 
-    let input_device_index: usize = matches
-        .value_of("input-device")
-        .expect("No input device specified")
-        .parse()
-        .expect("No number specified");
-    let output_device_index: usize = matches
-        .value_of("output-device")
-        .expect("No ouput device specified")
-        .parse()
-        .expect("No number specified");
+    let input_device_index: Option<usize> = {
+        if matches.is_present("input-device") {
+            Some(
+                matches
+                    .value_of("input-device")
+                    .expect("No input device specified")
+                    .parse()
+                    .expect("No number specified"),
+            )
+        } else {
+            None
+        }
+    };
+    let output_device_index: Option<usize> = {
+        if matches.is_present("output-device") {
+            Some(
+                matches
+                    .value_of("output-device")
+                    .expect("No ouput device specified")
+                    .parse()
+                    .expect("No number specified"),
+            )
+        } else {
+            None
+        }
+    };
     let loop_device_index: usize = matches
         .value_of("loopback-device")
         .expect("No loopback device specified")
         .parse()
         .expect("No number specified");
 
-
-    //Init Sound Module, get Sender to pass File Paths to 
-    let (tx, handle) : (Sender<PathBuf>, JoinHandle<()>) = sound::init_sound(input_device_index, output_device_index, loop_device_index);
-    
+    //Init Sound Module, get Sender to pass File Paths to
+    let (tx, handle): (Sender<PathBuf>, JoinHandle<()>) =
+        sound::init_sound(input_device_index, output_device_index, loop_device_index);
 
     std::thread::spawn(move || {
         let mut hk = hotkeyExt::Listener::new();
