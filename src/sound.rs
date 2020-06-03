@@ -79,18 +79,13 @@ pub fn init_sound(
 
     let shared_loop_device_clone = shared_loop_device.clone();
 
-    let handle_play_thread = std::thread::spawn(move || {
+    std::thread::spawn(move || {
         play_thread(rx, shared_loop_device_clone, shared_output_device);
     });
 
-    let handle_sound_thread = std::thread::spawn(move || {
+    std::thread::spawn(move || {
         sound_thread(shared_input_device, shared_loop_device);
     });
-
-    handle_sound_thread.join().expect("sound_thread join failed");
-    handle_play_thread.join().expect("play_thread join failed");
- 
-    return;
 }
 
 pub fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: Arc<Device>){

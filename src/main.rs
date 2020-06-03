@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 extern crate log;
 
 use ::hotkey as hotkeyExt;
@@ -144,8 +146,9 @@ pub fn main() -> Result<()> {
     let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>) = mpsc::channel();
 
     //Init Sound Module, pass Receiver to send File Paths to 
-    sound::init_sound(rx, input_device_index, output_device_index, loop_device_index);
-    
+    std::thread::spawn(move || {
+      sound::init_sound(rx, input_device_index, output_device_index, loop_device_index);
+    });
 
     std::thread::spawn(move || {
         let mut hk = hotkeyExt::Listener::new();
@@ -153,7 +156,7 @@ pub fn main() -> Result<()> {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
             let file_path_string = file_path.to_str().unwrap();
-            println!("Playing sound: {}", file_path_string);
+            info!("Playing sound: {}", file_path_string);
             tx.send(file_path).unwrap();
         })
         .unwrap();

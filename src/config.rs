@@ -27,6 +27,6 @@ pub struct SoundConfig {
 pub fn parse_config(path : &Path) -> Result<Config> {
     let toml_str = fs::read_to_string(path)?;
     let toml_config = toml::from_str(&toml_str)?;
-    info!("Loaded config file from ");
+    info!("Loaded config file from {}", path.display());
     Ok(toml_config)
 }
