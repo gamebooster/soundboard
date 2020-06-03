@@ -13,7 +13,33 @@ use log::{info, trace, warn, error};
 use std::sync::Arc;
 use anyhow::{Context, Result, anyhow};
 
+pub trait FindDevice {
 
+    fn into_device(self) -> Result<Device>;
+}
+
+impl FindDevice for usize{
+
+    fn into_device(self) -> Result<Device>{
+        let host = cpal::default_host();
+
+        let mut devices: Devices = host.devices()?;
+        
+        devices.nth(self).ok_or(anyhow!("No device device from index")) 
+    }
+}
+
+impl FindDevice for String{
+
+    fn into_device(self) -> Result<Device>{
+        let host = cpal::default_host();
+
+        let mut devices: Devices = host.devices()?;
+
+        devices.find(|device : &Device| device.name().unwrap() == self).ok_or(anyhow!("No device device from name")) 
+
+    }
+}
 
 fn get_default_input_device() -> Result<Device> {
     let host : Host = cpal::default_host();
@@ -25,32 +51,25 @@ fn get_default_output_device() -> Result<Device> {
     host.default_output_device().ok_or(anyhow!("no default output device"))
 }
 
-fn get_device_by_index(index : usize) -> Result<Device> {
-    let host = cpal::default_host();
 
-    let mut devices: Devices = host.devices()?;
-    
-    devices.nth(index).ok_or(anyhow!("No device device from index"))     //Anstatt unwrap anyhow ok_or benutzen
-}
-
-pub fn init_sound(
+pub fn init_sound<T : FindDevice>(
     rx : Receiver<PathBuf>,
-    input_device_index: Option<usize>,
-    output_device_index: Option<usize>,
-    loop_device_index: usize,
+    input_device_identifier: Option<T>,
+    output_device_identifier: Option<T>,
+    loop_device_identifier: T,
 ) -> Result<()> {
 
     let mut input_device = get_default_input_device()?;
-    if input_device_index.is_some() {
-      input_device = get_device_by_index(input_device_index.unwrap())?;
+    if input_device_identifier.is_some() {
+      input_device = input_device_identifier.unwrap().into_device()?;
     }
     
     let mut output_device = get_default_output_device()?;
-    if output_device_index.is_some() {
-        output_device = get_device_by_index(output_device_index.unwrap())?;
+    if output_device_identifier.is_some() {
+        output_device = output_device_identifier.unwrap().into_device()?;
     }
 
-    let loop_device = get_device_by_index(loop_device_index)?;
+    let loop_device = loop_device_identifier.into_device()?;
 
     info!("Input:  \"{}\"", input_device.name().unwrap());
     info!("Output: \"{}\"", output_device.name().unwrap());
