@@ -12,15 +12,12 @@
 * linux
 * mac
 
-### current usage
+### providing virtual microphone on windows
 
-1. ` soundboard --print-possible-devices`
-2. `soundboard -i <index> -o <index> -l <index>`
-3. `Press CTRL-P to play nicht-so-tief-ruediger.mp3`
-5. `???`
-4. `Press CTRL-C to exit`
+1. download and install vb-audio virtual cable from https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack43.zip
+2. select `CABLE Output` as your microphone in your voice app like discord etc`
 
-### providing virtual sink on linux 
+### providing virtual microphone on linux 
 1. write to `/etc/asound.conf`:
    ```
     pcm.pulseDeviceVirtualSink {
@@ -33,6 +30,16 @@
 3. use soundboard with loopback **virtual sink**
 4. use applications with input *Monitor of Null Sink*
 
+## usage
+
+1. run `soundboard --print-possible-devices`
+2. run `soundboard --input-device <index> --output-device <index> --loopback-device <index> --no-gui` 
+    * input-device should be your standard microphone
+    * output-device should be your standard output-device
+    * loopback-device should be the installed virtual output device 
+3. Press CTRL-P to play `nicht-so-tief-ruediger.mp3`
+4. `???`
+5. Press `CTRL-C` to exit
 
 
 #### example
