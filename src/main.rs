@@ -7,8 +7,10 @@ use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
 };
-use std::path::{PathBuf};
-use std::sync::mpsc::{Sender};
+
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc;
+use std::path::{Path, PathBuf};
 use std::thread::JoinHandle;
 use anyhow::{Context, Result};
 use std::env;
@@ -139,9 +141,12 @@ pub fn main() -> Result<()> {
         .parse()
         .expect("No number specified");
 
-    //Init Sound Module, get Sender to pass File Paths to
-    let (tx, handle): (Sender<PathBuf>, JoinHandle<()>) =
-        sound::init_sound(input_device_index, output_device_index, loop_device_index);
+
+    let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>) = mpsc::channel();
+
+    //Init Sound Module, pass Receiver to send File Paths to 
+    sound::init_sound(rx, input_device_index, output_device_index, loop_device_index);
+    
 
     std::thread::spawn(move || {
         let mut hk = hotkeyExt::Listener::new();
@@ -154,11 +159,6 @@ pub fn main() -> Result<()> {
 
         hk.listen();
     });
-
-    if matches.is_present("no-gui") {
-        handle.join().expect("sound_thread join failed");
-        return Ok(());
-    }
 
     let mut settings = Settings::default();
     settings.window.size = (275, 150);

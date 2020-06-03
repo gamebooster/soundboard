@@ -1,5 +1,6 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use rodio;
+use cpal::Device;
 
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -9,6 +10,8 @@ use std::sync::mpsc::{Receiver, Sender};
 //use std::fs::File;
 use std::thread::JoinHandle;
 use log::{info, trace, warn, error};
+use std::sync::Arc;
+
 
 /*
 struct StreamStruct{
@@ -54,7 +57,7 @@ pub fn sound_thread(
 ) {
     let host = cpal::default_host();
 
-    let devices: Vec<_> = host
+    let devices: Vec<Device> = host
         .devices()
         .expect("No available sound devices")
         .collect();
@@ -87,11 +90,62 @@ pub fn sound_thread(
         println!("Default input stream format:\n      {:?}", conf);
     }
 
-    let loop_sink = rodio::Sink::new(&loop_device);
-    let sounds_only_sink = rodio::Sink::new(&output_device);
+    let shared_loop_device = Arc::new(loop_device);
+    let shared_output_device = Arc::new(output_device);
+    let shared_input_device = Arc::new(input_device);
 
-    let loop_sink2 = rodio::Sink::new(&loop_device);
+    let shared_devices_clone = shared_devices.clone();
+    let shared_loop_device_clone = shared_loop_device.clone();
 
+
+    let handle_play_thread = std::thread::spawn(move || {
+        shared_devices_clone;
+        play_thread(rx, shared_loop_device_clone, shared_output_device);
+    });
+
+    let handle_sound_thread = std::thread::spawn(move || {
+        sound_thread(shared_input_device, shared_loop_device);
+    });
+
+    handle_sound_thread.join().expect("sound_thread join failed");
+    handle_play_thread.join().expect("play_thread join failed");
+ 
+    return;
+}
+
+pub fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<&Device>, output_device: Arc<&Device>){
+
+    loop{
+
+        let receive = rx.recv();
+
+        match receive {
+            Ok(file_path) => {
+
+                let loop_sink = rodio::Sink::new(*loop_device);
+                let sound_only_sink = rodio::Sink::new(*output_device);
+
+                let file_path_string = file_path.to_str().unwrap();
+                let file = std::fs::File::open(&file_path).unwrap();
+                let file2 = std::fs::File::open(&file_path).unwrap();   
+
+                loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
+                sound_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
+
+                loop_sink.detach();
+                sound_only_sink.detach();
+
+                println!("Playing sound: {}", file_path_string);
+            },
+            Err(_err) => {}
+        };
+    }
+
+}
+//devices : Vec<Device>, 
+pub fn sound_thread(input_device : Arc<&Device>, loop_device : Arc<&Device>){
+    
+    let loop_sink = rodio::Sink::new(*loop_device);
     let host = cpal::default_host();
     let event_loop = host.event_loop();
 
@@ -103,7 +157,7 @@ pub fn sound_thread(
         input_format
     );
     let input_stream_id = event_loop
-        .build_input_stream(&input_device, &input_format)
+        .build_input_stream(*input_device, &input_format)
         .unwrap();
     info!("Successfully built input stream.");
 
