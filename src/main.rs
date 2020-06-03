@@ -146,8 +146,8 @@ pub fn main() -> Result<()> {
     let (tx, rx) : (Sender<PathBuf>, Receiver<PathBuf>) = mpsc::channel();
 
     //Init Sound Module, pass Receiver to send File Paths to 
-    std::thread::spawn(move || {
-      sound::init_sound(rx, input_device_index, output_device_index, loop_device_index);
+    std::thread::spawn(move || -> Result<()>{
+      sound::init_sound(rx, input_device_index, output_device_index, loop_device_index)
     });
 
     let hotkey_thread = std::thread::spawn(move || {

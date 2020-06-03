@@ -1,6 +1,6 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use rodio;
-use cpal::{Device, Devices};
+use cpal::{Host, Device, Devices};
 
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -11,6 +11,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::thread::JoinHandle;
 use log::{info, trace, warn, error};
 use std::sync::Arc;
+use anyhow::{Context, Result, anyhow};
 
 
 /*
@@ -30,39 +31,42 @@ fn playFile(filepath : Path){
 }
 */
 
+fn get_default_input_device() -> Result<Device> {
+    let host : Host = cpal::default_host();
+    host.default_input_device().ok_or(anyhow!("no default input device"))
+}
+
+fn get_default_output_device() -> Result<Device> {
+    let host : Host = cpal::default_host();
+    host.default_output_device().ok_or(anyhow!("no default output device"))
+}
+
+fn get_device_by_index(index : usize) -> Result<Device> {
+    let host = cpal::default_host();
+
+    let mut devices: Devices = host.devices()?;
+    
+    devices.nth(index).ok_or(anyhow!("No device device from index"))     //Anstatt unwrap anyhow ok_or benutzen
+}
+
 pub fn init_sound(
     rx : Receiver<PathBuf>,
     input_device_index: Option<usize>,
     output_device_index: Option<usize>,
     loop_device_index: usize,
-){
+) -> Result<()> {
 
-
-    let host = cpal::default_host();
-
-    let mut devices: Devices = host
-        .devices()
-        .expect("No available sound devices");
-
-    let mut input_device = host
-        .default_input_device()
-        .expect("No default input device");
+    let mut input_device = get_default_input_device()?;
     if input_device_index.is_some() {
-        input_device = devices
-            .nth(input_device_index.unwrap())
-            .expect("invalid input device specified");
+      input_device = get_device_by_index(input_device_index.unwrap())?;
     }
-    let mut output_device = host
-        .default_output_device()
-        .expect("No default output device");
+    
+    let mut output_device = get_default_output_device()?;
     if output_device_index.is_some() {
-        output_device = devices
-            .nth(output_device_index.unwrap())
-            .expect("invalid input device specified");
+        output_device = get_device_by_index(output_device_index.unwrap())?;
     }
-    let loop_device = devices
-        .nth(loop_device_index)
-        .expect("invalid loop device specified");
+
+    let loop_device = get_device_by_index(loop_device_index)?;
 
     info!("Input:  \"{}\"", input_device.name().unwrap());
     info!("Output: \"{}\"", output_device.name().unwrap());
@@ -86,9 +90,11 @@ pub fn init_sound(
     std::thread::spawn(move || {
         sound_thread(shared_input_device, shared_loop_device);
     });
+
+    Ok(())
 }
 
-pub fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: Arc<Device>){
+fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: Arc<Device>){
 
     loop{
 
@@ -119,7 +125,7 @@ pub fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_devi
 
 }
 //devices : Vec<Device>, 
-pub fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>){
+fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>){
     
     let loop_sink = rodio::Sink::new(&*loop_device);
     let host = cpal::default_host();
