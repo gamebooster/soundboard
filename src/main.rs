@@ -150,7 +150,7 @@ pub fn main() -> Result<()> {
       sound::init_sound(rx, input_device_index, output_device_index, loop_device_index);
     });
 
-    std::thread::spawn(move || {
+    let hotkey_thread = std::thread::spawn(move || {
         let mut hk = hotkeyExt::Listener::new();
         hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -164,7 +164,10 @@ pub fn main() -> Result<()> {
         hk.listen();
     });
 
-    
+    if matches.is_present("no-gui") {
+        hotkey_thread.join().expect("sound thread join failed");
+        return Ok(());
+    }
 
     let mut settings = Settings::default();
     settings.window.size = (275, 150);
