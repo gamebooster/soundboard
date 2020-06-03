@@ -14,22 +14,6 @@ use std::sync::Arc;
 use anyhow::{Context, Result, anyhow};
 
 
-/*
-struct StreamStruct{
-    output_device : Refrodio::Device,
-
-}
-
-fn playFile(filepath : Path){
-    let file_path_string = file_path.to_str().unwrap();
-    let file = std::fs::File::open(&file_path).unwrap();
-    let file2 = std::fs::File::open(&file_path).unwrap();
-    sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
-    sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
-    println!("Playing sound: {}", file_path_string);
-
-}
-*/
 
 fn get_default_input_device() -> Result<Device> {
     let host : Host = cpal::default_host();
@@ -87,8 +71,8 @@ pub fn init_sound(
         play_thread(rx, shared_loop_device_clone, shared_output_device);
     });
 
-    std::thread::spawn(move || {
-        sound_thread(shared_input_device, shared_loop_device);
+    std::thread::spawn(move || -> Result<()>{
+        sound_thread(shared_input_device, shared_loop_device)
     });
 
     Ok(())
@@ -124,8 +108,8 @@ fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: 
     }
 
 }
-//devices : Vec<Device>, 
-fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>){
+
+fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>) -> Result<()>{
     
     let loop_sink = rodio::Sink::new(&*loop_device);
     let host = cpal::default_host();
@@ -143,9 +127,21 @@ fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>){
         .unwrap();
     info!("Successfully built input stream.");
 
+    /*
+    let loop_format = loop_device.default_output_format().unwrap();
+
+    let loop_stream_id = event_loop
+        .build_output_stream(&*loop_device, &loop_format)
+        .unwrap();
+
     event_loop
-        .play_stream(input_stream_id.clone())
-        .expect("Fail loopStream");
+        .play_stream(loop_stream_id.clone())?;
+    */
+
+    event_loop
+        .play_stream(input_stream_id.clone())?;
+
+    
 
     event_loop.run(move |id, result| {
         let data = match result {
