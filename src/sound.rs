@@ -42,7 +42,6 @@ pub fn init_sound(
 
     let mut devices: Devices = host
         .devices()
-<<<<<<< HEAD
         .expect("No available sound devices");
 
     let mut input_device = host
@@ -68,37 +67,6 @@ pub fn init_sound(
     info!("Input:  \"{}\"", input_device.name().unwrap());
     info!("Output: \"{}\"", output_device.name().unwrap());
     info!("Loopback: \"{}\"", loop_device.name().unwrap());
-=======
-        .expect("No available sound devices")
-        .collect();
-
-
-    let input_device = devices
-        .get(input_device_index)
-        .expect("invalid input device specified");
-    let loop_device = devices
-        .nth(loop_device_index)
-        .expect("invalid loop device specified");
-    let output_device = devices  
-        .get(output_device_index)
-        .expect("invalid output device specified");
-    println!("  Using Devices: ");
-    println!(
-        "Input:  {}. \"{}\"",
-        input_device_index,
-        input_device.name().unwrap()
-    );
-    println!(
-        "Output:  {}. \"{}\"",
-        output_device_index,
-        output_device.name().unwrap()
-    );
-    println!(
-        "Loopback:  {}. \"{}\"",
-        loop_device_index,
-        loop_device.name().unwrap()
-    );
->>>>>>> started input change to names
 
     // Input configs
     if let Ok(conf) = input_device.default_input_format() {
