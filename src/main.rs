@@ -157,7 +157,7 @@ pub fn main() -> Result<()> {
             let _result = hk.register_hotkey(sound.hotkey_modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32, sound.hotkey_key as u32, move || {
                 let mut path = env::current_exe().unwrap();
                 path.pop();
-                path.push("sounds\\");
+                path.push("sounds");
                 path.push(&sound.path);
                 info!("Playing sound: {}", path.display());
                 tx_clone.send(path).unwrap();
