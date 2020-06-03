@@ -11,7 +11,6 @@ use iced::{
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
 use std::path::{Path, PathBuf};
-use std::thread::JoinHandle;
 use anyhow::{Context, Result};
 use std::env;
 use log::{info, trace, warn, error};
@@ -153,12 +152,16 @@ pub fn main() -> Result<()> {
         hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
             let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
             file_path.push("resources/nicht-so-tief-rudiger.mp3");
+            let file_path_string = file_path.to_str().unwrap();
+            println!("Playing sound: {}", file_path_string);
             tx.send(file_path).unwrap();
         })
         .unwrap();
 
         hk.listen();
     });
+
+    
 
     let mut settings = Settings::default();
     settings.window.size = (275, 150);
