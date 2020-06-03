@@ -1,3 +1,5 @@
+extern crate log;
+
 use ::hotkey as hotkeyExt;
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait,  HostTrait};
@@ -5,10 +7,12 @@ use iced::{
     button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
     Text,
 };
-
 use std::path::{PathBuf};
 use std::sync::mpsc::{Sender};
 use std::thread::JoinHandle;
+use anyhow::{Context, Result};
+use std::env;
+use log::{info, trace, warn, error};
 
 //use rodio;
 
@@ -38,7 +42,12 @@ fn print_possible_devices() {
     }
 }
 
-pub fn main() {
+pub fn main() -> Result<()> {
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .init();
+    info!("Parsing arguments");
+
     let matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
@@ -89,8 +98,14 @@ pub fn main() {
 
     if matches.is_present("print-possible-devices") {
         print_possible_devices();
-        return;
+        return Ok(())
     }
+
+    let mut path = env::current_exe()?;
+    path.pop();
+    path.push(matches.value_of("config-file").unwrap());
+    let config_file = config::parse_config(path.as_path())?;
+    //println!("{:#?}", config_file);
 
     let input_device_index: Option<usize> = {
         if matches.is_present("input-device") {
@@ -142,12 +157,13 @@ pub fn main() {
 
     if matches.is_present("no-gui") {
         handle.join().expect("sound_thread join failed");
-        return;
+        return Ok(());
     }
 
     let mut settings = Settings::default();
     settings.window.size = (275, 150);
     Soundboard::run(settings);
+    Ok(())
 }
 
 #[derive(Default)]

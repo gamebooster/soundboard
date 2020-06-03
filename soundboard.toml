@@ -1,0 +1,13 @@
+input_device = 0
+# output_device = 1
+# loopback_device = 2
+
+[[sounds]]
+name = "Nicht so tief Rüdiger!"
+path = "nicht-so-tief-rudiger.mp3"
+hotkey = "CTRL-P"
+
+[[sounds]]
+name = "Musik1"
+path = "musik1.mp3"
+hotkey = "CTRL-O"

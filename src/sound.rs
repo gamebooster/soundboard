@@ -8,6 +8,7 @@ use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 //use std::fs::File;
 use std::thread::JoinHandle;
+use log::{info, trace, warn, error};
 
 /*
 struct StreamStruct{
@@ -76,10 +77,10 @@ pub fn sound_thread(
     let loop_device = devices
         .get(loop_device_index)
         .expect("invalid loop device specified");
-    println!("  Using Devices: ");
-    println!("Input:  \"{}\"", input_device.name().unwrap());
-    println!("Output: \"{}\"", output_device.name().unwrap());
-    println!("Loopback: \"{}\"", loop_device.name().unwrap());
+
+    info!("Input:  \"{}\"", input_device.name().unwrap());
+    info!("Output: \"{}\"", output_device.name().unwrap());
+    info!("Loopback: \"{}\"", loop_device.name().unwrap());
 
     // Input configs
     if let Ok(conf) = input_device.default_input_format() {
@@ -97,14 +98,14 @@ pub fn sound_thread(
     let input_format = input_device.default_input_format().unwrap();
 
     // // Build streams.
-    println!(
+    info!(
         "Attempting to build input stream with `{:?}`.",
         input_format
     );
     let input_stream_id = event_loop
         .build_input_stream(&input_device, &input_format)
         .unwrap();
-    println!("Successfully built input stream.");
+    info!("Successfully built input stream.");
 
     event_loop
         .play_stream(input_stream_id.clone())
@@ -114,7 +115,7 @@ pub fn sound_thread(
         let data = match result {
             Ok(data) => data,
             Err(err) => {
-                eprintln!("an error occurred on stream {:?}: {}", id, err);
+                error!("an error occurred on stream {:?}: {}", id, err);
                 return;
             }
         };
@@ -147,7 +148,7 @@ pub fn sound_thread(
                 let file2 = std::fs::File::open(&file_path).unwrap();
                 loop_sink2.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
                 sounds_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
-                println!("Playing sound: {}", file_path_string);
+                info!("Playing sound: {}", file_path_string);
             }
             Err(_err) => {}
         };
