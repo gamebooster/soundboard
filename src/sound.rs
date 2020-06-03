@@ -111,9 +111,21 @@ fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: 
                 let loop_sink = rodio::Sink::new(&*loop_device);
                 let sound_only_sink = rodio::Sink::new(&*output_device);
 
-                
-                let file = std::fs::File::open(&file_path).unwrap();
-                let file2 = std::fs::File::open(&file_path).unwrap();   
+            
+                let file = match std::fs::File::open(&file_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        error!("{}", e);
+                        continue
+                    },
+                };
+                let file2 = match std::fs::File::open(&file_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        error!("{}", e);
+                        continue
+                    },
+                };
 
                 loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
                 sound_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());

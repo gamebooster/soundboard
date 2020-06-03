@@ -5,9 +5,11 @@ input_device = 0
 [[sounds]]
 name = "Nicht so tief Rüdiger!"
 path = "nicht-so-tief-rudiger.mp3"
-hotkey = "CTRL-P"
+hotkey_modifier = ["CTRL"]
+hotkey_key = "P"
 
 [[sounds]]
-name = "Musik1"
-path = "musik1.mp3"
-hotkey = "CTRL-O"
+name = "vodka_dance"
+path = "vodka_dance.mp3"
+hotkey_modifier = ["CTRL", "SHIFT"]
+hotkey_key = "P"

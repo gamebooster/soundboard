@@ -13,7 +13,7 @@ use iced::{
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
+use anyhow::{Context, Result,anyhow};
 use std::env;
 use log::{info, trace, warn, error};
 
@@ -108,7 +108,7 @@ pub fn main() -> Result<()> {
     path.pop();
     path.push(matches.value_of("config-file").unwrap());
     let config_file = config::parse_config(path.as_path())?;
-    //println!("{:#?}", config_file);
+    println!("{:#?}", config_file);
 
     let input_device_index: Option<usize> = {
         if matches.is_present("input-device") {
@@ -150,22 +150,25 @@ pub fn main() -> Result<()> {
       sound::init_sound(rx, input_device_index, output_device_index, loop_device_index)
     });
 
-    let hotkey_thread = std::thread::spawn(move || {
+    let hotkey_thread = std::thread::spawn(move || -> Result<()> {
         let mut hk = hotkeyExt::Listener::new();
-        hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'P' as u32, move || {
-            let mut file_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-            file_path.push("resources/nicht-so-tief-rudiger.mp3");
-            let file_path_string = file_path.to_str().unwrap();
-            info!("Playing sound: {}", file_path_string);
-            tx.send(file_path).unwrap();
-        })
-        .unwrap();
-
+        for sound in config_file.sounds.unwrap_or(Vec::new()) {
+            let tx_clone = tx.clone();
+            let _result = hk.register_hotkey(sound.hotkey_modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32, sound.hotkey_key as u32, move || {
+                let mut path = env::current_exe().unwrap();
+                path.pop();
+                path.push("sounds\\");
+                path.push(&sound.path);
+                info!("Playing sound: {}", path.display());
+                tx_clone.send(path).unwrap();
+            }).or_else(|_s| Err(anyhow!("register key")));
+        }
         hk.listen();
+        Ok(())
     });
 
     if matches.is_present("no-gui") {
-        hotkey_thread.join().expect("sound thread join failed");
+        let _result = hotkey_thread.join().expect("sound thread join failed");
         return Ok(());
     }
 
