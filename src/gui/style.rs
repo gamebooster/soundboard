@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use iced::{button, container, futures, Background, Color, Subscription, Vector};
 use std::path::{Path, PathBuf};
 use std::time::Instant;

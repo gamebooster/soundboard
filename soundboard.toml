@@ -10,6 +10,6 @@ hotkey_key = "P"
 
 [[sounds]]
 name = "vodka_dance"
-path = "vodka_dance.mp3"
+path = "vodka/vodka_dance.mp3"
 hotkey_modifier = ["CTRL", "SHIFT"]
 hotkey_key = "P"

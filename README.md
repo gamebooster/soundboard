@@ -2,8 +2,10 @@
 
 ![](https://i.imgur.com/5OBElu2.png)
 
+
 ### config file format
 
+soundboard.toml
 ````
 # input_device = 0 # optional
 # output_device = 1 # optional
@@ -17,9 +19,19 @@ hotkey_key = "P" # numbers are KEY_9, special keys: BACKSPACE etc
 
 [[sounds]] # how many you like
 name = "vodka_dance"
-path = "vodka_dance.mp3"
+path = "vodka/vodka_dance.mp3"
 hotkey_modifier = ["CTRL", "SHIFT"]
 hotkey_key = "P"
+````
+
+expected directory structure
+````
+soundboard{.exe}
+soundboard.toml
+sounds/
+  nicht-so-tief-rudiger.mp3
+  vodka/
+    vodka_dance.mp3
 ````
 
 ### works
