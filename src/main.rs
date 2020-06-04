@@ -84,7 +84,7 @@ pub fn main() -> Result<()> {
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
     let tx_clone = tx.clone();
     let mut settings = Settings::with_flags((tx_clone, config_file));
-    settings.window.size = (400, 150);
+    settings.window.size = (450, 325);
     gui::Soundboard::run(settings);
     Ok(())
 }

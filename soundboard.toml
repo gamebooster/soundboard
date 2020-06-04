@@ -3,13 +3,31 @@
 # loopback_device = 2
 
 [[sounds]]
-name = "Nicht so tief Rüdiger!"
+name = "Nicht so tief, Rüdiger!"
 path = "nicht-so-tief-rudiger.mp3"
 hotkey_modifier = ["CTRL"]
 hotkey_key = "P"
 
 [[sounds]]
-name = "vodka_dance"
-path = "vodka/vodka_dance.mp3"
+name = "Razor1911 Vodka Dance"
+path = "vodka/vodka_dance.mp3" # later xm
 hotkey_modifier = ["CTRL", "SHIFT"]
-hotkey_key = "P"
+hotkey_key = "BACKSPACE"
+
+[[sounds]]
+name = "It's time to duel"
+path = "its-time-to-duel.ogg"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_9"
+
+[[sounds]]
+name = "Ich rascht aus"
+path = "ich-rascht-aus.flac"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_8"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"

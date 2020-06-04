@@ -45,31 +45,36 @@ impl Application for Soundboard {
             sender: flags.0,
             increment_button: button::State::new(),
         };
-        soundboard.buttons = soundboard.config.sounds.as_ref().unwrap().into_iter().fold(
-            Vec::<SoundButton>::new(),
-            |mut buttons, sound| {
-                buttons.push(SoundButton {
-                    state: button::State::new(),
-                    path: sound.path.clone(),
-                    name: sound.name.clone(),
-                    hotkey: format!(
-                        "{}-{}",
-                        sound.hotkey_modifier.clone().into_iter().fold(
-                            String::new(),
-                            |all, one| {
-                                if all.len() > 0 {
-                                    format!("{}-{}", all, one)
-                                } else {
-                                    one.to_string()
-                                }
+        soundboard.buttons =
+            soundboard.config.sounds.as_ref().unwrap().into_iter().fold(
+                Vec::<SoundButton>::new(),
+                |mut buttons, sound| {
+                    let modifier_string = sound.hotkey_modifier.clone().into_iter().fold(
+                        String::new(),
+                        |all, one| {
+                            if all.len() > 0 {
+                                format!("{}-{}", all, one)
+                            } else {
+                                one.to_string()
                             }
-                        ),
-                        sound.hotkey_key.to_string()
-                    ),
-                });
-                buttons
-            },
-        );
+                        },
+                    );
+                    let hotkey_string = {
+                        if modifier_string.len() > 0 {
+                            format!("{}-{}", modifier_string, sound.hotkey_key.to_string())
+                        } else {
+                            sound.hotkey_key.to_string()
+                        }
+                    };
+                    buttons.push(SoundButton {
+                        state: button::State::new(),
+                        path: sound.path.clone(),
+                        name: sound.name.clone(),
+                        hotkey: hotkey_string,
+                    });
+                    buttons
+                },
+            );
         (soundboard, Command::none())
     }
 
@@ -95,11 +100,11 @@ impl Application for Soundboard {
     fn view(&mut self) -> Element<Message> {
         let column = self.buttons.iter_mut().fold(
             Column::new()
-                .padding(10)
+                .padding(5)
                 .spacing(5)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .align_items(Align::Center),
+                .align_items(Align::Start),
             |column, button| {
                 let row_contents = Row::new()
                     .padding(10)

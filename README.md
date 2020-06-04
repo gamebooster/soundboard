@@ -13,7 +13,7 @@ soundboard.toml
 
 [[sounds]] 
 name = "Nicht so tief Rüdiger!" # display name
-path = "nicht-so-tief-rudiger.mp3" # relative from sounds directory from exe path, formats: mp3, wav, flac
+path = "nicht-so-tief-rudiger.mp3" # relative from sounds directory from exe path, formats: mp3, wav, flac, ogg
 hotkey_modifier = ["CTRL"] # CTRL, SHIFT, SUPER, ALT possible
 hotkey_key = "P" # numbers are KEY_9, special keys: BACKSPACE etc
 
