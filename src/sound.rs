@@ -34,6 +34,16 @@ pub fn print_possible_devices() {
     }
 }
 
+pub fn send_playsound(sender: Sender<PathBuf>, sound_path: &std::path::Path) -> Result<()> {
+    let mut path = std::env::current_exe()?;
+    path.pop();
+    path.push("sounds");
+    path.push(sound_path);
+    info!("Playing sound: {}", sound_path.display());
+    sender.send(path)?;
+    Ok(())
+}
+
 pub trait FindDevice {
 
     fn into_device(self) -> Result<Device>;
