@@ -10,7 +10,7 @@ edition = "2018"
 
 cpal = "0.11"
 rodio = "0.11"
-hotkey = "0.3"
+hotkey = { path = "extern/hotkey-rs", version = "0.3" }
 iced = "0.1"
 clap = "3.0.0-beta.1"
 toml = "0.5"
