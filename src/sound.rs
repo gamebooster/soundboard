@@ -13,6 +13,27 @@ use log::{info, trace, warn, error};
 use std::sync::Arc;
 use anyhow::{Context, Result, anyhow};
 
+pub fn print_possible_devices() {
+    let host = cpal::default_host();
+
+    let devices = host.devices().expect("No available sound devices");
+
+    println!("  Devices: ");
+    for (device_index, device) in devices.enumerate() {
+        println!("  {}. \"{}\"", device_index, device.name().unwrap());
+
+        // Input configs
+        if let Ok(conf) = device.default_input_format() {
+            println!("    Default input stream format:\n      {:?}", conf);
+        }
+
+        // Output configs
+        if let Ok(conf) = device.default_output_format() {
+            println!("    Default output stream format:\n      {:?}", conf);
+        }
+    }
+}
+
 pub trait FindDevice {
 
     fn into_device(self) -> Result<Device>;
