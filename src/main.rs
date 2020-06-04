@@ -1,18 +1,18 @@
 #![allow(unused_imports)]
 
-extern crate log;
 extern crate clap;
 extern crate cpal;
 extern crate iced;
+extern crate log;
 
 use ::hotkey as hotkeyExt;
+use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, HostTrait};
 use iced::{
-    button, executor, Align, Application, Button, Column, Command, Element, Settings, Subscription,
-    Text, Length
+    button, executor, Align, Application, Button, Column, Command, Container, Element, Length, Row,
+    Settings, Subscription, Text,
 };
-use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 use std::env;
 use std::path::{Path, PathBuf};
@@ -23,8 +23,9 @@ mod config;
 mod gui;
 mod hotkey;
 mod sound;
+mod style;
 
-fn send_playsound(sender: Sender<PathBuf>, sound_path : &Path) -> Result<()> {
+fn send_playsound(sender: Sender<PathBuf>, sound_path: &Path) -> Result<()> {
     let mut path = env::current_exe()?;
     path.pop();
     path.push("sounds");
@@ -38,7 +39,6 @@ pub fn main() -> Result<()> {
     env_logger::builder()
         .filter_module("soundboard", log::LevelFilter::Info)
         .init();
-    
     info!("Parsing arguments");
     let arguments = config::parse_arguments();
 
@@ -52,7 +52,8 @@ pub fn main() -> Result<()> {
 
     let (tx, rx): (Sender<PathBuf>, Receiver<PathBuf>) = mpsc::channel();
 
-    let (input_device_index, output_device_index, loop_device_index) = config::parse_devices(&config_file, &arguments)?;
+    let (input_device_index, output_device_index, loop_device_index) =
+        config::parse_devices(&config_file, &arguments)?;
 
     std::thread::spawn(move || -> Result<()> {
         sound::init_sound(
@@ -76,8 +77,8 @@ pub fn main() -> Result<()> {
                         .fold(0, |acc, x| acc | (*x as u32)) as u32,
                     sound.hotkey_key as u32,
                     move || {
-                      let tx_clone = tx_clone.clone();
-                      send_playsound(tx_clone, Path::new(&sound.path));
+                        let tx_clone = tx_clone.clone();
+                        let _result = send_playsound(tx_clone, Path::new(&sound.path));
                     },
                 )
                 .or_else(|_s| Err(anyhow!("register key")));
@@ -94,7 +95,7 @@ pub fn main() -> Result<()> {
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
     let tx_clone = tx.clone();
     let mut settings = Settings::with_flags((tx_clone, config_file));
-    settings.window.size = (275, 150);
+    settings.window.size = (400, 150);
     Soundboard::run(settings);
     Ok(())
 }
@@ -104,6 +105,7 @@ struct SoundButton {
     state: button::State,
     name: String,
     path: String,
+    hotkey: String,
 }
 
 #[derive(Debug)]
@@ -140,6 +142,20 @@ impl Application for Soundboard {
                     state: button::State::new(),
                     path: sound.path.clone(),
                     name: sound.name.clone(),
+                    hotkey: format!(
+                        "{}-{}",
+                        sound.hotkey_modifier.clone().into_iter().fold(
+                            String::new(),
+                            |all, one| {
+                                if all.len() > 0 {
+                                    format!("{}-{}", all, one)
+                                } else {
+                                    one.to_string()
+                                }
+                            }
+                        ),
+                        sound.hotkey_key.to_string()
+                    ),
                 });
                 buttons
             },
@@ -154,7 +170,7 @@ impl Application for Soundboard {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::PlaySound(sound_path) => {
-                send_playsound(self.sender.clone(), Path::new(&sound_path));
+                let _result = send_playsound(self.sender.clone(), Path::new(&sound_path));
                 self.status_text = "Start playing sound...".to_string();
             }
         }
@@ -168,14 +184,32 @@ impl Application for Soundboard {
 
     fn view(&mut self) -> Element<Message> {
         let column = self.buttons.iter_mut().fold(
-            Column::new().padding(20).spacing(5).width(Length::Fill).height(Length::Fill).align_items(Align::Center),
+            Column::new()
+                .padding(10)
+                .spacing(5)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_items(Align::Center),
             |column, button| {
-                column.push(
-                    Button::new(&mut button.state, Text::new(button.name.clone()))
-                        .on_press(Message::PlaySound(button.path.clone())),
-                )
+                let row_contents = Row::new()
+                    .padding(10)
+                    .spacing(20)
+                    .align_items(Align::Center)
+                    .push(Text::new(button.name.clone()))
+                    .push(Text::new(button.hotkey.clone()))
+                    .push(
+                        Button::new(&mut button.state, Text::new("Play"))
+                            .on_press(Message::PlaySound(button.path.clone()))
+                            .style(style::Button::Constructive),
+                    );
+                column.push(Container::new(row_contents).style(style::Container::Entry))
             },
         );
-        column.into()
+        let container = Container::new(column)
+            .padding(10)
+            .style(style::Container::Background)
+            .width(Length::Fill)
+            .height(Length::Fill);
+        container.into()
     }
 }

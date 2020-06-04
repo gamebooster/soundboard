@@ -11,6 +11,7 @@ use log::{error, info, trace, warn};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;
+use std::fmt;
 
 #[derive(Debug, Deserialize, Default)]
 pub struct Config {
@@ -21,11 +22,19 @@ pub struct Config {
 }
 
 #[derive(Debug, Deserialize, Copy, Clone)]
-pub enum Modifiers {
+pub enum Modifier {
     ALT = hotkey::modifiers::ALT as isize,
     CTRL = hotkey::modifiers::CONTROL as isize,
     SHIFT = hotkey::modifiers::SHIFT as isize,
     SUPER = hotkey::modifiers::SUPER as isize,
+}
+
+impl fmt::Display for Modifier {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 #[allow(non_camel_case_types)]
@@ -83,11 +92,19 @@ pub enum Key {
     Z = 'Z' as isize,
 }
 
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct SoundConfig {
     pub name: String,
     pub path: String,
-    pub hotkey_modifier: Vec<Modifiers>,
+    pub hotkey_modifier: Vec<Modifier>,
     pub hotkey_key: Key,
 }
 
