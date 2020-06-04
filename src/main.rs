@@ -56,7 +56,7 @@ pub fn main() -> Result<()> {
     let tx_clone = tx.clone();
     let hotkey_thread = std::thread::spawn(move || -> Result<()> {
         let mut hk = hotkeyExt::Listener::new();
-        for sound in config_file.sounds.unwrap_or(Vec::new()) {
+        for sound in config_file.sounds.unwrap_or_default() {
             let tx_clone = tx_clone.clone();
             let _result = hk
                 .register_hotkey(
@@ -69,8 +69,7 @@ pub fn main() -> Result<()> {
                         let tx_clone = tx_clone.clone();
                         let _result = sound::send_playsound(tx_clone, Path::new(&sound.path));
                     },
-                )
-                .or_else(|_s| Err(anyhow!("register key")));
+                ).map_err(|_s| anyhow!("register key"));
         }
         hk.listen();
         Ok(())
@@ -82,7 +81,7 @@ pub fn main() -> Result<()> {
     }
 
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
-    let tx_clone = tx.clone();
+    let tx_clone = tx;
     let mut settings = Settings::with_flags((tx_clone, config_file));
     settings.window.size = (450, 325);
     gui::Soundboard::run(settings);

@@ -46,13 +46,13 @@ impl Application for Soundboard {
             increment_button: button::State::new(),
         };
         soundboard.buttons =
-            soundboard.config.sounds.as_ref().unwrap().into_iter().fold(
+            soundboard.config.sounds.as_ref().unwrap().iter().fold(
                 Vec::<SoundButton>::new(),
                 |mut buttons, sound| {
                     let modifier_string = sound.hotkey_modifier.clone().into_iter().fold(
                         String::new(),
                         |all, one| {
-                            if all.len() > 0 {
+                            if !all.is_empty() {
                                 format!("{}-{}", all, one)
                             } else {
                                 one.to_string()
@@ -60,7 +60,7 @@ impl Application for Soundboard {
                         },
                     );
                     let hotkey_string = {
-                        if modifier_string.len() > 0 {
+                        if !modifier_string.is_empty() {
                             format!("{}-{}", modifier_string, sound.hotkey_key.to_string())
                         } else {
                             sound.hotkey_key.to_string()
