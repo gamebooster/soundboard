@@ -13,23 +13,23 @@ pub mod modifiers {
 
 pub mod keys {
     use winapi::um::winuser;
-    pub const BACKSPACE: u32 = winuser::VK_BACK;
-    pub const TAB: u32 = winuser::VK_TAB;
-    pub const ENTER: u32 = winuser::VK_RETURN;
-    pub const CAPS_LOCK: u32 = winuser::VK_CAPITAL;
-    pub const ESCAPE: u32 = winuser::VK_ESCAPE;
-    pub const SPACEBAR: u32 = winuser::VK_SPACE;
-    pub const PAGE_UP: u32 = winuser::VK_PRIOR;
-    pub const PAGE_DOWN: u32 = winuser::VK_NEXT;
-    pub const END: u32 = winuser::VK_END;
-    pub const HOME: u32 = winuser::VK_HOME;
-    pub const ARROW_LEFT: u32 = winuser::VK_LEFT;
-    pub const ARROW_RIGHT: u32 = winuser::VK_RIGHT;
-    pub const ARROW_UP: u32 = winuser::VK_UP;
-    pub const ARROW_DOWN: u32 = winuser::VK_DOWN;
-    pub const PRINT_SCREEN: u32 = winuser::VK_SNAPSHOT;
-    pub const INSERT: u32 = winuser::VK_INSERT;
-    pub const DELETE: u32 = winuser::VK_DELETE;
+    pub const BACKSPACE: u32 = winuser::VK_BACK as u32;
+    pub const TAB: u32 = winuser::VK_TAB as u32;
+    pub const ENTER: u32 = winuser::VK_RETURN as u32;
+    pub const CAPS_LOCK: u32 = winuser::VK_CAPITAL as u32;
+    pub const ESCAPE: u32 = winuser::VK_ESCAPE as u32;
+    pub const SPACEBAR: u32 = winuser::VK_SPACE as u32;
+    pub const PAGE_UP: u32 = winuser::VK_PRIOR as u32;
+    pub const PAGE_DOWN: u32 = winuser::VK_NEXT as u32;
+    pub const END: u32 = winuser::VK_END as u32;
+    pub const HOME: u32 = winuser::VK_HOME as u32;
+    pub const ARROW_LEFT: u32 = winuser::VK_LEFT as u32;
+    pub const ARROW_RIGHT: u32 = winuser::VK_RIGHT as u32;
+    pub const ARROW_UP: u32 = winuser::VK_UP as u32;
+    pub const ARROW_DOWN: u32 = winuser::VK_DOWN as u32;
+    pub const PRINT_SCREEN: u32 = winuser::VK_SNAPSHOT as u32;
+    pub const INSERT: u32 = winuser::VK_INSERT as u32;
+    pub const DELETE: u32 = winuser::VK_DELETE as u32;
 }
 
 pub type ListenerID = i32;
