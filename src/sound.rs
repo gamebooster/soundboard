@@ -1,6 +1,6 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 
-use cpal::{Host, Device, Devices};
+use cpal::{Device, Devices, Host};
 
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -8,10 +8,12 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 //use std::fs::File;
-use std::thread::JoinHandle;
-use log::{info, trace, warn, error};
+use anyhow::{anyhow, Context, Result};
+use log::{error, info, trace, warn};
 use std::sync::Arc;
-use anyhow::{Context, Result, anyhow};
+use std::thread::JoinHandle;
+
+use super::download;
 
 pub fn print_possible_devices() {
     let host = cpal::default_host();
@@ -34,67 +36,73 @@ pub fn print_possible_devices() {
     }
 }
 
-pub fn send_playsound(sender: Sender<PathBuf>, sound_path: &std::path::Path) -> Result<()> {
-    let mut path = std::env::current_exe()?;
-    path.pop();
-    path.push("sounds");
-    path.push(sound_path);
-    info!("Playing sound: {}", sound_path.display());
+pub fn send_playsound(sender: Sender<PathBuf>, sound_path: &str) -> Result<()> {
+    let path = {
+        if sound_path.starts_with("http") {
+            download::request_file(sound_path.to_string())?
+        } else {
+            let mut path = std::env::current_exe()?;
+            path.pop();
+            path.push("sounds");
+            path.push(sound_path);
+            path
+        }
+    };
+    info!("Playing sound: {}", sound_path);
     sender.send(path)?;
     Ok(())
 }
 
 pub trait FindDevice {
-
     fn into_device(self) -> Result<Device>;
 }
 
-impl FindDevice for usize{
-
-    fn into_device(self) -> Result<Device>{
+impl FindDevice for usize {
+    fn into_device(self) -> Result<Device> {
         let host = cpal::default_host();
 
         let mut devices: Devices = host.devices()?;
-        
-        devices.nth(self).ok_or(anyhow!("No device device from index")) 
+
+        devices
+            .nth(self)
+            .ok_or(anyhow!("No device device from index"))
     }
 }
 
-impl FindDevice for String{
-
-    fn into_device(self) -> Result<Device>{
+impl FindDevice for String {
+    fn into_device(self) -> Result<Device> {
         let host = cpal::default_host();
 
         let mut devices: Devices = host.devices()?;
 
-        devices.find(|device : &Device| device.name().unwrap() == self).ok_or(anyhow!("No device device from name")) 
-
+        devices
+            .find(|device: &Device| device.name().unwrap() == self)
+            .ok_or(anyhow!("No device device from name"))
     }
 }
 
 fn get_default_input_device() -> Result<Device> {
-    let host : Host = cpal::default_host();
-    host.default_input_device().ok_or(anyhow!("no default input device"))
+    let host: Host = cpal::default_host();
+    host.default_input_device()
+        .ok_or(anyhow!("no default input device"))
 }
 
 fn get_default_output_device() -> Result<Device> {
-    let host : Host = cpal::default_host();
-    host.default_output_device().ok_or(anyhow!("no default output device"))
+    let host: Host = cpal::default_host();
+    host.default_output_device()
+        .ok_or(anyhow!("no default output device"))
 }
 
-
-pub fn init_sound<T : FindDevice>(
-    rx : Receiver<PathBuf>,
+pub fn init_sound<T: FindDevice>(
+    rx: Receiver<PathBuf>,
     input_device_identifier: Option<T>,
     output_device_identifier: Option<T>,
     loop_device_identifier: T,
 ) -> Result<()> {
-
     let mut input_device = get_default_input_device()?;
     if input_device_identifier.is_some() {
-      input_device = input_device_identifier.unwrap().into_device()?;
+        input_device = input_device_identifier.unwrap().into_device()?;
     }
-    
     let mut output_device = get_default_output_device()?;
     if output_device_identifier.is_some() {
         output_device = output_device_identifier.unwrap().into_device()?;
@@ -121,41 +129,37 @@ pub fn init_sound<T : FindDevice>(
         play_thread(rx, shared_loop_device_clone, shared_output_device);
     });
 
-    std::thread::spawn(move || -> Result<()>{
+    std::thread::spawn(move || -> Result<()> {
         sound_thread(shared_input_device, shared_loop_device)
     });
 
     Ok(())
 }
 
-fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: Arc<Device>){
-
-    loop{
-
+fn play_thread(rx: Receiver<PathBuf>, loop_device: Arc<Device>, output_device: Arc<Device>) {
+    loop {
         let receive = rx.recv();
 
         trace!("Received filepath");
 
         match receive {
             Ok(file_path) => {
-
                 let loop_sink = rodio::Sink::new(&*loop_device);
                 let sound_only_sink = rodio::Sink::new(&*output_device);
 
-            
                 let file = match std::fs::File::open(&file_path) {
                     Ok(file) => file,
                     Err(e) => {
                         error!("{}", e);
-                        continue
-                    },
+                        continue;
+                    }
                 };
                 let file2 = match std::fs::File::open(&file_path) {
                     Ok(file) => file,
                     Err(e) => {
                         error!("{}", e);
-                        continue
-                    },
+                        continue;
+                    }
                 };
 
                 loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
@@ -163,16 +167,13 @@ fn play_thread(rx: Receiver<PathBuf>, loop_device : Arc<Device>, output_device: 
 
                 loop_sink.detach();
                 sound_only_sink.detach();
-
-            },
+            }
             Err(_err) => {}
         };
     }
-
 }
 
-fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>) -> Result<()>{
-    
+fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<()> {
     let loop_sink = rodio::Sink::new(&*loop_device);
     let host = cpal::default_host();
     let event_loop = host.event_loop();
@@ -200,10 +201,7 @@ fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>) -> Result
         .play_stream(loop_stream_id.clone())?;
     */
 
-    event_loop
-        .play_stream(input_stream_id)?;
-
-    
+    event_loop.play_stream(input_stream_id)?;
 
     event_loop.run(move |id, result| {
         let data = match result {
