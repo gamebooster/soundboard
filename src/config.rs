@@ -13,7 +13,7 @@ use std::fs;
 use std::path::Path;
 use std::fmt;
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Deserialize, Default, Clone)]
 pub struct Config {
     pub input_device: Option<usize>,
     pub output_device: Option<usize>,
@@ -100,7 +100,7 @@ impl fmt::Display for Key {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct SoundConfig {
     pub name: String,
     pub path: String,

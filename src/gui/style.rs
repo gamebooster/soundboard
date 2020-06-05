@@ -8,7 +8,7 @@ pub enum Button {
     Choice { selected: bool },
     Icon,
     Destructive,
-    Constructive,
+    Constructive(Color),
     Neutral,
 }
 impl button::StyleSheet for Button {
@@ -49,8 +49,8 @@ impl button::StyleSheet for Button {
                 shadow_offset: Vector::new(1.0, 1.0),
                 ..button::Style::default()
             },
-            Button::Constructive => button::Style {
-                background: Some(Background::Color(Color::from_rgb(0.2, 0.8, 0.2))),
+            Button::Constructive(color) => button::Style {
+                background: Some(Background::Color(*color)),
                 border_radius: 5,
                 text_color: Color::WHITE,
                 shadow_offset: Vector::new(1.0, 1.0),

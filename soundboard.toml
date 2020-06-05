@@ -27,6 +27,60 @@ hotkey_modifier = ["ALT"]
 hotkey_key = "KEY_8"
 
 [[sounds]]
+name = "Ich rascht aus"
+path = "ich-rascht-aus.flac"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_8"
+
+[[sounds]]
+name = "Ich rascht aus"
+path = "ich-rascht-aus.flac"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_8"
+
+[[sounds]]
+name = "Ich rascht aus"
+path = "ich-rascht-aus.flac"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_8"
+
+[[sounds]]
+name = "Ich rascht aus"
+path = "ich-rascht-aus.flac"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_8"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"
+
+[[sounds]]
+name = "I am the one and only"
+path = "oneandonly.wav"
+hotkey_modifier = ["ALT"]
+hotkey_key = "KEY_7"
+
+[[sounds]]
 name = "I am the one and only"
 path = "oneandonly.wav"
 hotkey_modifier = ["ALT"]
