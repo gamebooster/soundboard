@@ -1,5 +1,5 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-use rodio;
+
 use cpal::{Host, Device, Devices};
 
 use std::io::BufReader;
@@ -201,7 +201,7 @@ fn sound_thread(input_device : Arc<Device>, loop_device : Arc<Device>) -> Result
     */
 
     event_loop
-        .play_stream(input_stream_id.clone())?;
+        .play_stream(input_stream_id)?;
 
     
 

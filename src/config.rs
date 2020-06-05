@@ -183,12 +183,10 @@ pub fn parse_devices(
                     .parse()
                     .expect("No number specified"),
             )
+        } else if config.input_device.is_some() {
+            config.input_device
         } else {
-            if config.input_device.is_some() {
-                config.input_device
-            } else {
-                None
-            }
+            None
         }
     };
     let output_device_index: Option<usize> = {
@@ -200,12 +198,10 @@ pub fn parse_devices(
                     .parse()
                     .expect("No number specified"),
             )
+        } else if config.output_device.is_some() {
+            config.output_device
         } else {
-            if config.output_device.is_some() {
-                config.output_device
-            } else {
-                None
-            }
+            None
         }
     };
 
@@ -216,14 +212,12 @@ pub fn parse_devices(
                 .expect("No loopback device specified")
                 .parse()
                 .expect("No number specified")
+        } else if config.loopback_device.is_some() {
+            config.loopback_device.unwrap()
         } else {
-            if config.loopback_device.is_some() {
-                config.loopback_device.unwrap()
-            } else {
-                return Err(anyhow!(
-                    "No loopback device specified in config or on command line"
-                ));
-            }
+            return Err(anyhow!(
+                "No loopback device specified in config or on command line"
+            ));
         }
     };
 
