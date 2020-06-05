@@ -5,15 +5,16 @@ extern crate cpal;
 extern crate iced;
 extern crate log;
 
-use ::hotkey as hotkeyExt;
+use log::{error, info, trace, warn};
 use anyhow::{anyhow, Context, Result};
+
+use ::hotkey as hotkeyExt;
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, HostTrait};
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Container, Element, Length, Row,
     Settings, Subscription, Text,
 };
-use log::{error, info, trace, warn};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -23,6 +24,7 @@ mod config;
 mod gui;
 mod hotkey;
 mod sound;
+mod download;
 
 pub fn main() -> Result<()> {
     env_logger::builder()
@@ -57,17 +59,20 @@ pub fn main() -> Result<()> {
     let hotkey_thread = std::thread::spawn(move || -> Result<()> {
         let mut hk = hotkeyExt::Listener::new();
         for sound in config_file.sounds.unwrap_or_default() {
+            if !sound.hotkey_key.is_some() {
+                continue;
+            }
+            let modifier = sound.hotkey_modifier.clone().unwrap_or_default();
             let tx_clone = tx_clone.clone();
             let _result = hk
                 .register_hotkey(
-                    sound
-                        .hotkey_modifier
+                    modifier
                         .iter()
                         .fold(0, |acc, x| acc | (*x as u32)) as u32,
-                    sound.hotkey_key as u32,
+                    sound.hotkey_key.unwrap() as u32,
                     move || {
                         let tx_clone = tx_clone.clone();
-                        let _result = sound::send_playsound(tx_clone, Path::new(&sound.path));
+                        let _result = sound::send_playsound(tx_clone, &sound.path);
                     },
                 ).map_err(|_s| anyhow!("register key"));
         }
@@ -83,7 +88,7 @@ pub fn main() -> Result<()> {
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
     let tx_clone = tx;
     let mut settings = Settings::with_flags((tx_clone, config_file));
-    settings.window.size = (450, 325);
+    settings.window.size = (500, 350);
     gui::Soundboard::run(settings);
     Ok(())
 }

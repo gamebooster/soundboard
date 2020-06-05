@@ -44,23 +44,31 @@ impl Application for Soundboard {
         let mut panels: Vec<pane_grid::Pane> = Vec::new();
         panels.push(first);
         sounds.iter().for_each(|sound| {
-            let modifier_string =
-                sound
-                    .hotkey_modifier
-                    .clone()
-                    .into_iter()
-                    .fold(String::new(), |all, one| {
-                        if all.len() > 0 {
-                            format!("{}-{}", all, one)
-                        } else {
-                            one.to_string()
-                        }
-                    });
+            let modifier_string = sound
+                .hotkey_modifier
+                .clone()
+                .unwrap_or_default()
+                .into_iter()
+                .fold(String::new(), |all, one| {
+                    if all.len() > 0 {
+                        format!("{}-{}", all, one)
+                    } else {
+                        one.to_string()
+                    }
+                });
             let hotkey_string = {
-                if modifier_string.len() > 0 {
-                    format!("{}-{}", modifier_string, sound.hotkey_key.to_string())
+                if sound.hotkey_key.is_some() {
+                    if modifier_string.len() > 0 {
+                        format!(
+                            "{}-{}",
+                            modifier_string,
+                            sound.hotkey_key.unwrap().to_string()
+                        )
+                    } else {
+                        sound.hotkey_key.unwrap().to_string()
+                    }
                 } else {
-                    sound.hotkey_key.to_string()
+                    String::new()
                 }
             };
 
@@ -100,7 +108,7 @@ impl Application for Soundboard {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::PlaySound(sound_path) => {
-                let _result = sound::send_playsound(self.sender.clone(), Path::new(&sound_path));
+                let _result = sound::send_playsound(self.sender.clone(), &sound_path);
             }
             Message::Resized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(&split, ratio);

@@ -104,8 +104,8 @@ impl fmt::Display for Key {
 pub struct SoundConfig {
     pub name: String,
     pub path: String,
-    pub hotkey_modifier: Vec<Modifier>,
-    pub hotkey_key: Key,
+    pub hotkey_modifier: Option<Vec<Modifier>>,
+    pub hotkey_key: Option<Key>,
 }
 
 pub fn load_and_parse_config(name: &str) -> Result<Config> {
