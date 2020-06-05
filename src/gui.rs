@@ -17,7 +17,7 @@ use std::fmt;
 
 pub struct Soundboard {
     config: config::Config,
-    sender: Sender<PathBuf>,
+    sender: Sender<sound::Message>,
     panes: pane_grid::State<Content>,
 }
 
@@ -31,7 +31,7 @@ pub enum Message {
 impl Application for Soundboard {
     type Executor = executor::Default;
     type Message = Message;
-    type Flags = (Sender<PathBuf>, config::Config);
+    type Flags = (Sender<sound::Message>, config::Config);
 
     fn new(flags: Self::Flags) -> (Soundboard, Command<Message>) {
         let (panes, first) = pane_grid::State::<Content>::new(Content::new(SoundButton::default()));

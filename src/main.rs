@@ -41,7 +41,7 @@ pub fn main() -> Result<()> {
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
     println!("{:#?}", config_file);
 
-    let (tx, rx): (Sender<PathBuf>, Receiver<PathBuf>) = mpsc::channel();
+    let (tx, rx): (Sender<sound::Message>, Receiver<sound::Message>) = mpsc::channel();
 
     let (input_device_index, output_device_index, loop_device_index) =
         config::parse_devices(&config_file, &arguments)?;
@@ -58,6 +58,20 @@ pub fn main() -> Result<()> {
     let tx_clone = tx.clone();
     let hotkey_thread = std::thread::spawn(move || -> Result<()> {
         let mut hk = hotkeyExt::Listener::new();
+
+        
+        //-----------------
+        //Text for Message Passing to sound thread, remove later 
+        
+        let tx_clone2 = tx_clone.clone();
+        hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'M' as u32, move || {
+            
+            let result = tx_clone2.send(sound::Message::StopAll);
+        })
+        .unwrap();
+        
+        // -----------------
+
         for sound in config_file.sounds.unwrap_or_default() {
             if !sound.hotkey_key.is_some() {
                 continue;

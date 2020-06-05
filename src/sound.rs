@@ -4,6 +4,8 @@ use cpal::{Device, Devices, Host};
 
 use std::io::BufReader;
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::str::FromStr;
 //use std::thread;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -14,6 +16,12 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use ringbuf::RingBuffer;
+use rodio::source::UniformSourceIterator;
+use rodio::{Source, Sink};
+
+use uuid::Uuid;
+
+
 
 const LATENCY_MS: f32 = 150.0;
 
@@ -40,7 +48,9 @@ pub fn print_possible_devices() {
     }
 }
 
-pub fn send_playsound(sender: Sender<PathBuf>, sound_path: &str) -> Result<()> {
+pub type SoundHandle = String;
+
+pub fn send_playsound(sender: Sender<Message>, sound_path: &str) -> Result<SoundHandle> {
     let path = {
         if sound_path.starts_with("http") {
             download::request_file(sound_path.to_string())?
@@ -52,9 +62,16 @@ pub fn send_playsound(sender: Sender<PathBuf>, sound_path: &str) -> Result<()> {
             path
         }
     };
+
+    let buffer = &mut Uuid::encode_buffer();
+
+    let my_uuid = Uuid::new_v4().to_simple().encode_lower(buffer);
+    let uuid_string : SoundHandle = String::from_str(my_uuid)?;
+    let uuid_clone = uuid_string.clone();
+
     info!("Playing sound: {}", sound_path);
-    sender.send(path)?;
-    Ok(())
+    sender.send(Message::PlaySound(path, uuid_clone))?;
+    Ok(uuid_string)
 }
 
 pub trait FindDevice {
@@ -98,7 +115,7 @@ fn get_default_output_device() -> Result<Device> {
 }
 
 pub fn init_sound<T: FindDevice>(
-    rx: Receiver<PathBuf>,
+    rx: Receiver<Message>,
     input_device_identifier: Option<T>,
     output_device_identifier: Option<T>,
     loop_device_identifier: T,
@@ -140,45 +157,86 @@ pub fn init_sound<T: FindDevice>(
     Ok(())
 }
 
-fn play_thread(rx: Receiver<PathBuf>, loop_device: Arc<Device>, output_device: Arc<Device>) {
+pub enum Message{
+    PlaySound(PathBuf, SoundHandle),
+    StopSound(SoundHandle),
+    StopAll,
+    SetVolume(f32)
+}
+
+struct DoubleSink(Sink, Sink);
+
+fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: Arc<Device>) {
+
+    let mut volume : f32 = 1.0;
+    let mut sinks: HashMap<String, DoubleSink> = HashMap::new();
+
     loop {
+
         let receive = rx.recv();
 
         trace!("Received filepath");
 
         match receive {
-            Ok(file_path) => {
-                let loop_sink = rodio::Sink::new(&*loop_device);
-                let sound_only_sink = rodio::Sink::new(&*output_device);
+            Ok(message) => {
+                match message {
+                    Message::PlaySound(file_path, uuid) => {
+                        
+                        let loop_sink = Sink::new(&*loop_device);
+                        let sound_only_sink = rodio::Sink::new(&*output_device);
 
-                let file = match std::fs::File::open(&file_path) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        error!("{}", e);
-                        continue;
+                        let file = match std::fs::File::open(&file_path) {
+                            Ok(file) => file,
+                            Err(e) => {
+                                error!("{}", e);
+                                continue;
+                            }
+                        };
+                        let file2 = match std::fs::File::open(&file_path) {
+                            Ok(file) => file,
+                            Err(e) => {
+                                error!("{}", e);
+                                continue;
+                            }
+                        };
+
+                        loop_sink.set_volume(volume);
+                        sound_only_sink.set_volume(volume);
+        
+                        loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
+                        sound_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
+
+                        sinks.insert(uuid, DoubleSink(loop_sink, sound_only_sink));
                     }
-                };
-                let file2 = match std::fs::File::open(&file_path) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        error!("{}", e);
-                        continue;
+                    Message::StopSound(uuid) => {
+                        match sinks.remove(&uuid) {
+                            Some(double_sink) => {
+                                drop(double_sink.0);
+                                drop(double_sink.1);
+                            },
+                            None => ()
+                        };
                     }
-                };
-
-                loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
-                sound_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
-
-                loop_sink.detach();
-                sound_only_sink.detach();
+                    Message::StopAll => {
+                        for (_, double_sink) in sinks.drain(){
+                            drop(double_sink.0);
+                            drop(double_sink.1);
+                        }
+                    }
+                    Message::SetVolume(volume_new) => volume = volume_new,
+                }
             }
             Err(_err) => {}
         };
+
+        sinks.retain(|_, double_sinks| {
+            !double_sinks.0.empty() && !double_sinks.1.empty()
+        });
+
     }
 }
 
 fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<()> {
-    let loop_sink = rodio::Sink::new(&*loop_device);
     let host = cpal::default_host();
     let event_loop = host.event_loop();
 
@@ -194,15 +252,12 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
         .unwrap();
     info!("Successfully built input stream.");
 
-    
     let loop_format = loop_device.default_output_format().unwrap();
 
     let loop_stream_id = event_loop
         .build_output_stream(&*loop_device, &loop_format)
         .unwrap();
 
-
-    
     let latency_frames = (LATENCY_MS / 1_000.0) * input_format.sample_rate.0 as f32;
     let latency_samples = latency_frames as usize * input_format.channels as usize;
 
@@ -216,9 +271,7 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
         // so this should never fail
         producer.push(0.0).unwrap();
     }
-    
     event_loop.play_stream(loop_stream_id.clone())?;
-    
     event_loop.play_stream(input_stream_id.clone())?;
 
     event_loop.run(move |id, result| {
@@ -230,47 +283,30 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
             }
         };
 
-        /*match data {
+        match data {
             cpal::StreamData::Input {
                 buffer: cpal::UnknownTypeInputBuffer::F32(buffer),
             } => {
+                assert_eq!(id, input_stream_id);
+                let mut output_fell_behind = false;
                 let mut new_buffer = Vec::new();
                 for &sample in buffer.iter() {
-                    if producer.push(sample).is_err() {
-                        output_fell_behind = true;
-                    }
+                    new_buffer.push(sample);
                 }
+
                 let buffer = rodio::buffer::SamplesBuffer::new(
                     input_format.channels,
                     input_format.sample_rate.0,
                     new_buffer,
                 );
-                loop_sink.append(buffer);
-            },
-            cpal::StreamData::Output { buffer: cpal::UnknownTypeOutputBuffer::F32(mut buffer) } => {
-                assert_eq!(id, loop_stream_id);
-                let mut input_fell_behind = None;
-                for sample in buffer.iter_mut() {
-                    *sample = match consumer.pop() {
-                        Ok(s) => s,
-                        Err(err) => {
-                            input_fell_behind = Some(err);
-                            0.0
-                        },
-                    };
-                }
-                if let Some(_) = input_fell_behind {
-                    eprintln!("input stream fell behind: try increasing latency");
-                }
-            },
-            _ => panic!("we're expecting f32 data"),
-        }*/
 
-        match data {
-            cpal::StreamData::Input { buffer: cpal::UnknownTypeInputBuffer::F32(buffer) } => {
-                assert_eq!(id, input_stream_id);
-                let mut output_fell_behind = false;
-                for &sample in buffer.iter() {
+                let converter = UniformSourceIterator::new(
+                    buffer,
+                    loop_format.channels,
+                    loop_format.sample_rate.0,
+                );
+
+                for sample in converter {
                     if producer.push(sample).is_err() {
                         output_fell_behind = true;
                     }
@@ -278,23 +314,26 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
                 if output_fell_behind {
                     eprintln!("output stream fell behind: try increasing latency");
                 }
-            },
-            cpal::StreamData::Output { buffer: cpal::UnknownTypeOutputBuffer::F32(mut buffer) } => {
+            }
+            cpal::StreamData::Output {
+                buffer: cpal::UnknownTypeOutputBuffer::F32(mut buffer),
+            } => {
                 assert_eq!(id, loop_stream_id);
                 let mut input_fell_behind = None;
+
                 for sample in buffer.iter_mut() {
                     *sample = match consumer.pop() {
                         Some(s) => s,
                         None => {
                             input_fell_behind = Some(0);
                             0.0
-                        },
+                        }
                     };
                 }
                 if let Some(_) = input_fell_behind {
                     eprintln!("input stream fell behind: try increasing latency");
                 }
-            },
+            }
             _ => panic!("we're expecting f32 data"),
         }
     });
