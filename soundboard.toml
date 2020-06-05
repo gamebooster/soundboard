@@ -49,6 +49,8 @@ path="https://www.myinstants.com//media/sounds/untitled_291.mp3"
 [[sounds]]
 name="Kann es sein das du Dumm bist"
 path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
+hotkey_modifier = ["CTRL"]
+hotkey_key = "Q"
 
 [[sounds]]
 name="Windows XP Error"

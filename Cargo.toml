@@ -19,6 +19,7 @@ anyhow = "1.0"
 log = "0.4"
 env_logger = "0.7.1"
 random_color = "0.4"
+ringbuf = "0.2.1"
 reqwest = { version = "0.10", features = ["blocking"] }
 
 [build-dependencies]
