@@ -17,11 +17,15 @@ use std::thread::JoinHandle;
 
 use ringbuf::RingBuffer;
 use rodio::source::UniformSourceIterator;
+<<<<<<< HEAD
 use rodio::{Source, Sink};
 
 use uuid::Uuid;
 
 
+=======
+use rodio::Source;
+>>>>>>> e2193b293ed8325274301d5b8e75aa172e932fdd
 
 const LATENCY_MS: f32 = 150.0;
 
