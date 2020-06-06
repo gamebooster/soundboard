@@ -17,19 +17,12 @@ use std::thread::JoinHandle;
 
 use ringbuf::RingBuffer;
 use rodio::source::UniformSourceIterator;
-<<<<<<< HEAD
 use rodio::{Source, Sink};
-
-use uuid::Uuid;
-
-
-=======
-use rodio::Source;
->>>>>>> e2193b293ed8325274301d5b8e75aa172e932fdd
 
 const LATENCY_MS: f32 = 150.0;
 
 use super::download;
+use super::utils;
 
 pub fn print_possible_devices() {
     let host = cpal::default_host();
@@ -50,32 +43,6 @@ pub fn print_possible_devices() {
             println!("    Default output stream format:\n      {:?}", conf);
         }
     }
-}
-
-pub type SoundHandle = String;
-
-pub fn send_playsound(sender: Sender<Message>, sound_path: &str) -> Result<SoundHandle> {
-    let path = {
-        if sound_path.starts_with("http") {
-            download::request_file(sound_path.to_string())?
-        } else {
-            let mut path = std::env::current_exe()?;
-            path.pop();
-            path.push("sounds");
-            path.push(sound_path);
-            path
-        }
-    };
-
-    let buffer = &mut Uuid::encode_buffer();
-
-    let my_uuid = Uuid::new_v4().to_simple().encode_lower(buffer);
-    let uuid_string : SoundHandle = String::from_str(my_uuid)?;
-    let uuid_clone = uuid_string.clone();
-
-    info!("Playing sound: {}", sound_path);
-    sender.send(Message::PlaySound(path, uuid_clone))?;
-    Ok(uuid_string)
 }
 
 pub trait FindDevice {
@@ -161,80 +128,116 @@ pub fn init_sound<T: FindDevice>(
     Ok(())
 }
 
+type SoundPath = String;
+type SoundMap = HashMap<SoundPath, Vec<Sink>>;
+
+#[derive(PartialEq)]
+pub enum SoundDevices {
+  Loop,
+  Output,
+  Both
+}
+
+#[derive(PartialEq)]
 pub enum Message{
-    PlaySound(PathBuf, SoundHandle),
-    StopSound(SoundHandle),
+    PlaySound(SoundPath, SoundDevices),
+    StopSound(SoundPath),
     StopAll,
     SetVolume(f32)
 }
 
-struct DoubleSink(Sink, Sink);
+fn complete_sound_path(sound_path: &str) -> Result<PathBuf> {
+  let path = {
+      if sound_path.starts_with("http") {
+          download::request_file(sound_path.to_string())?
+      } else {
+          let mut path = std::env::current_exe()?;
+          path.pop();
+          path.push("sounds");
+          path.push(sound_path);
+          path
+      }
+  };
+
+  info!("Playing sound: {}", sound_path);
+  Ok(path)
+}
+
+fn insert_sink_with_file(device: &Device, volume : f32, sound_handle: SoundPath, sinks : &mut SoundMap) -> Result<()> {
+  let path = complete_sound_path(&sound_handle)?;
+
+  let file = std::fs::File::open(&path)?;
+
+  let sink = Sink::new(device);
+  sink.set_volume(volume);
+  sink.append(rodio::Decoder::new(BufReader::new(file))?);
+
+  if !sinks.contains_key(&sound_handle) {
+    sinks.insert(sound_handle, vec![sink]);
+  } else {
+    let vec = sinks.get_mut(&sound_handle).unwrap();
+    vec.push(sink);
+  }
+  Ok(())
+}
 
 fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: Arc<Device>) {
 
     let mut volume : f32 = 1.0;
-    let mut sinks: HashMap<String, DoubleSink> = HashMap::new();
+    let mut sinks: SoundMap = HashMap::new();
 
     loop {
-
         let receive = rx.recv();
-
-        trace!("Received filepath");
 
         match receive {
             Ok(message) => {
                 match message {
-                    Message::PlaySound(file_path, uuid) => {
-                        
-                        let loop_sink = Sink::new(&*loop_device);
-                        let sound_only_sink = rodio::Sink::new(&*output_device);
-
-                        let file = match std::fs::File::open(&file_path) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                error!("{}", e);
-                                continue;
-                            }
+                    Message::PlaySound(string_path, sound_devices) => {
+                      if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output {
+                        match insert_sink_with_file(&*output_device, volume, string_path.clone(), &mut sinks) {
+                          Ok(path) => path,
+                          Err(err) => { error!("failed to inserrt output sink {}", err); continue;}
                         };
-                        let file2 = match std::fs::File::open(&file_path) {
-                            Ok(file) => file,
-                            Err(e) => {
-                                error!("{}", e);
-                                continue;
-                            }
+                      } 
+                      if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
+                        match insert_sink_with_file(&*loop_device, volume, string_path.clone(), &mut sinks) {
+                          Ok(path) => path,
+                          Err(err) => { error!("failed to insert loop sink {}", err); continue;}
                         };
-
-                        loop_sink.set_volume(volume);
-                        sound_only_sink.set_volume(volume);
-        
-                        loop_sink.append(rodio::Decoder::new(BufReader::new(file)).unwrap());
-                        sound_only_sink.append(rodio::Decoder::new(BufReader::new(file2)).unwrap());
-
-                        sinks.insert(uuid, DoubleSink(loop_sink, sound_only_sink));
+                      }
                     }
-                    Message::StopSound(uuid) => {
-                        match sinks.remove(&uuid) {
-                            Some(double_sink) => {
-                                drop(double_sink.0);
-                                drop(double_sink.1);
+                    Message::StopSound(sound_handle) => {
+                        match sinks.remove(&sound_handle) {
+                            Some(vec) => {
+                              for sink in vec {
+                                drop(sink);
+                              }
                             },
                             None => ()
                         };
                     }
                     Message::StopAll => {
-                        for (_, double_sink) in sinks.drain(){
-                            drop(double_sink.0);
-                            drop(double_sink.1);
+                        for (_, vec) in sinks.drain(){
+                            for sink in vec {
+                              drop(sink);
+                            }
                         }
                     }
-                    Message::SetVolume(volume_new) => volume = volume_new,
+                    Message::SetVolume(volume_new) => {
+                      volume = volume_new;
+                      for (_, vec) in sinks.iter(){
+                        for sink in vec {
+                          sink.set_volume(volume);
+                        }
+                    }
+                    }
                 }
             }
             Err(_err) => {}
         };
 
-        sinks.retain(|_, double_sinks| {
-            !double_sinks.0.empty() && !double_sinks.1.empty()
+        sinks.retain(|_, sinks| {
+            sinks.iter().find(|s| !s.empty()).is_some()
         });
 
     }

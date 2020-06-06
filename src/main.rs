@@ -25,6 +25,7 @@ mod gui;
 mod hotkey;
 mod sound;
 mod download;
+mod utils;
 
 pub fn main() -> Result<()> {
     env_logger::builder()
@@ -39,7 +40,7 @@ pub fn main() -> Result<()> {
     }
 
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
-    println!("{:#?}", config_file);
+    // println!("{:#?}", config_file);
 
     let (tx, rx): (Sender<sound::Message>, Receiver<sound::Message>) = mpsc::channel();
 
@@ -85,8 +86,7 @@ pub fn main() -> Result<()> {
                         .fold(0, |acc, x| acc | (*x as u32)) as u32,
                     sound.hotkey_key.unwrap() as u32,
                     move || {
-                        let tx_clone = tx_clone.clone();
-                        let _result = sound::send_playsound(tx_clone, &sound.path);
+                        tx_clone.send(sound::Message::PlaySound(sound.path.clone(), sound::SoundDevices::Both));
                     },
                 ).map_err(|_s| anyhow!("register key"));
         }

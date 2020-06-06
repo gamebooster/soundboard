@@ -108,7 +108,7 @@ impl Application for Soundboard {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::PlaySound(sound_path) => {
-                let _result = sound::send_playsound(self.sender.clone(), &sound_path);
+              self.sender.send(sound::Message::PlaySound(sound_path.clone(), sound::SoundDevices::Both));
             }
             Message::Resized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(&split, ratio);
