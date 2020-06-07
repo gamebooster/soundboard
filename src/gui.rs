@@ -11,16 +11,25 @@ use std::sync::mpsc::{Receiver, Sender};
 use super::config;
 use super::sound;
 use std::fmt;
+mod list_view;
 mod panel_view;
 mod style;
 
+#[derive(PartialEq)]
+enum LayoutStyle {
+  PanelView,
+  ListView,
+}
+
 pub struct Soundboard {
-  config: config::Config,
   panel_view: panel_view::PanelView,
+  list_view: list_view::ListView,
   sound_sender: Sender<sound::Message>,
   stop_button_state: button::State,
+  toggle_layout_button_state: button::State,
   volume_slider_state: slider::State,
   current_volume: f32,
+  current_style: LayoutStyle,
 }
 
 #[derive(Debug, Clone)]
@@ -29,6 +38,8 @@ pub enum SoundboardMessage {
   StopAllSound,
   VolumeChanged(f32),
   HandlePanelViewMessage(panel_view::PanelViewMessage),
+  HandleListViewMessage(list_view::ListViewMessage),
+  ToggleLayout,
 }
 
 impl Application for Soundboard {
@@ -38,12 +49,14 @@ impl Application for Soundboard {
 
   fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
     let soundboard = Soundboard {
-      config: flags.1.clone(),
       sound_sender: flags.0,
       stop_button_state: button::State::new(),
+      toggle_layout_button_state: button::State::new(),
       volume_slider_state: slider::State::new(),
       current_volume: 1.0,
       panel_view: panel_view::PanelView::new(&flags.1.clone().sounds.unwrap()),
+      list_view: list_view::ListView::new(&flags.1.clone().sounds.unwrap()),
+      current_style: LayoutStyle::PanelView,
     };
     (soundboard, Command::none())
   }
@@ -76,11 +89,27 @@ impl Application for Soundboard {
           error!("failed to set volume {}", err);
         };
       }
+      SoundboardMessage::ToggleLayout => {
+        self.current_style = {
+          if self.current_style == LayoutStyle::ListView {
+            LayoutStyle::PanelView
+          } else {
+            LayoutStyle::ListView
+          }
+        };
+      }
       SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
         if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
           self.update(SoundboardMessage::PlaySound(path));
         } else {
           self.panel_view.update(panel_view_message);
+        }
+      }
+      SoundboardMessage::HandleListViewMessage(list_view_message) => {
+        if let list_view::ListViewMessage::PlaySound(path) = list_view_message {
+          self.update(SoundboardMessage::PlaySound(path));
+        } else {
+          self.list_view.update(list_view_message);
         }
       }
     }
@@ -109,6 +138,22 @@ impl Application for Soundboard {
       .padding(3)
       .center_y();
 
+    let toggle_layout_button_column = Column::new()
+      .spacing(5)
+      .align_items(Align::Center)
+      .width(Length::Fill)
+      .push(
+        Text::new("Toggle Layout")
+          .size(18)
+          .vertical_alignment(VerticalAlignment::Center),
+      );
+
+    let toggle_layout_button_container = Container::new(toggle_layout_button_column)
+      .width(Length::Fill)
+      .height(Length::Fill)
+      .padding(3)
+      .center_y();
+
     let bottom_row = Row::new()
       .spacing(5)
       .width(Length::Fill)
@@ -119,6 +164,16 @@ impl Application for Soundboard {
           .height(Length::Fill)
           .width(Length::FillPortion(2))
           .style(style::Button::Destructive),
+      )
+      .push(
+        Button::new(
+          &mut self.toggle_layout_button_state,
+          toggle_layout_button_container,
+        )
+        .on_press(SoundboardMessage::ToggleLayout)
+        .height(Length::Fill)
+        .width(Length::FillPortion(2))
+        .style(style::Button::Neutral),
       )
       .push(
         ProgressBar::new(0.0..=100.0, 66.0)
@@ -135,16 +190,25 @@ impl Application for Soundboard {
         .width(Length::FillPortion(3)),
       );
 
+    let sound_view = {
+      if self.current_style == LayoutStyle::ListView {
+        self
+          .list_view
+          .view()
+          .map(move |message| SoundboardMessage::HandleListViewMessage(message))
+      } else {
+        self
+          .panel_view
+          .view()
+          .map(move |message| SoundboardMessage::HandlePanelViewMessage(message))
+      }
+    };
+
     let content = Column::new()
       .width(Length::Fill)
       .height(Length::Fill)
       .spacing(10)
-      .push(
-        self
-          .panel_view
-          .view()
-          .map(move |message| SoundboardMessage::HandlePanelViewMessage(message)),
-      )
+      .push(sound_view)
       .push(Space::with_height(Length::Units(5)))
       .push(bottom_row);
 
