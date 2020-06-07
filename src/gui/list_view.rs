@@ -37,7 +37,7 @@ impl ListView {
           .unwrap_or_default()
           .into_iter()
           .fold(String::new(), |all, one| {
-            if all.len() > 0 {
+            if !all.is_empty() {
               format!("{}-{}", all, one)
             } else {
               one.to_string()
@@ -45,7 +45,7 @@ impl ListView {
           });
         let hotkey_string = {
           if sound.hotkey_key.is_some() {
-            if modifier_string.len() > 0 {
+            if !modifier_string.is_empty() {
               format!(
                 "{}-{}",
                 modifier_string,
@@ -66,10 +66,10 @@ impl ListView {
         });
         buttons
       });
-    return ListView {
+    ListView {
       scroll_state: scrollable::State::new(),
-      buttons: buttons,
-    };
+      buttons,
+    }
   }
 
   pub fn update(&mut self, message: ListViewMessage) -> Command<ListViewMessage> {

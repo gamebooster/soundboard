@@ -40,7 +40,7 @@ impl PanelView {
         .unwrap_or_default()
         .into_iter()
         .fold(String::new(), |all, one| {
-          if all.len() > 0 {
+          if !all.is_empty() {
             format!("{}-{}", all, one)
           } else {
             one.to_string()
@@ -48,7 +48,7 @@ impl PanelView {
         });
       let hotkey_string = {
         if sound.hotkey_key.is_some() {
-          if modifier_string.len() > 0 {
+          if !modifier_string.is_empty() {
             format!(
               "{}-{}",
               modifier_string,
@@ -87,7 +87,7 @@ impl PanelView {
       panels.push(new_panel);
     });
     pane_state.close(&first);
-    return PanelView { panes: pane_state };
+    PanelView { panes: pane_state }
   }
 
   pub fn update(&mut self, message: PanelViewMessage) -> Command<PanelViewMessage> {
@@ -131,7 +131,7 @@ impl PanelButtonView {
     //.luminosity(Luminosity::Light).to_rgb_array();
     PanelButtonView {
       //scroll: scrollable::State::new(),
-      sound_button: sound_button,
+      sound_button,
       background_color: iced::Color::from_rgb(0.2, 0.8, 0.2),
       //iced::Color::from_rgb((random_color[0] as f32) / 255.0, (random_color[1] as f32) / 255.0, (random_color[2] as f32) / 255.0)
     }

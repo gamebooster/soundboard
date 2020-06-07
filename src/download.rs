@@ -18,7 +18,7 @@ pub fn request_file(url : String) -> Result<PathBuf> {
     let resp = reqwest::blocking::get(&url)?;
     if resp.status().is_success() {
         std::fs::write(&file_path, resp.bytes().unwrap())?;
-        return Ok(file_path);
+        Ok(file_path)
     } else {
         Err(anyhow!("request failed"))
     }

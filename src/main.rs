@@ -68,7 +68,7 @@ pub fn main() -> Result<()> {
 
     let tx_clone = tx_clone.clone();
     for sound in config_file.sounds.unwrap_or_default() {
-      if !sound.hotkey_key.is_some() {
+      if sound.hotkey_key.is_none() {
         continue;
       }
       let modifier = sound.hotkey_modifier.clone().unwrap_or_default();
@@ -98,7 +98,7 @@ pub fn main() -> Result<()> {
   }
 
   let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
-  let tx_clone = tx.clone();
+  let tx_clone = tx;
   let mut settings = Settings::with_flags((tx_clone, config_file));
   settings.window.size = (500, 350);
   gui::Soundboard::run(settings);

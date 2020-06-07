@@ -253,7 +253,7 @@ fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: A
       }
     };
 
-    sinks.retain(|_, local_sinks| local_sinks.iter().find(|s| !s.empty()).is_some());
+    sinks.retain(|_, local_sinks| local_sinks.iter().any(|s| !s.empty()));
   }
 }
 
@@ -348,7 +348,7 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
             }
           };
         }
-        if let Some(_) = input_fell_behind {
+        if input_fell_behind.is_some() {
           eprintln!("input stream fell behind: try increasing latency");
         }
       }

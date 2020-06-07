@@ -55,7 +55,7 @@ impl Application for Soundboard {
       volume_slider_state: slider::State::new(),
       current_volume: 1.0,
       panel_view: panel_view::PanelView::new(&flags.1.clone().sounds.unwrap()),
-      list_view: list_view::ListView::new(&flags.1.clone().sounds.unwrap()),
+      list_view: list_view::ListView::new(&flags.1.sounds.unwrap()),
       current_style: LayoutStyle::PanelView,
     };
     (soundboard, Command::none())
@@ -69,7 +69,7 @@ impl Application for Soundboard {
     match message {
       SoundboardMessage::PlaySound(sound_path) => {
         if let Err(err) = self.sound_sender.send(sound::Message::PlaySound(
-          sound_path.clone(),
+          sound_path,
           sound::SoundDevices::Both,
         )) {
           error!("failed to play sound {}", err);
@@ -195,12 +195,12 @@ impl Application for Soundboard {
         self
           .list_view
           .view()
-          .map(move |message| SoundboardMessage::HandleListViewMessage(message))
+          .map(SoundboardMessage::HandleListViewMessage)
       } else {
         self
           .panel_view
           .view()
-          .map(move |message| SoundboardMessage::HandlePanelViewMessage(message))
+          .map(SoundboardMessage::HandlePanelViewMessage)
       }
     };
 
