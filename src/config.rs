@@ -9,11 +9,12 @@ use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use log::{error, info, trace, warn};
 use serde::Deserialize;
+use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::fmt;
 
-#[derive(Debug, Deserialize, Default, Clone)]
+#[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct Config {
     pub input_device: Option<usize>,
     pub output_device: Option<usize>,
@@ -21,7 +22,7 @@ pub struct Config {
     pub sounds: Option<Vec<SoundConfig>>,
 }
 
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Copy, Clone, Serialize)]
 pub enum Modifier {
     ALT = hotkey::modifiers::ALT as isize,
     CTRL = hotkey::modifiers::CONTROL as isize,
@@ -38,7 +39,7 @@ impl fmt::Display for Modifier {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Deserialize, Copy, Clone)]
+#[derive(Debug, Deserialize, Copy, Clone, Serialize)]
 pub enum Key {
     BACKSPACE = hotkey::keys::BACKSPACE as isize,
     TAB = hotkey::keys::TAB as isize,
@@ -100,7 +101,7 @@ impl fmt::Display for Key {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct SoundConfig {
     pub name: String,
     pub path: String,
@@ -116,6 +117,17 @@ pub fn load_and_parse_config(name: &str) -> Result<Config> {
     let toml_config = toml::from_str(&toml_str)?;
     info!("Loaded config file from {}", path.display());
     Ok(toml_config)
+}
+
+pub fn save_config(config: Config, name: &str) -> Result<()> {
+  let mut path = std::env::current_exe()?;
+  path.pop();
+  path.push(name);
+
+  let pretty_string = toml::to_string_pretty(&config)?;
+  fs::write(&path, pretty_string)?;
+  info!("Saved config file at {}", &path.display());
+  Ok(())
 }
 
 pub fn parse_arguments() -> clap::ArgMatches {
