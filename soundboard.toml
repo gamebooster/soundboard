@@ -2,33 +2,32 @@
 # output_device = 1
 # loopback_device = 2
 
+stop_hotkey = "ALT-S"
+
 [[sounds]]
 name = "Nicht so tief, Rüdiger!"
 path = "nicht-so-tief-rudiger.mp3"
-hotkey_modifier = ["CTRL"]
-hotkey_key = "P"
+hotkey = "CTRL-P"
 
 [[sounds]]
 name = "Razor1911 Vodka Dance"
 path = "vodka/vodka_dance.mp3" # later xm
-hotkey_modifier = ["CTRL", "SHIFT"]
-hotkey_key = "BACKSPACE"
+hotkey = "CTRL-SHIFT-BACKSPACE"
 
 [[sounds]]
 name = "It's time to duel"
 path = "its-time-to-duel.ogg"
-hotkey_modifier = ["ALT"]
-hotkey_key = "KEY_9"
+hotkey = "ALT-9"
 
 [[sounds]]
 name = "Ich rascht aus"
 path = "ich-rascht-aus.flac"
-hotkey_modifier = ["ALT"]
-hotkey_key = "KEY_8"
+hotkey = "ALT-8"
 
 [[sounds]]
 name = "steam incoming"
 path = "https://www.myinstants.com/media/sounds/message_2.mp3"
+hotkey = "ALT-7"
 
 [[sounds]]
 name = "crab rave"

@@ -31,29 +31,9 @@ impl ListView {
     let buttons = sounds
       .iter()
       .fold(Vec::<SoundButton>::new(), |mut buttons, sound| {
-        let modifier_string = sound
-          .hotkey_modifier
-          .clone()
-          .unwrap_or_default()
-          .into_iter()
-          .fold(String::new(), |all, one| {
-            if !all.is_empty() {
-              format!("{}-{}", all, one)
-            } else {
-              one.to_string()
-            }
-          });
         let hotkey_string = {
-          if sound.hotkey_key.is_some() {
-            if !modifier_string.is_empty() {
-              format!(
-                "{}-{}",
-                modifier_string,
-                sound.hotkey_key.unwrap().to_string()
-              )
-            } else {
-              sound.hotkey_key.unwrap().to_string()
-            }
+          if sound.hotkey.is_some() {
+            format!("{}", config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap())
           } else {
             String::new()
           }

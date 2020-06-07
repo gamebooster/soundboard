@@ -5,6 +5,11 @@ extern crate cpal;
 extern crate iced;
 extern crate log;
 
+extern crate strum;
+#[macro_use]
+extern crate strum_macros;
+
+
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 
@@ -61,22 +66,32 @@ pub fn main() -> Result<()> {
     let mut hk = hotkeyExt::Listener::new();
 
     let tx_clone_1 = tx_clone.clone();
-    hk.register_hotkey(hotkeyExt::modifiers::CONTROL, 'S' as u32, move || {
+    let stop_hotkey = {
+      if config_file.stop_hotkey.is_some() {
+        config::parse_hotkey(&config_file.stop_hotkey.as_ref().unwrap())?
+      } else {
+        config::Hotkey {
+          modifier: vec![config::Modifier::CTRL],
+          key: config::Key::S
+        }
+      }
+    };
+    hk.register_hotkey(stop_hotkey.modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32, stop_hotkey.key as u32, move || {
       let _result = tx_clone_1.send(sound::Message::StopAll);
     })
     .map_err(|_s| anyhow!("register key"))?;
 
     let tx_clone = tx_clone.clone();
     for sound in config_file.sounds.unwrap_or_default() {
-      if sound.hotkey_key.is_none() {
+      if sound.hotkey.is_none() {
         continue;
       }
-      let modifier = sound.hotkey_modifier.clone().unwrap_or_default();
+      let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
       let tx_clone = tx_clone.clone();
       let _result = hk
         .register_hotkey(
-          modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32,
-          sound.hotkey_key.unwrap() as u32,
+          hotkey.modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32,
+          hotkey.key as u32,
           move || {
             if let Err(err) = tx_clone.send(sound::Message::PlaySound(
               sound.path.clone(),

@@ -34,34 +34,6 @@ impl PanelView {
     let mut panels: Vec<pane_grid::Pane> = Vec::new();
     panels.push(first);
     sounds.iter().for_each(|sound| {
-      let modifier_string = sound
-        .hotkey_modifier
-        .clone()
-        .unwrap_or_default()
-        .into_iter()
-        .fold(String::new(), |all, one| {
-          if !all.is_empty() {
-            format!("{}-{}", all, one)
-          } else {
-            one.to_string()
-          }
-        });
-      let hotkey_string = {
-        if sound.hotkey_key.is_some() {
-          if !modifier_string.is_empty() {
-            format!(
-              "{}-{}",
-              modifier_string,
-              sound.hotkey_key.unwrap().to_string()
-            )
-          } else {
-            sound.hotkey_key.unwrap().to_string()
-          }
-        } else {
-          String::new()
-        }
-      };
-
       let power = 2;
       let power2_less = (panels.len() as f64).log(power as f64) as usize;
       let index = { panels.len() - (power as usize).pow(power2_less as u32) };
@@ -70,6 +42,13 @@ impl PanelView {
           pane_grid::Axis::Horizontal
         } else {
           pane_grid::Axis::Vertical
+        }
+      };
+      let hotkey_string = {
+        if sound.hotkey.is_some() {
+          format!("{}", config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap())
+        } else {
+          String::new()
         }
       };
       let new_panel = pane_state
