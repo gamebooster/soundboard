@@ -6,7 +6,7 @@ use iced::{
 
 use log::{error, info, trace, warn};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{Receiver, SyncSender};
 
 use super::config;
 use super::sound;
@@ -24,7 +24,7 @@ enum LayoutStyle {
 pub struct Soundboard {
   panel_view: panel_view::PanelView,
   list_view: list_view::ListView,
-  sound_sender: Sender<sound::Message>,
+  sound_sender: SyncSender<sound::Message>,
   stop_button_state: button::State,
   toggle_layout_button_state: button::State,
   volume_slider_state: slider::State,
@@ -45,7 +45,7 @@ pub enum SoundboardMessage {
 impl Application for Soundboard {
   type Executor = executor::Default;
   type Message = SoundboardMessage;
-  type Flags = (Sender<sound::Message>, config::Config);
+  type Flags = (SyncSender<sound::Message>, config::Config);
 
   fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
     let soundboard = Soundboard {

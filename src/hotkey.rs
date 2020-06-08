@@ -1,44 +1,28 @@
-// use ::hotkey as hotkeyExt;
+use ::hotkey as hotkeyExt;
+use anyhow::{anyhow, Context, Result};
+use super::config;
+use std::sync::Mutex;
 
-// pub struct Hotkeys {
-//     listener: hotkeyExt::Listener
-// }
+pub struct HotkeyManager {
+    listener: hotkeyExt::Listener
+}
 
-// impl Hotkeys {
-//     pub fn new() {
-//         let hotkey_thread = std::thread::spawn(move || {
-//             let mut hk = hotkeyExt::Listener::new();
-//             hk.listen();
-//         });
-//     }
-//     fn register(&self) -> Result<()> {
-//         hk.register_hotkey(
-//             sound
-//                 .hotkey_modifier
-//                 .iter()
-//                 .fold(0, |acc, x| acc | (*x as u32)) as u32,
-//             sound.hotkey_key as u32,
-//             move || {
-//               let tx_clone = tx_clone.clone();
-//               send_playsound(tx_clone, Path::new(&sound.path));
-//             },
-//         )
-//         .or_else(|_s| Err(anyhow!("register key")));
-//         for sound in config_file.sounds.unwrap_or(Vec::new()) {
-//             let tx_clone = tx_clone.clone();
-//             let _result = hk
-//                 .register_hotkey(
-//                     sound
-//                         .hotkey_modifier
-//                         .iter()
-//                         .fold(0, |acc, x| acc | (*x as u32)) as u32,
-//                     sound.hotkey_key as u32,
-//                     move || {
-//                       let tx_clone = tx_clone.clone();
-//                       send_playsound(tx_clone, Path::new(&sound.path));
-//                     },
-//                 )
-//                 .or_else(|_s| Err(anyhow!("register key")));
-//         }
-//     }
-// }
+impl HotkeyManager {
+    pub fn new() -> Self {
+      let listener = hotkeyExt::Listener::new();
+      let hotkey_manager = HotkeyManager {
+        listener: listener
+      };
+      hotkey_manager
+    }
+    pub fn register<Callback : 'static + Fn() + Send + Sync>(&mut self, hotkey : config::Hotkey, callback : Callback) -> Result<()> {
+        self.listener.register_hotkey(
+            hotkey
+                .modifier
+                .iter()
+                .fold(0, |acc, x| acc | (*x as u32)) as u32,
+            hotkey.key as u32, callback)
+        .or_else(|_s| Err(anyhow!("register key")))?;
+        Ok(())
+    }
+}

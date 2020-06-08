@@ -384,8 +384,7 @@ mod tests {
     assert_eq!(
       parse_hotkey("5").unwrap(),
       Hotkey {
-        modifier: vec![
-        ],
+        modifier: vec![],
         key: Key::KEY_5
       }
     );
@@ -393,8 +392,7 @@ mod tests {
     assert_eq!(
       parse_hotkey("KEY_5").unwrap(),
       Hotkey {
-        modifier: vec![
-        ],
+        modifier: vec![],
         key: Key::KEY_5
       }
     );
