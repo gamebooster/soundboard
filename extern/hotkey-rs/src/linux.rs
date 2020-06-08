@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::mem;
-use std::os::raw::c_ulong;
 use std::ptr;
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
 use x11_dl::xlib;
@@ -42,8 +41,8 @@ pub type ListenerCallback = dyn FnMut() + 'static + Send;
 pub type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
 
 pub enum HotkeyMessage {
-  RegisterHotkey(i32, u32, u32),
-  UnregisterHotkey(i32),
+  RegisterHotkey(ListenerID),
+  UnregisterHotkey(ListenerID),
 }
 
 use thiserror::Error;
@@ -60,8 +59,8 @@ pub enum HotkeyError {
 
 pub struct Listener {
   display: *mut xlib::Display,
-  root: c_ulong,
   xlib: xlib::Xlib,
+  sender: Sender<HotkeyMessage>,
   handlers: ListenerMap,
 }
 
@@ -72,7 +71,7 @@ impl Listener {
     ));
 
     let hotkey_map = hotkeys.clone();
-    //let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel();
 
     std::thread::spawn(move || {
       let xlib = xlib::Xlib::open().unwrap();
@@ -87,19 +86,51 @@ impl Listener {
         (xlib.XSelectInput)(display, root, xlib::KeyReleaseMask);
         let mut event: xlib::XEvent = mem::MaybeUninit::uninit().assume_init();
         loop {
-          (xlib.XNextEvent)(display, &mut event);
-          match event.get_type() {
-            xlib::KeyRelease => {
-              if let Some(handler) = hotkey_map
-                .lock()
-                .unwrap()
-                .get_mut(&(event.key.keycode as i32, event.key.state))
-              {
-                handler();
+          if (xlib.XPending)(display) > 0 {
+            (xlib.XNextEvent)(display, &mut event);
+            match event.get_type() {
+              xlib::KeyRelease => {
+                if let Some(handler) = hotkey_map
+                  .lock()
+                  .unwrap()
+                  .get_mut(&(event.key.keycode as i32, event.key.state))
+                {
+                  handler();
+                }
+              }
+              _ => (),
+            }
+          }
+          match rx.try_recv() {
+            Ok(HotkeyMessage::RegisterHotkey((keycode, modifiers))) => {
+              let result = (xlib.XGrabKey)(
+                display,
+                keycode,
+                modifiers,
+                root,
+                0,
+                xlib::GrabModeAsync,
+                xlib::GrabModeAsync,
+              );
+              if result == 0 {
+                println!("{}", "Failed to register hotkey".to_string());
               }
             }
-            _ => (),
-          }
+            Ok(HotkeyMessage::UnregisterHotkey(id)) => {
+              let result = (xlib.XUngrabKey)(
+                display,
+                id.0,
+                id.1,
+                root
+              );
+              if result == 0 {
+                println!("{}", "Failed to unregister hotkey".to_string());
+              }
+            }
+            Err(_) => {}
+          };
+
+          std::thread::sleep(std::time::Duration::from_millis(50));
         }
       }
     });
@@ -110,9 +141,9 @@ impl Listener {
 
       Listener {
         display: display,
-        root: (xlib.XDefaultRootWindow)(display),
-        xlib: xlib,
+        xlib,
         handlers: hotkeys,
+        sender: tx,
       }
     }
   }
@@ -123,25 +154,19 @@ impl Listener {
     key: u32,
     handler: CB,
   ) -> Result<ListenerID, String> {
+    let keycode: i32;
     unsafe {
-      let keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
-      let result = (self.xlib.XGrabKey)(
-        self.display,
-        keycode,
-        modifiers,
-        self.root,
-        0,
-        xlib::GrabModeAsync,
-        xlib::GrabModeAsync,
-      );
-
-      if result == 0 {
-        return Err("Failed to register hotkey".to_string());
-      }
-
-      let id = (keycode, modifiers);
-      self.handlers.lock().unwrap().insert(id, Box::new(handler));
-      Ok(id)
+      keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
     }
+    let id = (keycode, modifiers);
+    self.sender.send(HotkeyMessage::RegisterHotkey(id)).unwrap();
+    self.handlers.lock().unwrap().insert(id, Box::new(handler));
+    Ok(id)
+  }
+
+  pub fn unregister_hotkey(&mut self, id: ListenerID) -> Result<(), HotkeyError> {
+    self.sender.send(HotkeyMessage::UnregisterHotkey(id))?;
+    self.handlers.lock().unwrap().remove(&id);
+    Ok(())
   }
 }
