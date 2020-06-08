@@ -2,111 +2,146 @@ use std::collections::HashMap;
 use std::mem;
 use std::os::raw::c_ulong;
 use std::ptr;
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::Arc;
+use std::sync::Mutex;
 use x11_dl::xlib;
 
 pub mod modifiers {
-    use x11_dl::xlib;
-    pub const ALT: u32 = xlib::Mod1Mask;
-    pub const CONTROL: u32 = xlib::ControlMask;
-    pub const SHIFT: u32 = xlib::ShiftMask;
-    pub const SUPER: u32 = xlib::Mod4Mask;
+  use x11_dl::xlib;
+  pub const ALT: u32 = xlib::Mod1Mask;
+  pub const CONTROL: u32 = xlib::ControlMask;
+  pub const SHIFT: u32 = xlib::ShiftMask;
+  pub const SUPER: u32 = xlib::Mod4Mask;
 }
 
 pub mod keys {
-    use x11_dl::keysym;
-    pub const BACKSPACE: u32 = keysym::XK_BackSpace;
-    pub const TAB: u32 = keysym::XK_Tab;
-    pub const ENTER: u32 = keysym::XK_Return;
-    pub const CAPS_LOCK: u32 = keysym::XK_Caps_Lock;
-    pub const ESCAPE: u32 = keysym::XK_Escape;
-    pub const SPACEBAR: u32 = keysym::XK_space;
-    pub const PAGE_UP: u32 = keysym::XK_Page_Up;
-    pub const PAGE_DOWN: u32 = keysym::XK_Page_Down;
-    pub const END: u32 = keysym::XK_End;
-    pub const HOME: u32 = keysym::XK_Home;
-    pub const ARROW_LEFT: u32 = keysym::XK_Left;
-    pub const ARROW_RIGHT: u32 = keysym::XK_Right;
-    pub const ARROW_UP: u32 = keysym::XK_Up;
-    pub const ARROW_DOWN: u32 = keysym::XK_Down;
-    pub const PRINT_SCREEN: u32 = keysym::XK_Print;
-    pub const INSERT: u32 = keysym::XK_Insert;
-    pub const DELETE: u32 = keysym::XK_Delete;
+  use x11_dl::keysym;
+  pub const BACKSPACE: u32 = keysym::XK_BackSpace;
+  pub const TAB: u32 = keysym::XK_Tab;
+  pub const ENTER: u32 = keysym::XK_Return;
+  pub const CAPS_LOCK: u32 = keysym::XK_Caps_Lock;
+  pub const ESCAPE: u32 = keysym::XK_Escape;
+  pub const SPACEBAR: u32 = keysym::XK_space;
+  pub const PAGE_UP: u32 = keysym::XK_Page_Up;
+  pub const PAGE_DOWN: u32 = keysym::XK_Page_Down;
+  pub const END: u32 = keysym::XK_End;
+  pub const HOME: u32 = keysym::XK_Home;
+  pub const ARROW_LEFT: u32 = keysym::XK_Left;
+  pub const ARROW_RIGHT: u32 = keysym::XK_Right;
+  pub const ARROW_UP: u32 = keysym::XK_Up;
+  pub const ARROW_DOWN: u32 = keysym::XK_Down;
+  pub const PRINT_SCREEN: u32 = keysym::XK_Print;
+  pub const INSERT: u32 = keysym::XK_Insert;
+  pub const DELETE: u32 = keysym::XK_Delete;
 }
 
 pub type ListenerID = (i32, u32);
+pub type ListenerCallback = dyn FnMut() + 'static + Send;
+pub type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
+
+pub enum HotkeyMessage {
+  RegisterHotkey(i32, u32, u32),
+  UnregisterHotkey(i32),
+}
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum HotkeyError {
+  #[error("channel error")]
+  ChannelError(#[from] mpsc::SendError<HotkeyMessage>),
+  // #[error("lock error")]
+  // LockError(#[from] mpsc::SendError<HotkeyMessage>),
+  #[error("unknown error")]
+  Unknown,
+}
 
 pub struct Listener {
-    display: *mut xlib::Display,
-    root: c_ulong,
-    xlib: xlib::Xlib,
-    handlers: HashMap<ListenerID, Box<dyn Fn()>>,
+  display: *mut xlib::Display,
+  root: c_ulong,
+  xlib: xlib::Xlib,
+  handlers: ListenerMap,
 }
 
 impl Listener {
-    pub fn new() -> Listener {
-        let xlib = xlib::Xlib::open().unwrap();
-        unsafe {
-            let display = (xlib.XOpenDisplay)(ptr::null());
+  pub fn new() -> Listener {
+    let hotkeys = Arc::new(Mutex::new(
+      HashMap::<ListenerID, Box<ListenerCallback>>::new(),
+    ));
 
-            // Only trigger key release at end of repeated keys
-            let mut supported_rtrn: i32 = mem::MaybeUninit::uninit().assume_init();
-            (xlib.XkbSetDetectableAutoRepeat)(display, 1, &mut supported_rtrn);
+    let hotkey_map = hotkeys.clone();
+    //let (tx, rx) = mpsc::channel();
 
-            Listener {
-                display: display,
-                root: (xlib.XDefaultRootWindow)(display),
-                xlib,
-                handlers: HashMap::new(),
+    std::thread::spawn(move || {
+      let xlib = xlib::Xlib::open().unwrap();
+      unsafe {
+        let display = (xlib.XOpenDisplay)(ptr::null());
+        let root = (xlib.XDefaultRootWindow)(display);
+
+        // Only trigger key release at end of repeated keys
+        let mut supported_rtrn: i32 = mem::MaybeUninit::uninit().assume_init();
+        (xlib.XkbSetDetectableAutoRepeat)(display, 1, &mut supported_rtrn);
+
+        (xlib.XSelectInput)(display, root, xlib::KeyReleaseMask);
+        let mut event: xlib::XEvent = mem::MaybeUninit::uninit().assume_init();
+        loop {
+          (xlib.XNextEvent)(display, &mut event);
+          match event.get_type() {
+            xlib::KeyRelease => {
+              if let Some(handler) = hotkey_map
+                .lock()
+                .unwrap()
+                .get_mut(&(event.key.keycode as i32, event.key.state))
+              {
+                handler();
+              }
             }
+            _ => (),
+          }
         }
+      }
+    });
+
+    unsafe {
+      let xlib = xlib::Xlib::open().unwrap();
+      let display = (xlib.XOpenDisplay)(ptr::null());
+
+      Listener {
+        display: display,
+        root: (xlib.XDefaultRootWindow)(display),
+        xlib: xlib,
+        handlers: hotkeys,
+      }
     }
+  }
 
-    pub fn register_hotkey<CB: 'static + Fn()>(
-        &mut self,
-        modifiers: u32,
-        key: u32,
-        handler: CB,
-    ) -> Result<ListenerID, String> {
-        unsafe {
-            let keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
-            let result = (self.xlib.XGrabKey)(
-                self.display,
-                keycode,
-                modifiers,
-                self.root,
-                0,
-                xlib::GrabModeAsync,
-                xlib::GrabModeAsync,
-            );
+  pub fn register_hotkey<CB: 'static + FnMut() + Send>(
+    &mut self,
+    modifiers: u32,
+    key: u32,
+    handler: CB,
+  ) -> Result<ListenerID, String> {
+    unsafe {
+      let keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
+      let result = (self.xlib.XGrabKey)(
+        self.display,
+        keycode,
+        modifiers,
+        self.root,
+        0,
+        xlib::GrabModeAsync,
+        xlib::GrabModeAsync,
+      );
 
-            if result == 0 {
-                return Err("Failed to register hotkey".to_string());
-            }
+      if result == 0 {
+        return Err("Failed to register hotkey".to_string());
+      }
 
-            let id = (keycode, modifiers);
-            self.handlers.insert(id, Box::new(handler));
-            Ok(id)
-        }
+      let id = (keycode, modifiers);
+      self.handlers.lock().unwrap().insert(id, Box::new(handler));
+      Ok(id)
     }
-
-    pub fn listen(self) {
-        unsafe {
-            (self.xlib.XSelectInput)(self.display, self.root, xlib::KeyReleaseMask);
-            let mut event: xlib::XEvent = mem::MaybeUninit::uninit().assume_init();
-            loop {
-                (self.xlib.XNextEvent)(self.display, &mut event);
-                match event.get_type() {
-                    xlib::KeyRelease => {
-                        if let Some(handler) = self
-                            .handlers
-                            .get(&(event.key.keycode as i32, event.key.state))
-                        {
-                            handler();
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
-    }
+  }
 }
