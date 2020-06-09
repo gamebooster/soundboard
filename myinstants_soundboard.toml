@@ -277,6 +277,7 @@ path="https://www.myinstants.com//media/sounds/victoryff.swf.mp3"
 [[sound]]
 name="Here Comes The Money"
 path="https://www.myinstants.com//media/sounds/money_2.mp3"
+hotkey = "CTRL-P"
 
 [[sound]]
 name="Lalalalala"

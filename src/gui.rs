@@ -14,6 +14,7 @@ use std::fmt;
 mod list_view;
 mod panel_view;
 mod style;
+use super::hotkey;
 
 #[derive(PartialEq)]
 enum LayoutStyle {
@@ -39,6 +40,7 @@ pub struct Soundboard {
   current_style: LayoutStyle,
   soundboard_button_states: Vec<SoundboardButton>,
   config: config::MainConfig,
+  hotkey_manager: hotkey::HotkeyManager,
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +97,7 @@ impl Application for Soundboard {
           .unwrap(),
       ),
       current_style: LayoutStyle::PanelView,
+      hotkey_manager: hotkey::HotkeyManager::new(),
     };
     (soundboard, Command::none())
   }
@@ -143,17 +146,51 @@ impl Application for Soundboard {
             button.selected = true;
           }
         }
+
+        self.hotkey_manager.unregister_all();
+
+        let stop_hotkey = {
+          if self.config.stop_hotkey.is_some() {
+            config::parse_hotkey(&self.config.stop_hotkey.as_ref().unwrap()).unwrap()
+          } else {
+            config::Hotkey {
+              modifier: vec![config::Modifier::CTRL],
+              key: config::Key::S,
+            }
+          }
+        };
+        let tx_clone = self.sound_sender.clone();
+        self.hotkey_manager.register(stop_hotkey, move || {
+          let _result = tx_clone.send(sound::Message::StopAll);
+        });
+        let tx_clone = self.sound_sender.clone();
         let sounds = self
           .config
           .soundboards
-          .clone()
           .iter()
           .find(|s| s.name.as_ref().unwrap() == &name)
           .unwrap()
           .sounds
           .clone()
           .unwrap();
-        self.panel_view = panel_view::PanelView::new(&sounds.clone());
+
+        for sound in sounds.clone() {
+          if sound.hotkey.is_none() {
+            continue;
+          }
+          let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap();
+          let tx_clone = tx_clone.clone();
+          let _result = self.hotkey_manager.register(hotkey, move || {
+            if let Err(err) = tx_clone.send(sound::Message::PlaySound(
+              sound.path.clone(),
+              sound::SoundDevices::Both,
+            )) {
+              error!("failed to play sound {}", err);
+            };
+          });
+        }
+
+        self.panel_view = panel_view::PanelView::new(&sounds);
         self.list_view = list_view::ListView::new(&sounds);
       }
       SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
@@ -289,7 +326,7 @@ impl Application for Soundboard {
       .push(sound_view)
       .push(Space::with_height(Length::Units(5)))
       .push(bottom_row);
-      //.push(soundboard_row);
+    //.push(soundboard_row);
 
     Container::new(content)
       .width(Length::Fill)

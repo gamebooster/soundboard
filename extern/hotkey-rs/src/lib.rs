@@ -6,6 +6,7 @@ mod windows;
 mod traits;
 
 pub use traits::Listener;
+pub use traits::ListenerID;
 pub use traits::HotkeyListener;
 
 #[cfg(target_os = "linux")]

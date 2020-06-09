@@ -44,13 +44,22 @@ pub struct SoundConfig {
   pub hotkey: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Eq)]
 pub struct Hotkey {
   pub modifier: Vec<Modifier>,
   pub key: Key,
 }
 
-#[derive(Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq)]
+impl Hotkey {
+  pub fn modifier_as_flag(&self) -> u32 {
+    self
+    .modifier
+    .iter()
+    .fold(0, |acc, x| acc | (*x as u32)) as u32
+  }
+}
+
+#[derive(Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq)]
 pub enum Modifier {
   ALT = hotkey::modifiers::ALT as isize,
   CTRL = hotkey::modifiers::CONTROL as isize,
@@ -67,7 +76,7 @@ impl fmt::Display for Modifier {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq)]
+#[derive(Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq)]
 pub enum Key {
   BACKSPACE = hotkey::keys::BACKSPACE as isize,
   TAB = hotkey::keys::TAB as isize,

@@ -60,49 +60,49 @@ pub fn main() -> Result<()> {
     )
   });
 
-  let mut hotkey_manager = hotkey::HotkeyManager::new();
-
-  let stop_hotkey = {
-    if config_file.stop_hotkey.is_some() {
-      config::parse_hotkey(&config_file.stop_hotkey.as_ref().unwrap())?
-    } else {
-      config::Hotkey {
-        modifier: vec![config::Modifier::CTRL],
-        key: config::Key::S,
-      }
-    }
-  };
-  let tx_clone = tx.clone();
-  hotkey_manager
-    .register(stop_hotkey, move || {
-      let _result = tx_clone.send(sound::Message::StopAll);
-    })
-    .map_err(|_s| anyhow!("register key"))?;
-
-  let tx_clone = tx.clone();
-  for sound in config_file.soundboards[0]
-    .sounds
-    .clone()
-    .unwrap_or_default()
-  {
-    if sound.hotkey.is_none() {
-      continue;
-    }
-    let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
-    let tx_clone = tx_clone.clone();
-    let _result = hotkey_manager
-      .register(hotkey, move || {
-        if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-          sound.path.clone(),
-          sound::SoundDevices::Both,
-        )) {
-          error!("failed to play sound {}", err);
-        };
-      })
-      .map_err(|_s| anyhow!("register key"));
-  }
-
   if arguments.is_present("no-gui") {
+    let mut hotkey_manager = hotkey::HotkeyManager::new();
+
+    let stop_hotkey = {
+      if config_file.stop_hotkey.is_some() {
+        config::parse_hotkey(&config_file.stop_hotkey.as_ref().unwrap())?
+      } else {
+        config::Hotkey {
+          modifier: vec![config::Modifier::CTRL],
+          key: config::Key::S,
+        }
+      }
+    };
+    let tx_clone = tx.clone();
+    hotkey_manager
+      .register(stop_hotkey, move || {
+        let _result = tx_clone.send(sound::Message::StopAll);
+      })
+      .map_err(|_s| anyhow!("register key"))?;
+  
+    let tx_clone = tx.clone();
+    // only register hotkeys for first soundboard in no-gui-mode
+    for sound in config_file.soundboards[0]
+      .sounds
+      .clone()
+      .unwrap_or_default()
+    {
+      if sound.hotkey.is_none() {
+        continue;
+      }
+      let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
+      let tx_clone = tx_clone.clone();
+      let _result = hotkey_manager
+        .register(hotkey, move || {
+          if let Err(err) = tx_clone.send(sound::Message::PlaySound(
+            sound.path.clone(),
+            sound::SoundDevices::Both,
+          )) {
+            error!("failed to play sound {}", err);
+          };
+        })?;
+    }
+
     std::thread::park();
     return Ok(());
   }
