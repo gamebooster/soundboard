@@ -78,7 +78,6 @@ impl Application for Soundboard {
       sound_sender: flags.0,
       config: flags.1.clone(),
       soundboard_button_states: soundboard_buttons,
-      current_soundboard_index: start_soundboard_index,
       stop_button_state: button::State::new(),
       toggle_layout_button_state: button::State::new(),
       volume_slider_state: slider::State::new(),
