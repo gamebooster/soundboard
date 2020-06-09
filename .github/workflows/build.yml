@@ -1,0 +1,58 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+    - uses: actions/checkout@master
+    - name: Enable Link Time Optimizations
+      run: |
+        echo "[profile.release]" >> Cargo.toml
+        echo "lto = true" >> Cargo.toml
+    - name: Build soundboard binary
+      run: cargo build --verbose --release
+    - name: Archive soundboard binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: soundboard-x86_64-debian-linux-gnu
+        path: target/release/soundboard
+
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+    - uses: actions/checkout@master
+    - name: Enable Link Time Optimizations
+      run: |
+        echo "[profile.release]" >> Cargo.toml
+        echo "lto = true" >> Cargo.toml
+    - name: Build soundboard binary
+      run: cargo build --verbose --release
+    - name: Archive soundboard binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: soundboard-x86_64-pc-windows-msvc
+        path: target/release/soundboard.exe
+
+  macos:
+    runs-on: macOS-latest
+    steps:
+    - uses: hecrj/setup-rust-action@v1
+    - uses: actions/checkout@master
+    - name: Enable Link Time Optimizations
+      run: |
+        echo "[profile.release]" >> Cargo.toml
+        echo "lto = true" >> Cargo.toml
+    - name: Build soundboard binary
+      env:
+        MACOSX_DEPLOYMENT_TARGET: 10.14
+      run: cargo build --verbose --release
+    - name: Archive soundboard binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: soundboard-x86_64-apple-darwin
+        path: target/release/soundboard
