@@ -19,12 +19,35 @@ use strum;
 use strum_macros;
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
-pub struct Config {
+pub struct MainConfig {
   pub input_device: Option<usize>,
   pub output_device: Option<usize>,
   pub loopback_device: Option<usize>,
   pub stop_hotkey: Option<String>,
-  pub sounds: Option<Vec<SoundConfig>>,
+  #[serde(rename = "soundboard")]
+  pub soundboards: Vec<SoundboardConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct SoundboardConfig {
+  pub name: Option<String>,
+  pub hotkey: Option<String>,
+  pub path: Option<String>,
+  #[serde(rename = "sound")]
+  pub sounds: Option<Vec<SoundConfig>>
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct SoundConfig {
+  pub name: String,
+  pub path: String,
+  pub hotkey: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+pub struct Hotkey {
+  pub modifier: Vec<Modifier>,
+  pub key: Key,
 }
 
 #[derive(Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq)]
@@ -106,19 +129,6 @@ impl fmt::Display for Key {
   }
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
-pub struct SoundConfig {
-  pub name: String,
-  pub path: String,
-  pub hotkey: Option<String>,
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
-pub struct Hotkey {
-  pub modifier: Vec<Modifier>,
-  pub key: Key,
-}
-
 impl fmt::Display for Hotkey {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     let modifier_string = self
@@ -181,17 +191,33 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
   })
 }
 
-pub fn load_and_parse_config(name: &str) -> Result<Config> {
+pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
   let mut path = std::env::current_exe()?;
   path.pop();
   path.push(name);
   let toml_str = fs::read_to_string(&path)?;
-  let toml_config = toml::from_str(&toml_str)?;
+  let mut toml_config : MainConfig = toml::from_str(&toml_str)?;
+
+  for soundboard in &mut toml_config.soundboards {
+    if soundboard.path.is_none() { continue }
+    let mut path = std::env::current_exe()?;
+    path.pop();
+    path.push(soundboard.path.as_ref().unwrap());
+    let soundboard_str = fs::read_to_string(&path)?;
+    let soundboard_config : SoundboardConfig = toml::from_str(&soundboard_str)?;
+    if soundboard_config.sounds.is_none() {
+      return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
+    }
+    let mut sounds = soundboard.sounds.clone().unwrap_or_default();
+    sounds.append(&mut soundboard_config.sounds.unwrap());
+    soundboard.sounds = Some(sounds);
+  }
+
   info!("Loaded config file from {}", path.display());
   Ok(toml_config)
 }
 
-pub fn save_config(config: Config, name: &str) -> Result<()> {
+pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
   let mut path = std::env::current_exe()?;
   path.pop();
   path.push(name);
@@ -255,7 +281,7 @@ pub fn parse_arguments() -> clap::ArgMatches {
 }
 
 pub fn parse_devices(
-  config: &Config,
+  config: &MainConfig,
   arguments: &clap::ArgMatches,
 ) -> Result<(Option<usize>, Option<usize>, usize)> {
   let input_device_index: Option<usize> = {

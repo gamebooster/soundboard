@@ -21,6 +21,13 @@ enum LayoutStyle {
   ListView,
 }
 
+#[derive(Debug, Clone, Default)]
+struct SoundboardButton {
+  state: button::State,
+  name: String,
+  selected: bool,
+}
+
 pub struct Soundboard {
   panel_view: panel_view::PanelView,
   list_view: list_view::ListView,
@@ -30,6 +37,8 @@ pub struct Soundboard {
   volume_slider_state: slider::State,
   current_volume: f32,
   current_style: LayoutStyle,
+  soundboard_button_states: Vec<SoundboardButton>,
+  config: config::MainConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -40,22 +49,52 @@ pub enum SoundboardMessage {
   HandlePanelViewMessage(panel_view::PanelViewMessage),
   HandleListViewMessage(list_view::ListViewMessage),
   ToggleLayout,
+  ShowSoundboard(String),
 }
 
 impl Application for Soundboard {
   type Executor = executor::Default;
   type Message = SoundboardMessage;
-  type Flags = (SyncSender<sound::Message>, config::Config);
+  type Flags = (SyncSender<sound::Message>, config::MainConfig);
 
   fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
+    let start_soundboard_index = 0;
+
+    let mut soundboard_buttons = flags.1.clone().soundboards.iter().fold(
+      Vec::<SoundboardButton>::new(),
+      |mut buttons, soundboard| {
+        buttons.push(SoundboardButton {
+          state: button::State::new(),
+          name: soundboard.name.clone().unwrap(),
+          selected: false,
+        });
+        buttons
+      },
+    );
+
+    soundboard_buttons[start_soundboard_index].selected = true;
+
     let soundboard = Soundboard {
       sound_sender: flags.0,
+      config: flags.1.clone(),
+      soundboard_button_states: soundboard_buttons,
+      current_soundboard_index: start_soundboard_index,
       stop_button_state: button::State::new(),
       toggle_layout_button_state: button::State::new(),
       volume_slider_state: slider::State::new(),
       current_volume: 1.0,
-      panel_view: panel_view::PanelView::new(&flags.1.clone().sounds.unwrap()),
-      list_view: list_view::ListView::new(&flags.1.sounds.unwrap()),
+      panel_view: panel_view::PanelView::new(
+        &flags.1.clone().soundboards[start_soundboard_index]
+          .sounds
+          .clone()
+          .unwrap(),
+      ),
+      list_view: list_view::ListView::new(
+        &flags.1.clone().soundboards[start_soundboard_index]
+          .sounds
+          .clone()
+          .unwrap(),
+      ),
       current_style: LayoutStyle::PanelView,
     };
     (soundboard, Command::none())
@@ -97,6 +136,26 @@ impl Application for Soundboard {
             LayoutStyle::ListView
           }
         };
+      }
+      SoundboardMessage::ShowSoundboard(name) => {
+        for button in &mut self.soundboard_button_states {
+          button.selected = false;
+          if button.name == name {
+            button.selected = true;
+          }
+        }
+        let sounds = self
+          .config
+          .soundboards
+          .clone()
+          .iter()
+          .find(|s| s.name.as_ref().unwrap() == &name)
+          .unwrap()
+          .sounds
+          .clone()
+          .unwrap();
+        self.panel_view = panel_view::PanelView::new(&sounds.clone());
+        self.list_view = list_view::ListView::new(&sounds);
       }
       SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
         if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
@@ -154,6 +213,25 @@ impl Application for Soundboard {
       .padding(3)
       .center_y();
 
+    let soundboard_row = self.soundboard_button_states.iter_mut().fold(
+      Row::new()
+        .spacing(5)
+        .width(Length::FillPortion(6))
+        .height(Length::Fill)
+        .align_items(Align::Start),
+      |row, button| {
+        row.push(
+          Button::new(&mut button.state, Text::new(button.name.clone()))
+            .on_press(SoundboardMessage::ShowSoundboard(button.name.clone()))
+            .style(style::Button::Choice {
+              selected: button.selected,
+            })
+            .height(Length::Fill)
+            .width(Length::Fill),
+        )
+      },
+    );
+
     let bottom_row = Row::new()
       .spacing(5)
       .width(Length::Fill)
@@ -175,11 +253,12 @@ impl Application for Soundboard {
         .width(Length::FillPortion(2))
         .style(style::Button::Neutral),
       )
-      .push(
-        ProgressBar::new(0.0..=100.0, 66.0)
-          .height(Length::FillPortion(2))
-          .width(Length::FillPortion(6)),
-      )
+      .push(soundboard_row)
+      // .push(
+      //   ProgressBar::new(0.0..=100.0, 66.0)
+      //     .height(Length::FillPortion(2))
+      //     .width(Length::FillPortion(6)),
+      // )
       .push(
         Slider::new(
           &mut self.volume_slider_state,
@@ -187,7 +266,7 @@ impl Application for Soundboard {
           self.current_volume,
           SoundboardMessage::VolumeChanged,
         )
-        .width(Length::FillPortion(3)),
+        .width(Length::FillPortion(2)),
       );
 
     let sound_view = {
@@ -211,6 +290,7 @@ impl Application for Soundboard {
       .push(sound_view)
       .push(Space::with_height(Length::Units(5)))
       .push(bottom_row);
+      //.push(soundboard_row);
 
     Container::new(content)
       .width(Length::Fill)

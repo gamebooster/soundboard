@@ -82,7 +82,7 @@ pub fn main() -> Result<()> {
     .map_err(|_s| anyhow!("register key"))?;
 
   let tx_clone = tx.clone();
-  for sound in config_file.sounds.unwrap_or_default() {
+  for sound in config_file.soundboards[0].sounds.clone().unwrap_or_default() {
     if sound.hotkey.is_none() {
       continue;
     }

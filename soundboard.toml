@@ -4,213 +4,58 @@
 
 stop_hotkey = "ALT-S"
 
-[[sounds]]
-name = "Nicht so tief, Rüdiger!"
-path = "nicht-so-tief-rudiger.mp3"
-hotkey = "CTRL-P"
+# [[soundboard]]
+# name = "Deutsche Memez"
+# path = "deutsche_memes.toml"
 
-[[sounds]]
-name = "Razor1911 Vodka Dance"
-path = "vodka/vodka_dance.mp3" # later xm
-hotkey = "CTRL-SHIFT-BACKSPACE"
+[[soundboard]]
+name = "Myinstants.com"
+path = "myinstants_soundboard.toml"
 
-[[sounds]]
-name = "It's time to duel"
-path = "its-time-to-duel.ogg"
-hotkey = "ALT-9"
+[[soundboard]]
+name = "default"
 
-[[sounds]]
-name = "Ich rascht aus"
-path = "ich-rascht-aus.flac"
-hotkey = "ALT-8"
+    [[soundboard.sound]]
+    name = "Nicht so tief, Rüdiger!"
+    path = "nicht-so-tief-rudiger.mp3"
+    hotkey = "CTRL-P"
 
-[[sounds]]
-name = "steam incoming"
-path = "https://www.myinstants.com/media/sounds/message_2.mp3"
-hotkey = "ALT-7"
+    [[soundboard.sound]]
+    name = "Razor1911 Vodka Dance"
+    path = "vodka/vodka_dance.mp3" # later xm
+    hotkey = "CTRL-SHIFT-BACKSPACE"
 
-[[sounds]]
-name = "crab rave"
-path = "https://www.myinstants.com/media/sounds/original_zeowGW1.mp3"
+    [[soundboard.sound]]
+    name = "It's time to duel"
+    path = "its-time-to-duel.ogg"
+    hotkey = "ALT-9"
 
-[[sounds]]
-name="BRUH"
-path="https://www.myinstants.com//media/sounds/movie_1.mp3"
+    [[soundboard.sound]]
+    name = "Ich rascht aus"
+    path = "ich-rascht-aus.flac"
+    hotkey = "ALT-8"
 
-[[sounds]]
-name="Female Orgasm"
-path="https://www.myinstants.com//media/sounds/epic.swf_1.mp3"
+    [[soundboard.sound]]
+    name = "steam incoming"
+    path = "https://www.myinstants.com/media/sounds/message_2.mp3"
+    hotkey = "ALT-7"
 
-[[sounds]]
-name="TeamSpeak 3"
-path="https://www.myinstants.com//media/sounds/untitled_291.mp3"
+    [[soundboard.sound]]
+    name = "crab rave"
+    path = "https://www.myinstants.com/media/sounds/original_zeowGW1.mp3"
 
-[[sounds]]
-name="Kann es sein das du Dumm bist"
-path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
-hotkey_modifier = ["CTRL"]
-hotkey_key = "Q"
+    [[soundboard.sound]]
+    name="BRUH"
+    path="https://www.myinstants.com//media/sounds/movie_1.mp3"
 
-[[sounds]]
-name="Windows XP Error"
-path="https://www.myinstants.com//media/sounds/erro.mp3"
+    [[soundboard.sound]]
+    name="Female Orgasm"
+    path="https://www.myinstants.com//media/sounds/epic.swf_1.mp3"
 
-[[sounds]]
-name="Trololo"
-path="https://www.myinstants.com//media/sounds/trollolol.swf.mp3"
+    [[soundboard.sound]]
+    name="TeamSpeak 3"
+    path="https://www.myinstants.com//media/sounds/untitled_291.mp3"
 
-[[sounds]]
-name="Nein! - Doch!- Ohh!"
-path="https://www.myinstants.com//media/sounds/nein-doch-ohh.mp3"
-
-[[sounds]]
-name="Chewbacca"
-path="https://www.myinstants.com//media/sounds/chewbacca.swf.mp3"
-
-[[sounds]]
-name="MLG AIR HORN!!!!!!!!!!!"
-path="https://www.myinstants.com//media/sounds/mlg-airhorn.mp3"
-
-[[sounds]]
-name="Befehl"
-path="https://www.myinstants.com//media/sounds/das-war-ein-befehl.mp3"
-
-[[sounds]]
-name="BADUM TSS"
-path="https://www.myinstants.com//media/sounds/joke_drum_effect.mp3"
-
-[[sounds]]
-name="Halt Stop!"
-path="https://www.myinstants.com//media/sounds/mein-song-4_2.mp3"
-
-[[sounds]]
-name="YEAH !!"
-path="https://www.myinstants.com//media/sounds/sound-9______.mp3"
-
-[[sounds]]
-name="This is Sparta!!"
-path="https://www.myinstants.com//media/sounds/thisissparta.swf.mp3"
-
-[[sounds]]
-name="Bazinga!"
-path="https://www.myinstants.com//media/sounds/bazinga.swf.mp3"
-
-[[sounds]]
-name="ROBLOX oof"
-path="https://www.myinstants.com//media/sounds/roblox-death-sound_1.mp3"
-
-[[sounds]]
-name="pornhub community intro"
-path="https://www.myinstants.com//media/sounds/pornhub-community-intro.mp3"
-
-[[sounds]]
-name="Sexy Sax"
-path="https://www.myinstants.com//media/sounds/george-micael-wham-careless-whisper-1.mp3"
-
-[[sounds]]
-name="Wololo"
-path="https://www.myinstants.com//media/sounds/sound-9.mp3"
-
-[[sounds]]
-name="Fuck off!"
-path="https://www.myinstants.com//media/sounds/fuckoff.mp3"
-
-[[sounds]]
-name="Sad Trombone"
-path="https://www.myinstants.com//media/sounds/sadtrombone.swf.mp3"
-
-[[sounds]]
-name="Dramatic Chipmunk"
-path="https://www.myinstants.com//media/sounds/dramatic.swf.mp3"
-
-[[sounds]]
-name="and his name is John Cenaaaaaa"
-path="https://www.myinstants.com//media/sounds/and-his-name-is-john-cena-1.mp3"
-
-[[sounds]]
-name="The Cyka Blyat Song"
-path="https://www.myinstants.com//media/sounds/cyka-blyat.mp3"
-
-[[sounds]]
-name="Ps1"
-path="https://www.myinstants.com//media/sounds/ps_1.mp3"
-
-[[sounds]]
-name="Surprise Motherfucker"
-path="https://www.myinstants.com//media/sounds/surprise-motherfucker.mp3"
-
-[[sounds]]
-name="Over 9000!!"
-path="https://www.myinstants.com//media/sounds/over9000.swf.mp3"
-
-[[sounds]]
-name="Boom! Headshot!"
-path="https://www.myinstants.com//media/sounds/boomheadshot.swf.mp3"
-
-[[sounds]]
-name="Shut up!"
-path="https://www.myinstants.com//media/sounds/shutup.swf.mp3"
-
-[[sounds]]
-name="JA GEGE"
-path="https://www.myinstants.com//media/sounds/gege.mp3"
-
-[[sounds]]
-name="Noooo!"
-path="https://www.myinstants.com//media/sounds/nooo.swf.mp3"
-
-[[sounds]]
-name="Inception Button"
-path="https://www.myinstants.com//media/sounds/inceptionbutton.mp3"
-
-[[sounds]]
-name="Rimshot"
-path="https://www.myinstants.com//media/sounds/badumtss.swf.mp3"
-
-[[sounds]]
-name="WTF BOOM!"
-path="https://www.myinstants.com//media/sounds/wtf_boom.mp3"
-
-[[sounds]]
-name="Hallelujah"
-path="https://www.myinstants.com//media/sounds/hallelujahshort.swf.mp3"
-
-[[sounds]]
-name="Metal Gear"
-path="https://www.myinstants.com//media/sounds/metalgearsolid.swf.mp3"
-
-[[sounds]]
-name="Nein Nein Nein Hitler"
-path="https://www.myinstants.com//media/sounds/hitler-nein_1.mp3"
-
-[[sounds]]
-name="Crickets"
-path="https://www.myinstants.com//media/sounds/crickets.swf.mp3"
-
-[[sounds]]
-name="To be Continued (jojo)"
-path="https://www.myinstants.com//media/sounds/untitled_1071.mp3"
-
-[[sounds]]
-name="Kamehameha!"
-path="https://www.myinstants.com//media/sounds/kamehameha.swf.mp3"
-
-[[sounds]]
-name="Savage Fap"
-path="https://www.myinstants.com//media/sounds/savage-fap.mp3"
-
-[[sounds]]
-name="hahahahihi"
-path="https://www.myinstants.com//media/sounds/hahahahihihihehehe.mp3"
-
-[[sounds]]
-name="FBI open UP"
-path="https://www.myinstants.com//media/sounds/fbi-open-up-sfx.mp3"
-
-[[sounds]]
-name="Sad Violin (the meme one)"
-path="https://www.myinstants.com//media/sounds/tf_nemesis.mp3"
-
-[[sounds]]
-name="ALARM!"
-path="https://www.myinstants.com//media/sounds/alarm.MP3"
+    [[soundboard.sound]]
+    name="Kann es sein das du Dumm bist"
+    path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
