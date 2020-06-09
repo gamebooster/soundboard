@@ -30,12 +30,18 @@ impl button::StyleSheet for Button {
                 if *selected {
                     button::Style {
                         background: Some(Background::Color(Color::from_rgb(0.2, 0.4, 0.7))),
+                        border_color: Color::from_rgb(0.9, 0.9, 0.9),
                         border_radius: 5,
                         text_color: Color::WHITE,
                         ..button::Style::default()
                     }
                 } else {
-                    button::Style::default()
+                    button::Style {
+                        background: Some(Background::Color(Color::from_rgb(0.4, 0.6, 0.9))),
+                        border_color: Color::from_rgb(0.9, 0.9, 0.9),
+                        border_radius: 5,
+                        ..button::Style::default()
+                    }
                 }
             }
             Button::Icon => button::Style {

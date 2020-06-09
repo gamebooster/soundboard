@@ -229,6 +229,7 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
     Ok(toml_config)
 }
 
+#[allow(dead_code)]
 pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     let mut path = std::env::current_exe()?;
     path.pop();

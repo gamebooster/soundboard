@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;

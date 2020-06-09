@@ -61,7 +61,7 @@ impl ListView {
                 unimplemented!();
             }
         }
-        Command::none()
+        // Command::none()
     }
 
     pub fn view(&mut self) -> Element<ListViewMessage> {

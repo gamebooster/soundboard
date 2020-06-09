@@ -76,7 +76,7 @@ impl Application for Soundboard {
 
         soundboard_buttons[start_soundboard_index].selected = true;
 
-        let soundboard = Soundboard {
+        let mut soundboard = Soundboard {
             sound_sender: flags.0,
             config: flags.1.clone(),
             soundboard_button_states: soundboard_buttons,
@@ -84,21 +84,17 @@ impl Application for Soundboard {
             toggle_layout_button_state: button::State::new(),
             volume_slider_state: slider::State::new(),
             current_volume: 1.0,
-            panel_view: panel_view::PanelView::new(
-                &flags.1.clone().soundboards[start_soundboard_index]
-                    .sounds
-                    .clone()
-                    .unwrap(),
-            ),
-            list_view: list_view::ListView::new(
-                &flags.1.clone().soundboards[start_soundboard_index]
-                    .sounds
-                    .clone()
-                    .unwrap(),
-            ),
+            panel_view: panel_view::PanelView::new(&Vec::new()),
+            list_view: list_view::ListView::new(&Vec::new()),
             current_style: LayoutStyle::PanelView,
             hotkey_manager: hotkey::HotkeyManager::new(),
         };
+        soundboard.update(SoundboardMessage::ShowSoundboard(
+            soundboard.config.soundboards[start_soundboard_index]
+                .name
+                .clone()
+                .unwrap(),
+        ));
         (soundboard, Command::none())
     }
 
@@ -147,22 +143,26 @@ impl Application for Soundboard {
                     }
                 }
 
-                self.hotkey_manager.unregister_all();
+                if let Err(err) = self.hotkey_manager.unregister_all() {
+                    error!("Unregister all hotkeys failed {}", err);
+                }
 
                 let stop_hotkey = {
                     if self.config.stop_hotkey.is_some() {
                         config::parse_hotkey(&self.config.stop_hotkey.as_ref().unwrap()).unwrap()
                     } else {
                         config::Hotkey {
-                            modifier: vec![config::Modifier::CTRL],
+                            modifier: vec![config::Modifier::ALT],
                             key: config::Key::S,
                         }
                     }
                 };
                 let tx_clone = self.sound_sender.clone();
-                self.hotkey_manager.register(stop_hotkey, move || {
+                if let Err(err) = self.hotkey_manager.register(stop_hotkey, move || {
                     let _result = tx_clone.send(sound::Message::StopAll);
-                });
+                }) {
+                    error!("register hotkey failed {}", err);
+                }
                 let tx_clone = self.sound_sender.clone();
                 let sounds = self
                     .config
@@ -200,6 +200,7 @@ impl Application for Soundboard {
                     self.panel_view.update(panel_view_message);
                 }
             }
+            #[allow(irrefutable_let_patterns)]
             SoundboardMessage::HandleListViewMessage(list_view_message) => {
                 if let list_view::ListViewMessage::PlaySound(path) = list_view_message {
                     self.update(SoundboardMessage::PlaySound(path));
@@ -256,8 +257,23 @@ impl Application for Soundboard {
                 .height(Length::Fill)
                 .align_items(Align::Start),
             |row, button| {
+                let soundboard_button_column = Column::new()
+                    .spacing(5)
+                    .align_items(Align::Center)
+                    .width(Length::Fill)
+                    .push(
+                        Text::new(button.name.clone())
+                            .size(18)
+                            .vertical_alignment(VerticalAlignment::Center),
+                    );
+
+                let soundboard_button_container = Container::new(soundboard_button_column)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .padding(3)
+                    .center_y();
                 row.push(
-                    Button::new(&mut button.state, Text::new(button.name.clone()))
+                    Button::new(&mut button.state, soundboard_button_container)
                         .on_press(SoundboardMessage::ShowSoundboard(button.name.clone()))
                         .style(style::Button::Choice {
                             selected: button.selected,

@@ -141,6 +141,7 @@ pub enum SoundDevices {
 #[derive(PartialEq)]
 pub enum Message {
     PlaySound(SoundPath, SoundDevices),
+    #[allow(dead_code)]
     StopSound(SoundPath),
     StopAll,
     SetVolume(f32),

@@ -33,6 +33,7 @@ impl HotkeyManager {
         self.hashmap.insert(hotkey, result);
         Ok(())
     }
+    #[allow(dead_code)]
     pub fn unregister(&mut self, hotkey: config::Hotkey) -> Result<()> {
         self.listener.unregister_hotkey(
             *self

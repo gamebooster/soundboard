@@ -58,6 +58,8 @@ pub enum HotkeyError {
 
 impl Drop for Listener {
     fn drop(&mut self) {
-        self.sender.send(HotkeyMessage::DropThread);
+        self.sender
+            .send(HotkeyMessage::DropThread)
+            .expect("cant close thread");
     }
 }
