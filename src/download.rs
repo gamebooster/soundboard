@@ -1,12 +1,12 @@
 extern crate reqwest;
 
-use std::path::PathBuf;
-use log::{error, info, trace, warn};
 use anyhow::{anyhow, Context, Result};
+use log::{error, info, trace, warn};
+use std::path::PathBuf;
 
 use super::utils;
 
-pub fn request_file(url : String) -> Result<PathBuf> {
+pub fn request_file(url: String) -> Result<PathBuf> {
     let string_hash = utils::calculate_hash(&url).to_string();
     let mut file_path = std::env::temp_dir();
     file_path.push(string_hash);
