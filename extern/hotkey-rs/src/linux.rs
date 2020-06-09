@@ -6,6 +6,7 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
 use x11_dl::xlib;
+use traits;
 
 pub mod modifiers {
   use x11_dl::xlib;
@@ -36,35 +37,7 @@ pub mod keys {
   pub const DELETE: u32 = keysym::XK_Delete;
 }
 
-pub type ListenerID = (i32, u32);
-pub type ListenerCallback = dyn FnMut() + 'static + Send;
-pub type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
-
-pub enum HotkeyMessage {
-  RegisterHotkey(ListenerID),
-  UnregisterHotkey(ListenerID),
-}
-
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum HotkeyError {
-  #[error("channel error")]
-  ChannelError(#[from] mpsc::SendError<HotkeyMessage>),
-  // #[error("lock error")]
-  // LockError(#[from] mpsc::SendError<HotkeyMessage>),
-  #[error("unknown error")]
-  Unknown,
-}
-
-pub struct Listener {
-  display: *mut xlib::Display,
-  xlib: xlib::Xlib,
-  sender: Sender<HotkeyMessage>,
-  handlers: ListenerMap,
-}
-
-impl Listener {
+impl HotkeyListener<ListenerID> for Listener {
   pub fn new() -> Listener {
     let hotkeys = Arc::new(Mutex::new(
       HashMap::<ListenerID, Box<ListenerCallback>>::new(),
@@ -102,7 +75,7 @@ impl Listener {
             }
           }
           match rx.try_recv() {
-            Ok(HotkeyMessage::RegisterHotkey((keycode, modifiers))) => {
+            Ok(HotkeyMessage::RegisterHotkey((keycode, modifiers), modifier, key)) => {
               let result = (xlib.XGrabKey)(
                 display,
                 keycode,
@@ -126,6 +99,9 @@ impl Listener {
               if result == 0 {
                 println!("{}", "Failed to unregister hotkey".to_string());
               }
+            }
+            Ok(HotkeyMessage::DropThread) => {
+              break;
             }
             Err(_) => {}
           };
@@ -159,7 +135,7 @@ impl Listener {
       keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
     }
     let id = (keycode, modifiers);
-    self.sender.send(HotkeyMessage::RegisterHotkey(id)).unwrap();
+    self.sender.send(HotkeyMessage::RegisterHotkey(id, modifiers, key)).unwrap();
     self.handlers.lock().unwrap().insert(id, Box::new(handler));
     Ok(id)
   }

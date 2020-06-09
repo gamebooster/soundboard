@@ -2,6 +2,7 @@ use ::hotkey as hotkeyExt;
 use anyhow::{anyhow, Context, Result};
 use super::config;
 use std::sync::Mutex;
+use hotkeyExt::HotkeyListener;
 
 pub struct HotkeyManager {
     listener: hotkeyExt::Listener

@@ -60,7 +60,6 @@ pub fn main() -> Result<()> {
     )
   });
 
-
   let mut hotkey_manager = hotkey::HotkeyManager::new();
 
   let stop_hotkey = {
@@ -73,7 +72,6 @@ pub fn main() -> Result<()> {
       }
     }
   };
-  
   let tx_clone = tx.clone();
   hotkey_manager
     .register(stop_hotkey, move || {
@@ -82,7 +80,11 @@ pub fn main() -> Result<()> {
     .map_err(|_s| anyhow!("register key"))?;
 
   let tx_clone = tx.clone();
-  for sound in config_file.soundboards[0].sounds.clone().unwrap_or_default() {
+  for sound in config_file.soundboards[0]
+    .sounds
+    .clone()
+    .unwrap_or_default()
+  {
     if sound.hotkey.is_none() {
       continue;
     }

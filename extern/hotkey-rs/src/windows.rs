@@ -8,6 +8,8 @@ use std::thread;
 use winapi::shared::windef::HWND;
 use winapi::um::winuser;
 
+use super::traits::*;
+
 pub mod modifiers {
   use winapi::um::winuser;
   pub const ALT: u32 = winuser::MOD_ALT as u32;
@@ -37,35 +39,8 @@ pub mod keys {
   pub const DELETE: u32 = winuser::VK_DELETE as u32;
 }
 
-pub type ListenerID = i32;
-pub type ListenerCallback = dyn FnMut() + 'static + Send;
-pub type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
-
-pub struct Listener {
-  last_id: i32,
-  handlers: ListenerMap,
-  sender: Sender<HotkeyMessage>,
-}
-
-pub enum HotkeyMessage {
-  RegisterHotkey(i32, u32, u32),
-  UnregisterHotkey(i32),
-}
-
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum HotkeyError {
-  #[error("channel error")]
-  ChannelError(#[from] mpsc::SendError<HotkeyMessage>),
-  // #[error("lock error")]
-  // LockError(#[from] mpsc::SendError<HotkeyMessage>),
-  #[error("unknown error")]
-  Unknown,
-}
-
-impl Listener {
-  pub fn new() -> Listener {
+impl HotkeyListener<ListenerID> for Listener {
+  fn new() -> Listener {
     let hotkeys = Arc::new(Mutex::new(
       HashMap::<ListenerID, Box<ListenerCallback>>::new(),
     ));
@@ -90,6 +65,9 @@ impl Listener {
           Ok(HotkeyMessage::UnregisterHotkey(id)) => {
             let _result = winuser::UnregisterHotKey(0 as HWND, id);
           }
+          Ok(HotkeyMessage::DropThread) => {
+            break;
+          }
           Err(_) => {}
         }
 
@@ -104,12 +82,12 @@ impl Listener {
     }
   }
 
-  pub fn register_hotkey<CB: 'static + FnMut() + Send>(
+  fn register_hotkey<CB: 'static + FnMut() + Send>(
     &mut self,
     modifiers: u32,
     key: u32,
     handler: CB,
-  ) -> Result<ListenerID, String> {
+  ) -> Result<ListenerID, HotkeyError> {
     self.last_id += 1;
     let id = self.last_id;
     self
@@ -120,7 +98,7 @@ impl Listener {
     Ok(id)
   }
 
-  pub fn unregister_hotkey(&mut self, id: i32) -> Result<(), HotkeyError> {
+  fn unregister_hotkey(&mut self, id: i32) -> Result<(), HotkeyError> {
     self.sender.send(HotkeyMessage::UnregisterHotkey(id))?;
     self.handlers.lock().unwrap().remove(&id);
     Ok(())
