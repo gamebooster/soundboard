@@ -13,6 +13,8 @@ jobs:
       run: |
         echo "[profile.release]" >> Cargo.toml
         echo "lto = true" >> Cargo.toml
+    - name: Install alsa
+      run: sudo apt-get install alsa alsa-tools libasound2-dev
     - name: Build soundboard binary
       run: cargo build --verbose --release
     - name: Archive soundboard binary
