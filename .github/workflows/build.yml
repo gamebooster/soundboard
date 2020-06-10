@@ -40,12 +40,12 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-debian-linux-gnu
-        path: target/release/soundboard/sounds/
+        path: target/release/sounds/
     - name: Archive soundboard default config
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-debian-linux-gnu
-        path: target/release/soundboard/soundboard.toml
+        path: target/release/soundboard.toml
 
   windows:
     runs-on: windows-latest
@@ -73,7 +73,7 @@ jobs:
     - name: Build soundboard binary
       run: cargo build --verbose --release
     - name: Archive soundboard binary
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-pc-windows-msvc
         path: target/release/soundboard.exe
@@ -81,12 +81,12 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-pc-windows-msvc
-        path: target/release/soundboard/sounds/
+        path: target/release/sounds/
     - name: Archive soundboard default config
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-pc-windows-msvc
-        path: target/release/soundboard/soundboard.toml
+        path: target/release/soundboard.toml
 
   macos:
     runs-on: macOS-latest
@@ -126,9 +126,9 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-apple-darwin
-        path: target/release/soundboard/sounds/
+        path: target/release/sounds/
     - name: Archive soundboard default config
       uses: actions/upload-artifact@v2
       with:
         name: soundboard-x86_64-apple-darwin
-        path: target/release/soundboard/soundboard.toml
+        path: target/release/soundboard.toml
