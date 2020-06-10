@@ -1,12 +1,12 @@
 use iced::{
-    button, executor, keyboard, pane_grid, scrollable, slider, Align, Application, Button, Column,
-    Command, Container, Element, Length, PaneGrid, ProgressBar, Row, Scrollable, Settings, Slider,
-    Space, Subscription, Text, VerticalAlignment,
+    button, executor, futures, keyboard, pane_grid, scrollable, slider, Align, Application, Button,
+    Column, Command, Container, Element, Length, PaneGrid, ProgressBar, Row, Scrollable, Settings,
+    Slider, Space, Subscription, Text, VerticalAlignment,
 };
 
+use crossbeam_channel;
 use log::{error, info, trace, warn};
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, SyncSender};
 
 use super::config;
 use super::sound;
@@ -15,6 +15,7 @@ mod list_view;
 mod panel_view;
 mod style;
 use super::hotkey;
+use std::time::{Duration, Instant};
 
 #[derive(PartialEq)]
 enum LayoutStyle {
@@ -32,7 +33,8 @@ struct SoundboardButton {
 pub struct Soundboard {
     panel_view: panel_view::PanelView,
     list_view: list_view::ListView,
-    sound_sender: SyncSender<sound::Message>,
+    sound_sender: crossbeam_channel::Sender<sound::Message>,
+    sound_receiver: crossbeam_channel::Receiver<sound::Message>,
     stop_button_state: button::State,
     toggle_layout_button_state: button::State,
     volume_slider_state: slider::State,
@@ -46,23 +48,29 @@ pub struct Soundboard {
 #[derive(Debug, Clone)]
 pub enum SoundboardMessage {
     PlaySound(String),
+    StopSound(String),
     StopAllSound,
     VolumeChanged(f32),
     HandlePanelViewMessage(panel_view::PanelViewMessage),
     HandleListViewMessage(list_view::ListViewMessage),
     ToggleLayout,
     ShowSoundboard(String),
+    Tick,
 }
 
 impl Application for Soundboard {
     type Executor = executor::Default;
     type Message = SoundboardMessage;
-    type Flags = (SyncSender<sound::Message>, config::MainConfig);
+    type Flags = (
+        crossbeam_channel::Sender<sound::Message>,
+        crossbeam_channel::Receiver<sound::Message>,
+        config::MainConfig,
+    );
 
     fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
         let start_soundboard_index = 0;
 
-        let mut soundboard_buttons = flags.1.clone().soundboards.iter().fold(
+        let mut soundboard_buttons = flags.2.clone().soundboards.iter().fold(
             Vec::<SoundboardButton>::new(),
             |mut buttons, soundboard| {
                 buttons.push(SoundboardButton {
@@ -78,7 +86,8 @@ impl Application for Soundboard {
 
         let mut soundboard = Soundboard {
             sound_sender: flags.0,
-            config: flags.1.clone(),
+            sound_receiver: flags.1,
+            config: flags.2.clone(),
             soundboard_button_states: soundboard_buttons,
             stop_button_state: button::State::new(),
             toggle_layout_button_state: button::State::new(),
@@ -104,12 +113,32 @@ impl Application for Soundboard {
 
     fn update(&mut self, message: SoundboardMessage) -> Command<SoundboardMessage> {
         match message {
+            SoundboardMessage::Tick => {
+                self.sound_sender
+                    .send(sound::Message::PlayStatus(Vec::new()))
+                    .expect("sound channel error");
+                match self.sound_receiver.try_recv() {
+                    Ok(sound::Message::PlayStatus(sounds)) => {
+                        self.list_view.active_sounds = sounds.clone();
+                        self.panel_view.active_sounds = sounds;
+                    }
+                    _ => {}
+                }
+            }
             SoundboardMessage::PlaySound(sound_path) => {
                 if let Err(err) = self.sound_sender.send(sound::Message::PlaySound(
                     sound_path,
                     sound::SoundDevices::Both,
                 )) {
                     error!("failed to play sound {}", err);
+                };
+            }
+            SoundboardMessage::StopSound(sound_path) => {
+                if let Err(err) = self
+                    .sound_sender
+                    .send(sound::Message::StopSound(sound_path))
+                {
+                    error!("failed to stop sound {}", err);
                 };
             }
             SoundboardMessage::StopAllSound => {
@@ -196,6 +225,8 @@ impl Application for Soundboard {
             SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
                 if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
                     self.update(SoundboardMessage::PlaySound(path));
+                } else if let panel_view::PanelViewMessage::StopSound(path) = panel_view_message {
+                    self.update(SoundboardMessage::StopSound(path));
                 } else {
                     self.panel_view.update(panel_view_message);
                 }
@@ -214,7 +245,7 @@ impl Application for Soundboard {
     }
 
     fn subscription(&self) -> Subscription<SoundboardMessage> {
-        Subscription::none()
+        every(Duration::from_millis(10)).map(|_| SoundboardMessage::Tick)
     }
 
     fn view(&mut self) -> Element<SoundboardMessage> {
@@ -347,5 +378,38 @@ impl Application for Soundboard {
             .height(Length::Fill)
             .padding(10)
             .into()
+    }
+}
+
+pub fn every(duration: std::time::Duration) -> iced::Subscription<std::time::Instant> {
+    iced::Subscription::from_recipe(Every(duration))
+}
+
+struct Every(std::time::Duration);
+
+impl<H, E> iced_native::subscription::Recipe<H, E> for Every
+where
+    H: std::hash::Hasher,
+{
+    type Output = std::time::Instant;
+
+    fn hash(&self, state: &mut H) {
+        use std::hash::Hash;
+
+        std::any::TypeId::of::<Self>().hash(state);
+        self.0.hash(state);
+    }
+
+    fn stream(
+        self: Box<Self>,
+        _input: futures::stream::BoxStream<'static, E>,
+    ) -> futures::stream::BoxStream<'static, Self::Output> {
+        use futures::stream::StreamExt;
+
+        let start = tokio::time::Instant::now() + self.0;
+
+        tokio::time::interval_at(start, self.0)
+            .map(|_| std::time::Instant::now())
+            .boxed()
     }
 }

@@ -15,14 +15,13 @@ use log::{error, info, trace, warn};
 use ::hotkey as hotkeyExt;
 use clap::{crate_authors, crate_version, App, Arg};
 use cpal::traits::{DeviceTrait, HostTrait};
+use crossbeam_channel;
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Container, Element, Length, Row,
     Settings, Subscription, Text,
 };
 use std::env;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender, SyncSender};
 
 mod config;
 mod download;
@@ -46,14 +45,25 @@ pub fn main() -> Result<()> {
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
     // println!("{:#?}", config_file);
 
-    let (tx, rx): (SyncSender<sound::Message>, Receiver<sound::Message>) = mpsc::sync_channel(10);
+    let (sound_sender, gui_receiver): (
+        crossbeam_channel::Sender<sound::Message>,
+        crossbeam_channel::Receiver<sound::Message>,
+    ) = crossbeam_channel::unbounded();
+
+    let (gui_sender, sound_receiver): (
+        crossbeam_channel::Sender<sound::Message>,
+        crossbeam_channel::Receiver<sound::Message>,
+    ) = crossbeam_channel::unbounded();
 
     let (input_device_index, output_device_index, loop_device_index) =
         config::parse_devices(&config_file, &arguments)?;
 
+    let sound_receiver_clone = sound_receiver.clone();
+    let sound_sender_clone = sound_sender.clone();
     std::thread::spawn(move || -> Result<()> {
         sound::init_sound(
-            rx,
+            sound_receiver_clone,
+            sound_sender_clone,
             input_device_index,
             output_device_index,
             loop_device_index,
@@ -73,14 +83,14 @@ pub fn main() -> Result<()> {
                 }
             }
         };
-        let tx_clone = tx.clone();
+        let gui_sender_clone = gui_sender.clone();
         hotkey_manager
             .register(stop_hotkey, move || {
-                let _result = tx_clone.send(sound::Message::StopAll);
+                let _result = gui_sender_clone.send(sound::Message::StopAll);
             })
             .map_err(|_s| anyhow!("register key"))?;
 
-        let tx_clone = tx.clone();
+        let gui_sender_clone = gui_sender.clone();
         // only register hotkeys for first soundboard in no-gui-mode
         for sound in config_file.soundboards[0]
             .sounds
@@ -91,7 +101,7 @@ pub fn main() -> Result<()> {
                 continue;
             }
             let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
-            let tx_clone = tx_clone.clone();
+            let tx_clone = gui_sender_clone.clone();
             let _result = hotkey_manager.register(hotkey, move || {
                 if let Err(err) = tx_clone.send(sound::Message::PlaySound(
                     sound.path.clone(),
@@ -107,8 +117,7 @@ pub fn main() -> Result<()> {
     }
 
     let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
-    let tx_clone = tx;
-    let mut settings = Settings::with_flags((tx_clone, config_file));
+    let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file));
     settings.window.size = (500, 350);
     gui::Soundboard::run(settings);
     Ok(())

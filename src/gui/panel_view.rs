@@ -8,16 +8,9 @@ use super::config;
 use super::style;
 use log::{error, info, trace, warn};
 
-#[derive(Debug, Clone, Default)]
-struct SoundButton {
-    state: button::State,
-    name: String,
-    path: String,
-    hotkey: String,
-}
-
 pub struct PanelView {
     panes: pane_grid::State<PanelButtonView>,
+    pub active_sounds: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +18,7 @@ pub enum PanelViewMessage {
     Dragged(pane_grid::DragEvent),
     Resized(pane_grid::ResizeEvent),
     PlaySound(String),
+    StopSound(String),
 }
 
 impl PanelView {
@@ -69,7 +63,10 @@ impl PanelView {
             panels.push(new_panel);
         });
         pane_state.close(&first);
-        PanelView { panes: pane_state }
+        PanelView {
+            panes: pane_state,
+            active_sounds: Vec::new(),
+        }
     }
 
     pub fn update(&mut self, message: PanelViewMessage) -> Command<PanelViewMessage> {
@@ -81,7 +78,7 @@ impl PanelView {
                 self.panes.swap(&pane, &target);
             }
             PanelViewMessage::Dragged(_) => {}
-            PanelViewMessage::PlaySound(_) => {
+            _ => {
                 unimplemented!();
             }
         }
@@ -89,6 +86,17 @@ impl PanelView {
     }
 
     pub fn view(&mut self) -> Element<PanelViewMessage> {
+        let sounds = self.active_sounds.clone();
+        self.panes.iter_mut().for_each(|(_, state)| {
+            state.playing = {
+                if sounds.contains(&state.sound_button.path) {
+                    true
+                } else {
+                    false
+                }
+            };
+        });
+
         PaneGrid::new(&mut self.panes, |pane, content, focus| {
             content.view(pane, focus)
         })
@@ -101,10 +109,19 @@ impl PanelView {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+struct SoundButton {
+    state: button::State,
+    name: String,
+    path: String,
+    hotkey: String,
+}
+
 struct PanelButtonView {
-    //scroll: scrollable::State,
     sound_button: SoundButton,
+    stop_button_state: button::State,
     background_color: iced::Color,
+    pub playing: bool,
 }
 
 impl PanelButtonView {
@@ -112,10 +129,10 @@ impl PanelButtonView {
         //let random_color= RandomColor::new()
         //.luminosity(Luminosity::Light).to_rgb_array();
         PanelButtonView {
-            //scroll: scrollable::State::new(),
             sound_button,
+            stop_button_state: button::State::new(),
             background_color: iced::Color::from_rgb(0.2, 0.8, 0.2),
-            //iced::Color::from_rgb((random_color[0] as f32) / 255.0, (random_color[1] as f32) / 255.0, (random_color[2] as f32) / 255.0)
+            playing: false, //iced::Color::from_rgb((random_color[0] as f32) / 255.0, (random_color[1] as f32) / 255.0, (random_color[2] as f32) / 255.0)
         }
     }
     fn view(
@@ -124,16 +141,11 @@ impl PanelButtonView {
         _focus: Option<pane_grid::Focus>,
     ) -> Element<PanelViewMessage> {
         let PanelButtonView {
-            //scroll: _,
             sound_button,
+            stop_button_state,
             background_color,
+            playing,
         } = self;
-
-        // let content = Scrollable::new(scroll)
-        //     .width(Length::Fill)
-        //     .spacing(10)
-        //     .align_items(Align::Center)
-        //     .push(Text::new("Pane").size(30));
 
         let column = Column::new()
             .spacing(5)
@@ -156,11 +168,37 @@ impl PanelButtonView {
             .padding(3)
             .center_y();
 
-        Button::new(&mut sound_button.state, cont)
-            .on_press(PanelViewMessage::PlaySound(sound_button.path.clone()))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(style::Button::Constructive(*background_color))
-            .into()
+        if *playing == false {
+            Button::new(&mut sound_button.state, cont)
+                .on_press(PanelViewMessage::PlaySound(sound_button.path.clone()))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .style(style::Button::Constructive(*background_color))
+                .into()
+        } else {
+            let button_play = Button::new(&mut sound_button.state, cont)
+                .on_press(PanelViewMessage::PlaySound(sound_button.path.clone()))
+                .width(Length::Fill)
+                .height(Length::FillPortion(10))
+                .style(style::Button::Constructive(*background_color));
+
+            Column::new()
+                .spacing(0)
+                .align_items(Align::Center)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .push(button_play)
+                .push(
+                    Button::new(
+                        stop_button_state,
+                        Text::new("Stop").horizontal_alignment(iced::HorizontalAlignment::Center),
+                    )
+                    .on_press(PanelViewMessage::StopSound(sound_button.path.clone()))
+                    .width(Length::Fill)
+                    .height(Length::FillPortion(3))
+                    .style(style::Button::Destructive),
+                )
+                .into()
+        }
     }
 }

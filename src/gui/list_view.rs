@@ -19,6 +19,7 @@ struct SoundButton {
 pub struct ListView {
     scroll_state: scrollable::State,
     buttons: Vec<SoundButton>,
+    pub active_sounds: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,7 @@ impl ListView {
         ListView {
             scroll_state: scrollable::State::new(),
             buttons,
+            active_sounds: Vec::new(),
         }
     }
 

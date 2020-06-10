@@ -1,23 +1,17 @@
+use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-
 use cpal::{Device, Devices, Host};
-
+use crossbeam_channel;
+use log::{error, info, trace, warn};
+use ringbuf::RingBuffer;
+use rodio::source::UniformSourceIterator;
+use rodio::{Sink, Source};
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::str::FromStr;
-//use std::thread;
-use std::sync::mpsc;
-use std::sync::mpsc::{Receiver, Sender};
-//use std::fs::File;
-use anyhow::{anyhow, Context, Result};
-use log::{error, info, trace, warn};
 use std::sync::Arc;
 use std::thread::JoinHandle;
-
-use ringbuf::RingBuffer;
-use rodio::source::UniformSourceIterator;
-use rodio::{Sink, Source};
 
 const LATENCY_MS: f32 = 150.0;
 
@@ -86,7 +80,8 @@ fn get_default_output_device() -> Result<Device> {
 }
 
 pub fn init_sound<T: FindDevice>(
-    rx: Receiver<Message>,
+    receiver: crossbeam_channel::Receiver<Message>,
+    sender: crossbeam_channel::Sender<Message>,
     input_device_identifier: Option<T>,
     output_device_identifier: Option<T>,
     loop_device_identifier: T,
@@ -118,7 +113,12 @@ pub fn init_sound<T: FindDevice>(
     let shared_loop_device_clone = shared_loop_device.clone();
 
     std::thread::spawn(move || {
-        play_thread(rx, shared_loop_device_clone, shared_output_device);
+        play_thread(
+            receiver,
+            sender,
+            shared_loop_device_clone,
+            shared_output_device,
+        );
     });
 
     std::thread::spawn(move || -> Result<()> {
@@ -145,6 +145,7 @@ pub enum Message {
     StopSound(SoundPath),
     StopAll,
     SetVolume(f32),
+    PlayStatus(Vec<SoundPath>),
 }
 
 fn complete_sound_path(sound_path: &str) -> Result<PathBuf> {
@@ -192,12 +193,17 @@ fn insert_sink_with_file(
     Ok(())
 }
 
-fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: Arc<Device>) {
+fn play_thread(
+    receiver: crossbeam_channel::Receiver<Message>,
+    sender: crossbeam_channel::Sender<Message>,
+    loop_device: Arc<Device>,
+    output_device: Arc<Device>,
+) {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
 
     loop {
-        let receive = rx.recv();
+        let receive = receiver.recv();
 
         match receive {
             Ok(message) => match message {
@@ -212,7 +218,7 @@ fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: A
                         ) {
                             Ok(path) => path,
                             Err(err) => {
-                                error!("failed to inserrt output sink {}", err);
+                                error!("failed to insert sound at output sink {}", err);
                                 continue;
                             }
                         };
@@ -226,7 +232,7 @@ fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: A
                         ) {
                             Ok(path) => path,
                             Err(err) => {
-                                error!("failed to insert loop sink {}", err);
+                                error!("failed to insert sound at loop sink {}", err);
                                 continue;
                             }
                         };
@@ -257,13 +263,25 @@ fn play_thread(rx: Receiver<Message>, loop_device: Arc<Device>, output_device: A
                         }
                     }
                 }
+                Message::PlayStatus(_) => {
+                    let mut sounds = Vec::new();
+                    for (id, _) in sinks.iter() {
+                        sounds.push(id.clone());
+                    }
+                    sender
+                        .send(Message::PlayStatus(sounds))
+                        .expect("sound channel error");
+                }
             },
             Err(err) => {
                 error!("message receive error {}", err);
             }
         };
 
-        sinks.retain(|_, local_sinks| local_sinks.iter().any(|s| !s.empty()));
+        sinks.retain(|_, local_sinks| {
+            let playing = local_sinks.iter().any(|s| !s.empty());
+            playing
+        });
     }
 }
 

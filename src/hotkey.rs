@@ -20,7 +20,7 @@ impl HotkeyManager {
         };
         hotkey_manager
     }
-    pub fn register<Callback: 'static + Fn() + Send + Sync>(
+    pub fn register<Callback: 'static + Fn() + Send>(
         &mut self,
         hotkey: config::Hotkey,
         callback: Callback,

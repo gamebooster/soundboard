@@ -474,6 +474,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cced8691919c02aac3cb0a1bc2e9b73d89e832bf9a06fc579d4e71b68a2da061"
+dependencies = [
+ "crossbeam-utils",
+ "maybe-uninit",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1195,6 +1205,7 @@ checksum = "dd2d8494c0b2a1e1977421b4c094fdcd32d79c27fb9b3bbf1021c62de9eb6986"
 dependencies = [
  "futures 0.3.5",
  "log",
+ "tokio",
  "wasm-bindgen-futures 0.4.13",
 ]
 
@@ -2544,10 +2555,12 @@ dependencies = [
  "anyhow",
  "clap",
  "cpal",
+ "crossbeam-channel",
  "env_logger",
  "fs_extra",
  "hotkey",
  "iced",
+ "iced_native",
  "log",
  "random_color",
  "regex",
@@ -2557,6 +2570,7 @@ dependencies = [
  "serde",
  "strum",
  "strum_macros",
+ "tokio",
  "toml",
 ]
 
