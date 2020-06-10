@@ -1,5 +1,10 @@
 # soundboard
 
+![Build](https://github.com/gamebooster/soundboard/workflows/Build/badge.svg)
+
+cross-platform desktop application to spice up your audio/video conferences
+
+
 ![](https://i.imgur.com/5OBElu2.png)
 
 
@@ -7,27 +12,52 @@
 
 soundboard.toml
 ````
-# input_device = 0 # optional
-# output_device = 1 # optional
-# loopback_device = 2 # optional
+# input_device = 0
+# output_device = 1
+# loopback_device = 2
 
-[[sounds]] 
-name = "Nicht so tief Rüdiger!" # display name
-path = "nicht-so-tief-rudiger.mp3" # relative from sounds directory from exe path, formats: mp3, wav, flac, ogg
-hotkey_modifier = ["CTRL"] # CTRL, SHIFT, SUPER, ALT possible
-hotkey_key = "P" # numbers are KEY_9, special keys: BACKSPACE etc
+stop_hotkey = "ALT-S"
 
-[[sounds]] # how many you like
-name = "vodka_dance"
-path = "vodka/vodka_dance.mp3"
-hotkey_modifier = ["CTRL", "SHIFT"]
-hotkey_key = "P"
+[[soundboard]]
+name = "favorites" # display name for soundboard
+
+    [[soundboard.sound]] # array of sounds
+    name = "Nicht so tief, Rüdiger!" # display name
+    path = "nicht-so-tief-rudiger.mp3" # relative from sounds directory from exe path, formats: mp3, wav, flac, ogg
+    hotkey = "CTRL-P" # optional hotkey CTRL,SHIFT,SUPER,ALT possible
+
+    [[soundboard.sound]]
+    name = "Razor1911 Vodka Dance"
+    path = "vodka/vodka_dance.mp3"
+    hotkey = "CTRL-SHIFT-BACKSPACE"
+
+    [[soundboard.sound]]
+    name = "It's time to duel"
+    path = "its-time-to-duel.ogg"
+    hotkey = "ALT-9"
+
+
+[[soundboard]] # multiple soundboards
+name = "Myinstants.com"
+path = "myinstants_soundboard.toml" # include from file
 ````
 
-expected directory structure
+myinstants_soundboard.toml
+````
+[[sound]]
+name="Sad Trombone"
+path="https://www.myinstants.com//media/sounds/sadtrombone.swf.mp3"
+
+[[sound]]
+name="Dramatic Chipmunk"
+path="https://www.myinstants.com//media/sounds/dramatic.swf.mp3"
+````
+
+expected directory structure for config file from above
 ````
 soundboard{.exe}
 soundboard.toml
+myinstants_soundboard.toml
 sounds/
   nicht-so-tief-rudiger.mp3
   vodka/
@@ -67,7 +97,7 @@ sounds/
 ## default usage
 
 1. run `soundboard --print-possible-devices`
-2. run `soundboard --loopback-device <index>` 
+2. run `soundboard --loopback-device <index>` or put in config file
     * loopback-device should be the installed virtual output device 
 3. Press hotkeys or use gui to play sounds
 4. `???`
