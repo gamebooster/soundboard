@@ -6,8 +6,13 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly]
     steps:
     - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - uses: actions/cache@v2
       with:
@@ -22,6 +27,8 @@ jobs:
         echo "lto = true" >> Cargo.toml
     - name: Install alsa
       run: sudo apt-get install alsa alsa-tools libasound2-dev
+    - name: Build debug soundboard binary
+      run: cargo build --verbose
     - name: Build soundboard binary
       run: cargo build --verbose --release
     - name: Archive soundboard binary
@@ -32,13 +39,20 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly]
     steps:
     - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Enable Link Time Optimizations
       run: |
         echo "[profile.release]" >> Cargo.toml
         echo "lto = true" >> Cargo.toml
+    - name: Build debug soundboard binary
+      run: cargo build --verbose
     - name: Build soundboard binary
       run: cargo build --verbose --release
     - name: Archive soundboard binary
@@ -49,13 +63,22 @@ jobs:
 
   macos:
     runs-on: macOS-latest
+    strategy:
+      matrix:
+        rust: [stable, nightly]
     steps:
     - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@master
     - name: Enable Link Time Optimizations
       run: |
         echo "[profile.release]" >> Cargo.toml
         echo "lto = true" >> Cargo.toml
+    - name: Build debug soundboard binary
+      env:
+        MACOSX_DEPLOYMENT_TARGET: 10.14
+      run: cargo build --verbose
     - name: Build soundboard binary
       env:
         MACOSX_DEPLOYMENT_TARGET: 10.14
