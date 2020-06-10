@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>soundboard</title>
+    <script src="https://unpkg.com/vue"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <p>Active sounds: {{ activeSounds }}</p>
+        <p>Last request answer: {{ lastRequestAnswer }}</p>
+        <button v-on:click="playNichtSoTief">Spiel Nicht so tief, Ruediger!</button>
+        <button v-on:click="stopAllSound">Stop</button>
+    </div>
+
+    <script>
+        var app = new Vue({
+            el: '#app',
+            data: {
+                activeSounds: [],
+                lastRequestAnswer: ""
+            },
+            created: function () {
+                const self = this;
+                setInterval(function () {
+                    axios
+                        .get('/api/sounds/active')
+                        .then(response => (self.activeSounds = response.data))
+                }, 500);
+            },
+            methods: {
+                playNichtSoTief: function () {
+                    axios
+                        .get('/api/sounds/play/nicht-so-tief-rudiger.mp3')
+                        .then(response => (this.lastRequestAnswer = response.data))
+                },
+                stopAllSound: function () {
+                    axios
+                        .get('/api/sounds/stop')
+                        .then(response => (this.lastRequestAnswer = response.data))
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
