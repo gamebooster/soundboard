@@ -6,9 +6,15 @@ use std::sync::Mutex;
 use thiserror::Error;
 
 #[cfg(target_os = "linux")]
+use x11_dl::xlib;
+
+#[cfg(target_os = "linux")]
 pub type ListenerID = (i32, u32);
 
 #[cfg(target_os = "windows")]
+pub type ListenerID = i32;
+
+#[cfg(target_os = "macos")]
 pub type ListenerID = i32;
 
 pub trait HotkeyListener<ListenerID> {
@@ -37,6 +43,12 @@ pub struct Listener {
     pub(crate) sender: Sender<HotkeyMessage>,
 }
 
+#[cfg(target_os = "macos")]
+pub struct Listener {
+    pub(crate) handlers: ListenerMap,
+    pub(crate) sender: Sender<HotkeyMessage>,
+}
+
 pub type ListenerCallback = dyn FnMut() + 'static + Send;
 pub(crate) type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
 
@@ -54,12 +66,4 @@ pub enum HotkeyError {
     // LockError(#[from] mpsc::SendError<HotkeyMessage>),
     #[error("unknown error")]
     Unknown,
-}
-
-impl Drop for Listener {
-    fn drop(&mut self) {
-        self.sender
-            .send(HotkeyMessage::DropThread)
-            .expect("cant close thread");
-    }
 }

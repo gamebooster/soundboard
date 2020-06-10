@@ -104,3 +104,11 @@ impl HotkeyListener<ListenerID> for Listener {
         Ok(())
     }
 }
+
+impl Drop for Listener {
+    fn drop(&mut self) {
+        self.sender
+            .send(HotkeyMessage::DropThread)
+            .expect("cant close thread");
+    }
+}

@@ -1,5 +1,7 @@
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(windows)]
 mod windows;
 
@@ -13,6 +15,11 @@ pub use traits::ListenerID;
 pub use linux::keys;
 #[cfg(target_os = "linux")]
 pub use linux::modifiers;
+
+#[cfg(target_os = "macos")]
+pub use macos::keys;
+#[cfg(target_os = "macos")]
+pub use macos::modifiers;
 
 #[cfg(windows)]
 pub use windows::keys;
