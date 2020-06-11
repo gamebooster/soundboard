@@ -247,6 +247,42 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
         soundboard.sounds = Some(sounds);
     }
 
+    let mut soundboards_path = std::env::current_exe()?;
+    soundboards_path.pop();
+    soundboards_path.push("soundboards");
+
+    for entry in std::fs::read_dir(&soundboards_path)? {
+        if entry.is_err() {
+            continue;
+        }
+        let path = entry.unwrap().path();
+        let extension: &str = path
+            .extension()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
+
+        if extension == "toml" {
+            let toml_str = fs::read_to_string(&path)?;
+            let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
+            if soundboard_config.sounds.is_none() {
+                return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
+            }
+            let mut sounds = soundboard_config.sounds.unwrap();
+            for sound in &mut sounds {
+                let relative_path = Path::new(&sound.path);
+                if relative_path.is_absolute() || sound.path.starts_with("http") {
+                    continue;
+                }
+                let mut new_path = soundboards_path.clone();
+                new_path.push(relative_path);
+                sound.path = new_path.to_str().unwrap().to_string();
+            }
+            soundboard_config.sounds = Some(sounds);
+            toml_config.soundboards.push(soundboard_config);
+        }
+    }
+
     info!("Loaded config file from {}", path.display());
     Ok(toml_config)
 }

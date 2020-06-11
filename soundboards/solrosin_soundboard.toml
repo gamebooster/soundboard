@@ -1,3 +1,10 @@
+name = "Duke Nukem"
+
+[[sound]]
+name = "Ich rascht aus"
+path = "solrosin_soundboard/ich-rascht-aus.flac"
+hotkey = "ALT-8"
+
 [[sound]]
 name="Balls of steel"
 path="https://www.soundboard.com/handler/playTrack.ashx?id=54065"

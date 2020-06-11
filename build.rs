@@ -6,12 +6,17 @@ fn main() {
     let target_dir_path = env::var("OUT_DIR").unwrap();
     copy_file(&target_dir_path, "soundboard.toml");
     copy_file(&target_dir_path, "myinstants_soundboard.toml");
-    copy_file(&target_dir_path, "solrosin_soundboard.toml");
     let mut copy_options = fs_extra::dir::CopyOptions::new();
     copy_options.overwrite = true;
     copy_options.skip_exist = true;
     fs_extra::dir::copy(
         "sounds",
+        Path::new(&target_dir_path).join("..").join("..").join(".."),
+        &copy_options,
+    )
+    .expect("copy failed");
+    fs_extra::dir::copy(
+        "soundboards",
         Path::new(&target_dir_path).join("..").join("..").join(".."),
         &copy_options,
     )

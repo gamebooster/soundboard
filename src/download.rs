@@ -22,7 +22,6 @@ pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<S
         } else {
             let mut path = std::env::current_exe()?;
             path.pop();
-            path.push("sounds");
             path.push(&sound.path);
             path.to_str().unwrap().into()
         }

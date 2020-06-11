@@ -9,22 +9,22 @@ name = "default"
 
     [[soundboard.sound]]
     name = "Nicht so tief, Rüdiger!"
-    path = "nicht-so-tief-rudiger.mp3"
+    path = "sounds/nicht-so-tief-rudiger.mp3"
     hotkey = "CTRL-P"
 
     [[soundboard.sound]]
     name = "Razor1911 Vodka Dance"
-    path = "vodka/vodka_dance.mp3" # later xm
+    path = "sounds/vodka/vodka_dance.mp3" # later xm
     hotkey = "CTRL-SHIFT-BACKSPACE"
 
     [[soundboard.sound]]
     name = "It's time to duel"
-    path = "its-time-to-duel.ogg"
+    path = "sounds/its-time-to-duel.ogg"
     hotkey = "ALT-9"
 
     [[soundboard.sound]]
     name = "Ich rascht aus"
-    path = "ich-rascht-aus.flac"
+    path = "sounds/ich-rascht-aus.flac"
     hotkey = "ALT-8"
 
     [[soundboard.sound]]
@@ -51,10 +51,6 @@ name = "default"
     [[soundboard.sound]]
     name="Kann es sein das du Dumm bist"
     path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
-
-[[soundboard]]
-name = "Duke Nukem"
-path = "solrosin_soundboard.toml"
 
 [[soundboard]]
 name = "Myinstants.com"
