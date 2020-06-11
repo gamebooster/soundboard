@@ -10,15 +10,15 @@ use log::{error, info, trace, warn};
 
 pub struct PanelView {
     panes: pane_grid::State<PanelButtonView>,
-    pub active_sounds: Vec<String>,
+    pub active_sounds: Vec<config::SoundConfig>,
 }
 
 #[derive(Debug, Clone)]
 pub enum PanelViewMessage {
     Dragged(pane_grid::DragEvent),
     Resized(pane_grid::ResizeEvent),
-    PlaySound(String),
-    StopSound(String),
+    PlaySound(config::SoundConfig),
+    StopSound(config::SoundConfig),
 }
 
 impl PanelView {
@@ -54,9 +54,8 @@ impl PanelView {
                     &panels[index],
                     PanelButtonView::new(SoundButton {
                         state: button::State::new(),
-                        path: sound.path.clone(),
-                        name: sound.name.clone(),
-                        hotkey: hotkey_string,
+                        config: sound.clone(),
+                        parsed_hotkey: hotkey_string,
                     }),
                 )
                 .unwrap();
@@ -88,13 +87,7 @@ impl PanelView {
     pub fn view(&mut self) -> Element<PanelViewMessage> {
         let sounds = self.active_sounds.clone();
         self.panes.iter_mut().for_each(|(_, state)| {
-            state.playing = {
-                if sounds.contains(&state.sound_button.path) {
-                    true
-                } else {
-                    false
-                }
-            };
+            state.playing = sounds.contains(&state.sound_button.config);
         });
 
         PaneGrid::new(&mut self.panes, |pane, content, focus| {
@@ -112,9 +105,8 @@ impl PanelView {
 #[derive(Debug, Clone, Default)]
 struct SoundButton {
     state: button::State,
-    name: String,
-    path: String,
-    hotkey: String,
+    config: config::SoundConfig,
+    parsed_hotkey: String,
 }
 
 struct PanelButtonView {
@@ -152,12 +144,12 @@ impl PanelButtonView {
             .align_items(Align::Center)
             .width(Length::Fill)
             .push(
-                Text::new(sound_button.name.clone())
+                Text::new(&sound_button.config.name)
                     .size(18)
                     .vertical_alignment(VerticalAlignment::Center),
             )
             .push(
-                Text::new(sound_button.hotkey.clone())
+                Text::new(&sound_button.parsed_hotkey)
                     .size(14)
                     .vertical_alignment(VerticalAlignment::Center),
             );
@@ -170,14 +162,14 @@ impl PanelButtonView {
 
         if *playing == false {
             Button::new(&mut sound_button.state, cont)
-                .on_press(PanelViewMessage::PlaySound(sound_button.path.clone()))
+                .on_press(PanelViewMessage::PlaySound(sound_button.config.clone()))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .style(style::Button::Constructive(*background_color))
                 .into()
         } else {
             let button_play = Button::new(&mut sound_button.state, cont)
-                .on_press(PanelViewMessage::PlaySound(sound_button.path.clone()))
+                .on_press(PanelViewMessage::PlaySound(sound_button.config.clone()))
                 .width(Length::Fill)
                 .height(Length::FillPortion(10))
                 .style(style::Button::Constructive(*background_color));
@@ -193,7 +185,7 @@ impl PanelButtonView {
                         stop_button_state,
                         Text::new("Stop").horizontal_alignment(iced::HorizontalAlignment::Center),
                     )
-                    .on_press(PanelViewMessage::StopSound(sound_button.path.clone()))
+                    .on_press(PanelViewMessage::StopSound(sound_button.config.clone()))
                     .width(Length::Fill)
                     .height(Length::FillPortion(3))
                     .style(style::Button::Destructive),

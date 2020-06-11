@@ -11,20 +11,19 @@ use log::{error, info, trace, warn};
 #[derive(Debug, Clone, Default)]
 struct SoundButton {
     state: button::State,
-    name: String,
-    path: String,
-    hotkey: String,
+    config: config::SoundConfig,
+    parsed_hotkey: String,
 }
 
 pub struct ListView {
     scroll_state: scrollable::State,
     buttons: Vec<SoundButton>,
-    pub active_sounds: Vec<String>,
+    pub active_sounds: Vec<config::SoundConfig>,
 }
 
 #[derive(Debug, Clone)]
 pub enum ListViewMessage {
-    PlaySound(String),
+    PlaySound(config::SoundConfig),
 }
 
 impl ListView {
@@ -44,9 +43,8 @@ impl ListView {
                 };
                 buttons.push(SoundButton {
                     state: button::State::new(),
-                    path: sound.path.clone(),
-                    name: sound.name.clone(),
-                    hotkey: hotkey_string,
+                    config: sound.clone(),
+                    parsed_hotkey: hotkey_string,
                 });
                 buttons
             });
@@ -78,16 +76,20 @@ impl ListView {
                     .padding(10)
                     .spacing(20)
                     .align_items(Align::Center)
-                    .push(Text::new(button.name.clone()))
-                    .push(Text::new(button.hotkey.clone()))
+                    .push(Text::new(&button.config.name))
+                    .push(Text::new(&button.parsed_hotkey))
                     .push(
                         Button::new(&mut button.state, Text::new("Play"))
-                            .on_press(ListViewMessage::PlaySound(button.path.clone()))
+                            .on_press(ListViewMessage::PlaySound(button.config.clone()))
                             .style(style::Button::Constructive(iced::Color::from_rgb(
                                 0.2, 0.8, 0.2,
                             ))),
                     );
-                column.push(Container::new(row_contents).style(style::Container::Entry))
+                column.push(
+                    Container::new(row_contents)
+                        .width(Length::Fill)
+                        .style(style::Container::Entry),
+                )
             },
         );
 

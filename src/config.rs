@@ -37,11 +37,33 @@ pub struct SoundboardConfig {
     pub sounds: Option<Vec<SoundConfig>>,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 pub struct SoundConfig {
     pub name: String,
     pub path: String,
     pub hotkey: Option<String>,
+    #[serde(rename = "header")]
+    pub headers: Option<Vec<HeaderConfig>>,
+}
+
+impl PartialEq for SoundConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path && self.headers == other.headers
+    }
+}
+impl Eq for SoundConfig {}
+
+impl std::hash::Hash for SoundConfig {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
+        self.headers.hash(state);
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Default, Eq)]
+pub struct HeaderConfig {
+    pub name: String,
+    pub value: String,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Eq)]
@@ -288,6 +310,11 @@ pub fn parse_arguments() -> clap::ArgMatches {
                 .about("Print possible devices"),
         )
         .arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"))
+        .arg(
+            Arg::with_name("http-server")
+                .long("http-server")
+                .about("Enable http server API and web app"),
+        )
         .get_matches();
 
     matches

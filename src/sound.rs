@@ -15,6 +15,7 @@ use std::thread::JoinHandle;
 
 const LATENCY_MS: f32 = 150.0;
 
+use super::config;
 use super::download;
 use super::utils;
 
@@ -128,8 +129,7 @@ pub fn init_sound<T: FindDevice>(
     Ok(())
 }
 
-type SoundPath = String;
-type SoundMap = HashMap<SoundPath, Vec<Sink>>;
+type SoundMap = HashMap<config::SoundConfig, Vec<Sink>>;
 
 #[derive(PartialEq)]
 pub enum SoundDevices {
@@ -140,54 +140,37 @@ pub enum SoundDevices {
 
 #[derive(PartialEq)]
 pub enum Message {
-    PlaySound(SoundPath, SoundDevices),
-    #[allow(dead_code)]
-    StopSound(SoundPath),
+    PlaySound(config::SoundConfig, SoundDevices),
+    StopSound(config::SoundConfig),
     StopAll,
     SetVolume(f32),
-    PlayStatus(Vec<SoundPath>),
+    PlayStatus(Vec<config::SoundConfig>),
 }
 
-fn complete_sound_path(sound_path: &str) -> Result<PathBuf> {
-    let path = {
-        if sound_path.starts_with("http") {
-            download::request_file(sound_path.to_string())?
-        } else {
-            let mut path = std::env::current_exe()?;
-            path.pop();
-            path.push("sounds");
-            path.push(sound_path);
-            path
-        }
-    };
-
-    Ok(path)
-}
-
-fn insert_sink_with_file(
+fn insert_sink_with_config(
     device: &Device,
     volume: f32,
-    sound_path: SoundPath,
+    sound_config: config::SoundConfig,
     sinks: &mut SoundMap,
 ) -> Result<()> {
-    let path = complete_sound_path(&sound_path)?;
-
-    let file = std::fs::File::open(&path)?;
-
     info!(
-        "Playing sound path: {} on device: {}",
-        sound_path,
+        "Playing sound config: {:?} on device: {}",
+        sound_config,
         device.name().unwrap()
     );
+
+    let local_path = download::get_local_path_from_sound_config(&sound_config)?;
+
+    let file = std::fs::File::open(&local_path)?;
 
     let sink = Sink::new(device);
     sink.set_volume(volume);
     sink.append(rodio::Decoder::new(BufReader::new(file))?);
 
-    if !sinks.contains_key(&sound_path) {
-        sinks.insert(sound_path, vec![sink]);
+    if !sinks.contains_key(&sound_config) {
+        sinks.insert(sound_config, vec![sink]);
     } else {
-        let vec = sinks.get_mut(&sound_path).unwrap();
+        let vec = sinks.get_mut(&sound_config).unwrap();
         vec.push(sink);
     }
     Ok(())
@@ -207,13 +190,13 @@ fn play_thread(
 
         match receive {
             Ok(message) => match message {
-                Message::PlaySound(string_path, sound_devices) => {
+                Message::PlaySound(sound_config, sound_devices) => {
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
-                        match insert_sink_with_file(
+                        match insert_sink_with_config(
                             &*output_device,
                             volume,
-                            string_path.clone(),
+                            sound_config.clone(),
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -224,10 +207,10 @@ fn play_thread(
                         };
                     }
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
-                        match insert_sink_with_file(
+                        match insert_sink_with_config(
                             &*loop_device,
                             volume,
-                            string_path.clone(),
+                            sound_config,
                             &mut sinks,
                         ) {
                             Ok(path) => path,

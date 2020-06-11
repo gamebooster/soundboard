@@ -9,6 +9,7 @@ use log::{error, info, trace, warn};
 use std::path::{Path, PathBuf};
 
 use super::config;
+use super::download;
 use super::sound;
 use std::fmt;
 mod list_view;
@@ -47,8 +48,8 @@ pub struct Soundboard {
 
 #[derive(Debug, Clone)]
 pub enum SoundboardMessage {
-    PlaySound(String),
-    StopSound(String),
+    PlaySound(config::SoundConfig),
+    StopSound(config::SoundConfig),
     StopAllSound,
     VolumeChanged(f32),
     HandlePanelViewMessage(panel_view::PanelViewMessage),
@@ -125,18 +126,18 @@ impl Application for Soundboard {
                     _ => {}
                 }
             }
-            SoundboardMessage::PlaySound(sound_path) => {
+            SoundboardMessage::PlaySound(sound_config) => {
                 if let Err(err) = self.sound_sender.send(sound::Message::PlaySound(
-                    sound_path,
+                    sound_config,
                     sound::SoundDevices::Both,
                 )) {
                     error!("failed to play sound {}", err);
                 };
             }
-            SoundboardMessage::StopSound(sound_path) => {
+            SoundboardMessage::StopSound(sound_config) => {
                 if let Err(err) = self
                     .sound_sender
-                    .send(sound::Message::StopSound(sound_path))
+                    .send(sound::Message::StopSound(sound_config))
                 {
                     error!("failed to stop sound {}", err);
                 };
@@ -211,7 +212,7 @@ impl Application for Soundboard {
                     let tx_clone = tx_clone.clone();
                     let _result = self.hotkey_manager.register(hotkey, move || {
                         if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-                            sound.path.clone(),
+                            sound.clone(),
                             sound::SoundDevices::Both,
                         )) {
                             error!("failed to play sound {}", err);

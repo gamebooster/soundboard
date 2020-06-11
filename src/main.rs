@@ -73,12 +73,14 @@ fn main() -> Result<()> {
         )
     });
 
-    let gui_sender_clone = gui_sender.clone();
-    let gui_receiver_clone = gui_receiver.clone();
-    let config_file_clone = config_file.clone();
-    std::thread::spawn(move || {
-        http_server_routine(config_file_clone, gui_sender_clone, gui_receiver_clone);
-    });
+    if arguments.is_present("http-server") {
+        let gui_sender_clone = gui_sender.clone();
+        let gui_receiver_clone = gui_receiver.clone();
+        let config_file_clone = config_file.clone();
+        std::thread::spawn(move || {
+            http_server_routine(config_file_clone, gui_sender_clone, gui_receiver_clone);
+        });
+    }
 
     let config_file_clone = config_file.clone();
     if arguments.is_present("no-gui") {
@@ -134,19 +136,25 @@ async fn http_server_routine(
     let sounds_play_route = warp::path!("sounds" / "play" / String).map(move |path: String| {
         gui_sender_clone
             .send(sound::Message::PlaySound(
-                path.clone(),
+                config::SoundConfig {
+                    path: path.clone(),
+                    ..config::SoundConfig::default()
+                },
                 sound::SoundDevices::Both,
             ))
             .unwrap();
-        format!("PlaySound {}", path)
+        format!("PlaySound {}", &path)
     });
 
     let gui_sender_clone = gui_sender.clone();
     let sounds_stop_route = warp::path!("sounds" / "stop" / String).map(move |path: String| {
         gui_sender_clone
-            .send(sound::Message::StopSound(path.clone()))
+            .send(sound::Message::StopSound(config::SoundConfig {
+                path: path.clone(),
+                ..config::SoundConfig::default()
+            }))
             .unwrap();
-        format!("StopSound {}", path)
+        format!("StopSound {}", &path)
     });
 
     let gui_sender_clone = gui_sender.clone();
@@ -228,7 +236,7 @@ fn no_gui_routine(
         let tx_clone = gui_sender_clone.clone();
         let _result = hotkey_manager.register(hotkey, move || {
             if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-                sound.path.clone(),
+                sound.clone(),
                 sound::SoundDevices::Both,
             )) {
                 error!("failed to play sound {}", err);
