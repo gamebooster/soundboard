@@ -21,6 +21,12 @@ fn main() {
         &copy_options,
     )
     .expect("copy failed");
+    fs_extra::dir::copy(
+        "web",
+        Path::new(&target_dir_path).join("..").join("..").join(".."),
+        &copy_options,
+    )
+    .expect("copy failed");
 }
 
 fn copy_file<S: AsRef<std::ffi::OsStr> + ?Sized, P: Copy + AsRef<Path>>(

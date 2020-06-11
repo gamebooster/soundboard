@@ -33,12 +33,17 @@
             methods: {
                 playNichtSoTief: function () {
                     axios
-                        .get('/api/sounds/play/nicht-so-tief-rudiger.mp3')
+                        .post('/api/sounds/play', {
+                            name: "",
+                            path: "sounds/nicht-so-tief-rudiger.mp3",
+                            hotkey: "",
+                            headers: []
+                        })
                         .then(response => (this.lastRequestAnswer = response.data))
                 },
                 stopAllSound: function () {
                     axios
-                        .get('/api/sounds/stop')
+                        .post('/api/sounds/stop')
                         .then(response => (this.lastRequestAnswer = response.data))
                 }
             }

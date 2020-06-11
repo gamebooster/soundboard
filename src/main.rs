@@ -121,11 +121,10 @@ async fn http_server_routine(
                 .iter()
                 .find(|s| s.name.as_ref().unwrap() == &soundboard_name);
             if let Some(soundboard) = maybe_soundboard {
-                let mut sounds = Vec::new();
-                for sound in soundboard.sounds.as_ref().unwrap() {
-                    sounds.push((sound.name.clone(), sound.path.clone()));
-                }
-                warp::reply::with_status(warp::reply::json(&sounds), warp::http::StatusCode::OK)
+                warp::reply::with_status(
+                    warp::reply::json(&soundboard.sounds),
+                    warp::http::StatusCode::OK,
+                )
             } else {
                 warp::reply::with_status(
                     warp::reply::json(&"no soundboard found with this name"),
@@ -135,35 +134,37 @@ async fn http_server_routine(
         });
 
     let gui_sender_clone = gui_sender.clone();
-    let sounds_play_route = warp::path!("sounds" / "play" / String).map(move |path: String| {
-        gui_sender_clone
-            .send(sound::Message::PlaySound(
-                config::SoundConfig {
-                    path: path.clone(),
-                    ..config::SoundConfig::default()
-                },
-                sound::SoundDevices::Both,
-            ))
-            .unwrap();
-        format!("PlaySound {}", &path)
-    });
+    let sounds_play_route = warp::path!("sounds" / "play")
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(move |sound_config: config::SoundConfig| {
+            gui_sender_clone
+                .send(sound::Message::PlaySound(
+                    sound_config.clone(),
+                    sound::SoundDevices::Both,
+                ))
+                .unwrap();
+            format!("PlaySound {:?}", &sound_config.path)
+        });
 
     let gui_sender_clone = gui_sender.clone();
-    let sounds_stop_route = warp::path!("sounds" / "stop" / String).map(move |path: String| {
-        gui_sender_clone
-            .send(sound::Message::StopSound(config::SoundConfig {
-                path: path.clone(),
-                ..config::SoundConfig::default()
-            }))
-            .unwrap();
-        format!("StopSound {}", &path)
-    });
+    let sounds_stop_route = warp::path!("sounds" / "stop")
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(move |sound_config: config::SoundConfig| {
+            gui_sender_clone
+                .send(sound::Message::StopSound(sound_config.clone()))
+                .unwrap();
+            format!("StopSound {:?}", &sound_config.path)
+        });
 
     let gui_sender_clone = gui_sender.clone();
-    let sounds_stop_all_route = warp::path!("sounds" / "stop").map(move || {
-        gui_sender_clone.send(sound::Message::StopAll).unwrap();
-        format!("StopAllSound")
-    });
+    let sounds_stop_all_route = warp::path!("sounds" / "stop")
+        .and(warp::post())
+        .map(move || {
+            gui_sender_clone.send(sound::Message::StopAll).unwrap();
+            format!("StopAllSound")
+        });
 
     let gui_sender_clone = gui_sender.clone();
     let sounds_active_route = warp::path!("sounds" / "active").map(move || {
