@@ -30,7 +30,7 @@ for index in range(1, 5):
 
 with open("myinstants_soundboard.toml", "w") as text_file:
     for sound in sounds:
-        print("[[sounds]]", file=text_file)
+        print("[[sound]]", file=text_file)
         print(f"name=\"{sound[0]}\"", file=text_file)
         print(f"path=\"{sound[1]}\"", file=text_file)
         print("", file=text_file)

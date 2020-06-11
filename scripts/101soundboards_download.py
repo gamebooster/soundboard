@@ -66,7 +66,7 @@ with open(target_name_toml, "w", encoding="utf-8") as text_file:
         for sound in sounds:
             local_path = f"{target_name}/{sound[0]}.mp3"
             executor.submit(download_file, local_path, sound[1])
-            print("[[sounds]]", file=text_file)
+            print("[[sound]]", file=text_file)
             print(f"name=\"{sound[0]}\"", file=text_file)
             print(f"path=\"{local_path}\" # {sound[1]}", file=text_file)
             print("", file=text_file)

@@ -1,16 +1,8 @@
 # input_device = 0
 # output_device = 1
-# loopback_device = 2
+loopback_device = 0
 
 stop_hotkey = "ALT-S"
-
-# [[soundboard]]
-# name = "Deutsche Memez"
-# path = "deutsche_memes.toml"
-
-[[soundboard]]
-name = "Myinstants.com"
-path = "myinstants_soundboard.toml"
 
 [[soundboard]]
 name = "default"
@@ -59,3 +51,15 @@ name = "default"
     [[soundboard.sound]]
     name="Kann es sein das du Dumm bist"
     path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
+
+[[soundboard]]
+name = "Duke Nukem"
+path = "solrosin_soundboard.toml"
+
+[[soundboard]]
+name = "Myinstants.com"
+path = "myinstants_soundboard.toml"
+
+# [[soundboard]]
+# name = "Deutsche Memez"
+# path = "deutsche_memes.toml"
