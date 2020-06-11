@@ -105,7 +105,7 @@ async fn http_server_routine(
     let config_file_clone = config_file.clone();
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
-        for soundboard in &config_file_clone.soundboards {
+        for soundboard in config_file_clone.soundboards.as_ref().unwrap() {
             soundboards.push(&soundboard.name);
         }
         warp::reply::json(&soundboards)
@@ -116,6 +116,8 @@ async fn http_server_routine(
         warp::path!("soundboards" / String / "sounds").map(move |soundboard_name: String| {
             let maybe_soundboard = config_file_clone
                 .soundboards
+                .as_ref()
+                .unwrap()
                 .iter()
                 .find(|s| s.name.as_ref().unwrap() == &soundboard_name);
             if let Some(soundboard) = maybe_soundboard {
@@ -224,7 +226,7 @@ fn no_gui_routine(
 
     let gui_sender_clone = gui_sender.clone();
     // only register hotkeys for first soundboard in no-gui-mode
-    for sound in config_file.soundboards[0]
+    for sound in config_file.soundboards.unwrap()[0]
         .sounds
         .clone()
         .unwrap_or_default()

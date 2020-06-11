@@ -25,7 +25,7 @@ pub struct MainConfig {
     pub loopback_device: Option<usize>,
     pub stop_hotkey: Option<String>,
     #[serde(rename = "soundboard")]
-    pub soundboards: Vec<SoundboardConfig>,
+    pub soundboards: Option<Vec<SoundboardConfig>>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
@@ -230,7 +230,9 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
     let toml_str = fs::read_to_string(&path)?;
     let mut toml_config: MainConfig = toml::from_str(&toml_str)?;
 
-    for soundboard in &mut toml_config.soundboards {
+    toml_config.soundboards = Some(toml_config.soundboards.unwrap_or_default());
+
+    for soundboard in toml_config.soundboards.as_mut().unwrap() {
         if soundboard.path.is_none() {
             continue;
         }
@@ -279,8 +281,20 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
                 sound.path = new_path.to_str().unwrap().to_string();
             }
             soundboard_config.sounds = Some(sounds);
-            toml_config.soundboards.push(soundboard_config);
+            toml_config
+                .soundboards
+                .as_mut()
+                .unwrap()
+                .push(soundboard_config);
         }
+    }
+
+    if toml_config.soundboards.as_ref().unwrap().is_empty() {
+        return Err(anyhow!(
+            "could not find any soundboards in {:?} or {:?}",
+            path,
+            soundboards_path
+        ));
     }
 
     info!("Loaded config file from {}", path.display());
