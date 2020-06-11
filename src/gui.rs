@@ -118,8 +118,8 @@ impl Application for Soundboard {
                 self.sound_sender
                     .send(sound::Message::PlayStatus(Vec::new()))
                     .expect("sound channel error");
-                match self.sound_receiver.try_recv() {
-                    Ok(sound::Message::PlayStatus(sounds)) => {
+                match self.sound_receiver.try_iter().last() {
+                    Some(sound::Message::PlayStatus(sounds)) => {
                         self.list_view.active_sounds = sounds.clone();
                         self.panel_view.active_sounds = sounds;
                     }
