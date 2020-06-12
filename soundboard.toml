@@ -28,6 +28,11 @@ name = "default"
     hotkey = "ALT-8"
 
     [[soundboard.sound]]
+    name = "oneandonly"
+    path = "sounds/oneandonly.wav"
+    hotkey = "ALT-6"
+
+    [[soundboard.sound]]
     name = "steam incoming"
     path = "https://www.myinstants.com/media/sounds/message_2.mp3"
     hotkey = "ALT-7"

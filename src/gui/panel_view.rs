@@ -10,7 +10,11 @@ use log::{error, info, trace, warn};
 
 pub struct PanelView {
     panes: pane_grid::State<PanelButtonView>,
-    pub active_sounds: Vec<config::SoundConfig>,
+    pub active_sounds: Vec<(
+        config::SoundConfig,
+        std::time::Duration,
+        Option<std::time::Duration>,
+    )>,
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +91,16 @@ impl PanelView {
     pub fn view(&mut self) -> Element<PanelViewMessage> {
         let sounds = self.active_sounds.clone();
         self.panes.iter_mut().for_each(|(_, state)| {
-            state.playing = sounds.contains(&state.sound_button.config);
+            if let Some(sound) = sounds
+                .iter()
+                .find(|(s, _, _)| s == &state.sound_button.config)
+            {
+                state.playing = true;
+                state.play_duration = sound.1;
+                state.total_duration = sound.2.unwrap_or(std::time::Duration::from_secs(0));
+            } else {
+                state.playing = false;
+            }
         });
 
         PaneGrid::new(&mut self.panes, |pane, content, focus| {
@@ -114,6 +127,8 @@ struct PanelButtonView {
     stop_button_state: button::State,
     background_color: iced::Color,
     pub playing: bool,
+    pub play_duration: std::time::Duration,
+    pub total_duration: std::time::Duration,
 }
 
 impl PanelButtonView {
@@ -122,6 +137,8 @@ impl PanelButtonView {
         //.luminosity(Luminosity::Light).to_rgb_array();
         PanelButtonView {
             sound_button,
+            play_duration: std::time::Duration::new(0, 0),
+            total_duration: std::time::Duration::new(0, 0),
             stop_button_state: button::State::new(),
             background_color: iced::Color::from_rgb(0.2, 0.8, 0.2),
             playing: false, //iced::Color::from_rgb((random_color[0] as f32) / 255.0, (random_color[1] as f32) / 255.0, (random_color[2] as f32) / 255.0)
@@ -132,24 +149,17 @@ impl PanelButtonView {
         _pane: pane_grid::Pane,
         _focus: Option<pane_grid::Focus>,
     ) -> Element<PanelViewMessage> {
-        let PanelButtonView {
-            sound_button,
-            stop_button_state,
-            background_color,
-            playing,
-        } = self;
-
         let column = Column::new()
             .spacing(5)
             .align_items(Align::Center)
             .width(Length::Fill)
             .push(
-                Text::new(&sound_button.config.name)
+                Text::new(&self.sound_button.config.name)
                     .size(18)
                     .vertical_alignment(VerticalAlignment::Center),
             )
             .push(
-                Text::new(&sound_button.parsed_hotkey)
+                Text::new(&self.sound_button.parsed_hotkey)
                     .size(14)
                     .vertical_alignment(VerticalAlignment::Center),
             );
@@ -160,19 +170,30 @@ impl PanelButtonView {
             .padding(3)
             .center_y();
 
-        if *playing == false {
-            Button::new(&mut sound_button.state, cont)
-                .on_press(PanelViewMessage::PlaySound(sound_button.config.clone()))
+        if self.playing == false {
+            Button::new(&mut self.sound_button.state, cont)
+                .on_press(PanelViewMessage::PlaySound(
+                    self.sound_button.config.clone(),
+                ))
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .style(style::Button::Constructive(*background_color))
+                .style(style::Button::Constructive(self.background_color))
                 .into()
         } else {
-            let button_play = Button::new(&mut sound_button.state, cont)
-                .on_press(PanelViewMessage::PlaySound(sound_button.config.clone()))
+            let button_play = Button::new(&mut self.sound_button.state, cont)
+                .on_press(PanelViewMessage::PlaySound(
+                    self.sound_button.config.clone(),
+                ))
                 .width(Length::Fill)
                 .height(Length::FillPortion(10))
-                .style(style::Button::Constructive(*background_color));
+                .style(style::Button::Constructive(self.background_color));
+
+            let progress_bar = ProgressBar::new(
+                0.0..=self.total_duration.as_secs_f32(),
+                self.play_duration.as_secs_f32(),
+            )
+            .width(Length::Fill)
+            .height(Length::FillPortion(3));
 
             Column::new()
                 .spacing(0)
@@ -180,12 +201,15 @@ impl PanelButtonView {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .push(button_play)
+                .push(progress_bar)
                 .push(
                     Button::new(
-                        stop_button_state,
+                        &mut self.stop_button_state,
                         Text::new("Stop").horizontal_alignment(iced::HorizontalAlignment::Center),
                     )
-                    .on_press(PanelViewMessage::StopSound(sound_button.config.clone()))
+                    .on_press(PanelViewMessage::StopSound(
+                        self.sound_button.config.clone(),
+                    ))
                     .width(Length::Fill)
                     .height(Length::FillPortion(3))
                     .style(style::Button::Destructive),

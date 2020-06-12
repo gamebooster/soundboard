@@ -28,6 +28,8 @@ strum_macros = "0.18"
 crossbeam-channel = "0.4"
 tokio = { version = "0.2", features = ["macros"] }
 warp = "0.2"
+mp3-duration = "0.1.9"
+ogg_metadata = "0.4"
 
 [build-dependencies]
 fs_extra = "1.1.0"

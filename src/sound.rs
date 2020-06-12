@@ -129,7 +129,8 @@ pub fn init_sound<T: FindDevice>(
     Ok(())
 }
 
-type SoundMap = HashMap<config::SoundConfig, Vec<Sink>>;
+type StartedTime = std::time::Instant;
+type SoundMap = HashMap<config::SoundConfig, (Vec<Sink>, StartedTime, Option<TotalDuration>)>;
 
 #[derive(PartialEq)]
 pub enum SoundDevices {
@@ -138,13 +139,16 @@ pub enum SoundDevices {
     Both,
 }
 
+type PlayDuration = std::time::Duration;
+type TotalDuration = std::time::Duration;
+
 #[derive(PartialEq)]
 pub enum Message {
     PlaySound(config::SoundConfig, SoundDevices),
     StopSound(config::SoundConfig),
     StopAll,
     SetVolume(f32),
-    PlayStatus(Vec<config::SoundConfig>),
+    PlayStatus(Vec<(config::SoundConfig, PlayDuration, Option<TotalDuration>)>),
 }
 
 fn insert_sink_with_config(
@@ -165,13 +169,51 @@ fn insert_sink_with_config(
 
     let sink = Sink::new(device);
     sink.set_volume(volume);
-    sink.append(rodio::Decoder::new(BufReader::new(file))?);
+    let decoder = rodio::Decoder::new(BufReader::new(file))?;
+    let total_duration = decoder
+        .total_duration()
+        .or_else(|| -> Option<std::time::Duration> {
+            let duration = mp3_duration::from_path(&local_path);
+            if let Ok(dur) = duration {
+                return Some(dur);
+            } else {
+                trace!("Could not read mp3 tag {:?}", duration.err());
+            }
+            None
+        })
+        .or_else(|| -> Option<std::time::Duration> {
+            use ogg_metadata::AudioMetadata;
+            let file = std::fs::File::open(&local_path);
+            if file.is_err() {
+                return None;
+            }
+            match ogg_metadata::read_format(&file.unwrap()) {
+                Ok(vec) => match &vec[0] {
+                    ogg_metadata::OggFormat::Vorbis(vorbis_metadata) => {
+                        return Some(vorbis_metadata.get_duration().unwrap());
+                    }
+                    ogg_metadata::OggFormat::Opus(opus_metadata) => {
+                        return Some(opus_metadata.get_duration().unwrap());
+                    }
+                    _ => {}
+                },
+                Err(err) => {
+                    trace!("Could not read ogg info {}", err);
+                }
+            }
+            None
+        });
+    sink.append(decoder);
 
     if !sinks.contains_key(&sound_config) {
-        sinks.insert(sound_config, vec![sink]);
+        sinks.insert(
+            sound_config,
+            (vec![sink], std::time::Instant::now(), total_duration),
+        );
     } else {
-        let vec = sinks.get_mut(&sound_config).unwrap();
-        vec.push(sink);
+        let mut value = sinks.get_mut(&sound_config).unwrap();
+        value.0.push(sink);
+        value.1 = std::time::Instant::now();
     }
     Ok(())
 }
@@ -223,7 +265,7 @@ fn play_thread(
                 }
                 Message::StopSound(sound_handle) => {
                     match sinks.remove(&sound_handle) {
-                        Some(vec) => {
+                        Some((vec, _, _)) => {
                             for sink in vec {
                                 drop(sink);
                             }
@@ -232,24 +274,24 @@ fn play_thread(
                     };
                 }
                 Message::StopAll => {
-                    for (_, vec) in sinks.drain() {
-                        for sink in vec {
+                    for (_, tuple) in sinks.drain() {
+                        for sink in tuple.0 {
                             drop(sink);
                         }
                     }
                 }
                 Message::SetVolume(volume_new) => {
                     volume = volume_new;
-                    for (_, vec) in sinks.iter() {
-                        for sink in vec {
+                    for (_, tuple) in sinks.iter_mut() {
+                        for sink in &mut tuple.0 {
                             sink.set_volume(volume);
                         }
                     }
                 }
                 Message::PlayStatus(_) => {
                     let mut sounds = Vec::new();
-                    for (id, _) in sinks.iter() {
-                        sounds.push(id.clone());
+                    for (id, (_, instant, total_duration)) in sinks.iter() {
+                        sounds.push((id.clone(), instant.elapsed(), total_duration.clone()));
                     }
                     sender
                         .send(Message::PlayStatus(sounds))
@@ -261,7 +303,7 @@ fn play_thread(
             }
         };
 
-        sinks.retain(|_, local_sinks| {
+        sinks.retain(|_, (local_sinks, _, _)| {
             let playing = local_sinks.iter().any(|s| !s.empty());
             playing
         });

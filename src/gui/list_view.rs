@@ -18,7 +18,11 @@ struct SoundButton {
 pub struct ListView {
     scroll_state: scrollable::State,
     buttons: Vec<SoundButton>,
-    pub active_sounds: Vec<config::SoundConfig>,
+    pub active_sounds: Vec<(
+        config::SoundConfig,
+        std::time::Duration,
+        Option<std::time::Duration>,
+    )>,
 }
 
 #[derive(Debug, Clone)]

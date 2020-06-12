@@ -340,11 +340,6 @@ impl Application for Soundboard {
                 .style(style::Button::Neutral),
             )
             .push(soundboard_row)
-            // .push(
-            //   ProgressBar::new(0.0..=100.0, 66.0)
-            //     .height(Length::FillPortion(2))
-            //     .width(Length::FillPortion(6)),
-            // )
             .push(
                 Slider::new(
                     &mut self.volume_slider_state,
