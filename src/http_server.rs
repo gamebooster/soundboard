@@ -16,6 +16,11 @@ struct SoundRequest {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct VolumeRequest {
+    volume: f32,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundboardInfo {
     name: String,
     hotkey: String,
@@ -264,6 +269,20 @@ pub async fn run(
         });
 
     let gui_sender_clone = gui_sender.clone();
+    let sounds_set_volume = warp::path!("sounds" / "volume")
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(move |volume: VolumeRequest| {
+            gui_sender_clone
+                .send(sound::Message::SetVolume(volume.volume))
+                .unwrap();
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(format!("SetVolume"))),
+                warp::http::StatusCode::OK,
+            )
+        });
+
+    let gui_sender_clone = gui_sender.clone();
     let sounds_stop_all_route =
         warp::path!("sounds" / "stopall")
             .and(warp::post())
@@ -330,6 +349,7 @@ pub async fn run(
             .or(sounds_stop_route)
             .or(sounds_stop_all_route)
             .or(sounds_active_route)
+            .or(sounds_set_volume)
             .or(help_api),
     ))
     .or(warp::get().and(warp::fs::dir("web")))
