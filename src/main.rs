@@ -4,37 +4,27 @@ extern crate clap;
 extern crate cpal;
 extern crate iced;
 extern crate log;
-
 extern crate strum;
-#[macro_use]
 extern crate strum_macros;
 
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 
-use ::hotkey as hotkeyExt;
-use clap::{crate_authors, crate_version, App, Arg};
-use cpal::traits::{DeviceTrait, HostTrait};
 use crossbeam_channel;
-use iced::{
-    button, executor, Align, Application, Button, Column, Command, Container, Element, Length, Row,
-    Settings, Subscription, Text,
-};
-use std::env;
-use std::path::{Path, PathBuf};
+use iced::Application;
+use iced::Settings;
 
 mod config;
 mod download;
 mod gui;
 mod hotkey;
+mod http_server;
 mod sound;
 mod utils;
 
-use warp::Filter;
-
 fn main() -> Result<()> {
     env_logger::builder()
-        .filter_module("soundboard", log::LevelFilter::Info)
+        .filter_module("soundboard", log::LevelFilter::Trace)
         .filter_module("warp", log::LevelFilter::Info)
         .init();
     info!("Parsing arguments");
@@ -74,11 +64,11 @@ fn main() -> Result<()> {
     });
 
     if arguments.is_present("http-server") {
+        let config_file_clone = config_file.clone();
         let gui_sender_clone = gui_sender.clone();
         let gui_receiver_clone = gui_receiver.clone();
-        let config_file_clone = config_file.clone();
         std::thread::spawn(move || {
-            http_server_routine(config_file_clone, gui_sender_clone, gui_receiver_clone);
+            http_server::run(config_file_clone, gui_sender_clone, gui_receiver_clone);
         });
     }
 
@@ -94,112 +84,6 @@ fn main() -> Result<()> {
     settings.window.size = (500, 350);
     gui::Soundboard::run(settings);
     Ok(())
-}
-
-#[tokio::main]
-async fn http_server_routine(
-    config_file: config::MainConfig,
-    gui_sender: crossbeam_channel::Sender<sound::Message>,
-    gui_receiver: crossbeam_channel::Receiver<sound::Message>,
-) {
-    let config_file_clone = config_file.clone();
-    let soundboards_route = warp::path!("soundboards").map(move || {
-        let mut soundboards = Vec::new();
-        for soundboard in config_file_clone.soundboards.as_ref().unwrap() {
-            soundboards.push(&soundboard.name);
-        }
-        warp::reply::json(&soundboards)
-    });
-
-    let config_file_clone = config_file.clone();
-    let soundboards_sounds_route =
-        warp::path!("soundboards" / String / "sounds").map(move |soundboard_name: String| {
-            let maybe_soundboard = config_file_clone
-                .soundboards
-                .as_ref()
-                .unwrap()
-                .iter()
-                .find(|s| s.name.as_ref().unwrap() == &soundboard_name);
-            if let Some(soundboard) = maybe_soundboard {
-                warp::reply::with_status(
-                    warp::reply::json(&soundboard.sounds),
-                    warp::http::StatusCode::OK,
-                )
-            } else {
-                warp::reply::with_status(
-                    warp::reply::json(&"no soundboard found with this name"),
-                    warp::http::StatusCode::NOT_FOUND,
-                )
-            }
-        });
-
-    let gui_sender_clone = gui_sender.clone();
-    let sounds_play_route = warp::path!("sounds" / "play")
-        .and(warp::post())
-        .and(warp::body::json())
-        .map(move |sound_config: config::SoundConfig| {
-            gui_sender_clone
-                .send(sound::Message::PlaySound(
-                    sound_config.clone(),
-                    sound::SoundDevices::Both,
-                ))
-                .unwrap();
-            format!("PlaySound {:?}", &sound_config.path)
-        });
-
-    let gui_sender_clone = gui_sender.clone();
-    let sounds_stop_route = warp::path!("sounds" / "stop")
-        .and(warp::post())
-        .and(warp::body::json())
-        .map(move |sound_config: config::SoundConfig| {
-            gui_sender_clone
-                .send(sound::Message::StopSound(sound_config.clone()))
-                .unwrap();
-            format!("StopSound {:?}", &sound_config.path)
-        });
-
-    let gui_sender_clone = gui_sender.clone();
-    let sounds_stop_all_route = warp::path!("sounds" / "stop")
-        .and(warp::post())
-        .map(move || {
-            gui_sender_clone.send(sound::Message::StopAll).unwrap();
-            format!("StopAllSound")
-        });
-
-    let gui_sender_clone = gui_sender.clone();
-    let sounds_active_route = warp::path!("sounds" / "active").map(move || {
-        gui_sender_clone
-            .send(sound::Message::PlayStatus(Vec::new()))
-            .unwrap();
-        match gui_receiver.recv() {
-            Ok(sound::Message::PlayStatus(sounds)) => {
-                return warp::reply::with_status(
-                    warp::reply::json(&sounds),
-                    warp::http::StatusCode::OK,
-                );
-            }
-            _ => warp::reply::with_status(
-                warp::reply::json(&"unknown error"),
-                warp::http::StatusCode::from_u16(500).unwrap(),
-            ),
-        }
-    });
-
-    let help_api = warp::path::end()
-        .map(|| "This is the Soundboard API. Try calling /api/soundboards or /api/sounds/active");
-
-    let routes = (warp::path("api").and(
-        soundboards_route
-            .or(sounds_play_route)
-            .or(soundboards_sounds_route)
-            .or(sounds_stop_route)
-            .or(sounds_stop_all_route)
-            .or(sounds_active_route)
-            .or(help_api),
-    ))
-    .or(warp::get().and(warp::fs::dir("web")));
-
-    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
 }
 
 fn no_gui_routine(

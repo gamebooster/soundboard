@@ -42,16 +42,6 @@ impl PanelView {
                     pane_grid::Axis::Vertical
                 }
             };
-            let hotkey_string = {
-                if sound.hotkey.is_some() {
-                    format!(
-                        "{}",
-                        config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap()
-                    )
-                } else {
-                    String::new()
-                }
-            };
             let new_panel = pane_state
                 .split(
                     best_axis,
@@ -59,7 +49,6 @@ impl PanelView {
                     PanelButtonView::new(SoundButton {
                         state: button::State::new(),
                         config: sound.clone(),
-                        parsed_hotkey: hotkey_string,
                     }),
                 )
                 .unwrap();
@@ -119,7 +108,6 @@ impl PanelView {
 struct SoundButton {
     state: button::State,
     config: config::SoundConfig,
-    parsed_hotkey: String,
 }
 
 struct PanelButtonView {
@@ -159,9 +147,15 @@ impl PanelButtonView {
                     .vertical_alignment(VerticalAlignment::Center),
             )
             .push(
-                Text::new(&self.sound_button.parsed_hotkey)
-                    .size(14)
-                    .vertical_alignment(VerticalAlignment::Center),
+                Text::new(
+                    self.sound_button
+                        .config
+                        .hotkey
+                        .as_ref()
+                        .unwrap_or(&String::new()),
+                )
+                .size(14)
+                .vertical_alignment(VerticalAlignment::Center),
             );
 
         let cont = Container::new(column)

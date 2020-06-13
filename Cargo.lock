@@ -2963,6 +2963,7 @@ dependencies = [
  "crossbeam-channel",
  "env_logger",
  "fs_extra",
+ "futures 0.3.5",
  "hotkey",
  "iced",
  "iced_native",

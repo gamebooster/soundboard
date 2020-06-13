@@ -12,7 +12,6 @@ use log::{error, info, trace, warn};
 struct SoundButton {
     state: button::State,
     config: config::SoundConfig,
-    parsed_hotkey: String,
 }
 
 pub struct ListView {
@@ -35,20 +34,9 @@ impl ListView {
         let buttons = sounds
             .iter()
             .fold(Vec::<SoundButton>::new(), |mut buttons, sound| {
-                let hotkey_string = {
-                    if sound.hotkey.is_some() {
-                        format!(
-                            "{}",
-                            config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap()
-                        )
-                    } else {
-                        String::new()
-                    }
-                };
                 buttons.push(SoundButton {
                     state: button::State::new(),
                     config: sound.clone(),
-                    parsed_hotkey: hotkey_string,
                 });
                 buttons
             });
@@ -81,7 +69,9 @@ impl ListView {
                     .spacing(20)
                     .align_items(Align::Center)
                     .push(Text::new(&button.config.name))
-                    .push(Text::new(&button.parsed_hotkey))
+                    .push(Text::new(
+                        button.config.hotkey.as_ref().unwrap_or(&String::new()),
+                    ))
                     .push(
                         Button::new(&mut button.state, Text::new("Play"))
                             .on_press(ListViewMessage::PlaySound(button.config.clone()))

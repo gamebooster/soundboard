@@ -5,14 +5,59 @@
     <title>soundboard</title>
     <script src="https://unpkg.com/vue"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
+    <style>
+        .button {
+            margin: 0.2em;
+        }
+
+        .fill-size {
+            width: 90%;
+            height: 90%;
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
-        <p>Active sounds: {{ activeSounds }}</p>
-        <p>Last request answer: {{ lastRequestAnswer }}</p>
-        <button v-on:click="playNichtSoTief">Spiel Nicht so tief, Ruediger!</button>
-        <button v-on:click="stopAllSound">Stop</button>
+        <div class="tile is-ancestor box">
+            <template v-if="activeSounds.length > 0">
+                <div class="columns">
+                    <div class="column"><button class="button is-danger fill-size" @click="stopAllSound">Stop
+                            All</button></div>
+                    <div class="tile is-parent column" v-for="sound in activeSounds" :key="sound.name">
+                        <div class="tile is-child">
+                            <p class="title">{{ sound.name }}</p>
+                            <progress class="progress" :value="sound.play_duration"
+                                :max="sound.total_duration">{{ sound.play_duration  }}</progress>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div v-else class="tile is-parent">
+                <div class="tile is-child">
+                    <p class="title">No active sounds</p>
+                </div>
+            </div>
+        </div>
+        <div class="tile is-ancestor">
+            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.name">
+                <div class="tile is-child box">
+                    <p class="title">{{ soundboard.name }}</p>
+                    <template v-for="sound in soundboard.sounds">
+                        <button v-if="!activeSounds.some(item => sound.name == item.name)" class="button is-success"
+                            @click="playSound(soundboard.id, sound.id)" :key="sound.name">{{ sound.name }}</button>
+                        <button v-else class="button is-danger" @click="stopSound(soundboard.id, sound.id)"
+                            :key="sound.name">{{ sound.name }}</button>
+                    </template>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -20,6 +65,7 @@
             el: '#app',
             data: {
                 activeSounds: [],
+                soundboards: [],
                 lastRequestAnswer: ""
             },
             created: function () {
@@ -27,24 +73,36 @@
                 setInterval(function () {
                     axios
                         .get('/api/sounds/active')
-                        .then(response => (self.activeSounds = response.data))
+                        .then(response => (self.activeSounds = response.data.data))
                 }, 500);
+                axios
+                    .get('/api/soundboards')
+                    .then(response => {
+                        self.soundboards = response.data.data;
+                        for (let i = 0; i < self.soundboards.length; i++) {
+                            axios
+                                .get('/api/soundboards/' + i + '/sounds')
+                                .then(response => {
+                                    self.soundboards[i].sounds = response.data.data;
+                                });
+                        }
+                    });
             },
             methods: {
-                playNichtSoTief: function () {
+                playSound: function (soundboard_id, sound_id) {
                     axios
-                        .post('/api/sounds/play', {
-                            name: "",
-                            path: "sounds/nicht-so-tief-rudiger.mp3",
-                            hotkey: "",
-                            headers: []
-                        })
-                        .then(response => (this.lastRequestAnswer = response.data))
+                        .post('/api/soundboards/' + soundboard_id + '/sounds/' + sound_id + '/play')
+                        .then(response => (this.lastRequestAnswer = response.data.data))
+                },
+                stopSound: function (soundboard_id, sound_id) {
+                    axios
+                        .post('/api/soundboards/' + soundboard_id + '/sounds/' + sound_id + '/stop')
+                        .then(response => (this.lastRequestAnswer = response.data.data))
                 },
                 stopAllSound: function () {
                     axios
-                        .post('/api/sounds/stop')
-                        .then(response => (this.lastRequestAnswer = response.data))
+                        .post('/api/sounds/stopall')
+                        .then(response => (this.lastRequestAnswer = response.data.data))
                 }
             }
         })
