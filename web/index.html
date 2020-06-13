@@ -10,51 +10,80 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.0/css/bulma.min.css">
     <style>
         .button {
-            margin: 0.2em;
+            border-radius: 0px;
         }
 
         .fill-size {
-            width: 90%;
+            width: 100%;
             height: 90%;
             margin-left: auto;
             margin-right: auto;
             display: block;
         }
+
+        body.has-navbar-fixed-bottom,
+        html.has-navbar-fixed-bottom {
+            padding-bottom: 10rem;
+        }
+
+        .navbar {
+            padding: 1rem;
+            border-top: 1px solid #363636;
+        }
+
+        .box {
+            border-radius: 0px;
+        }
+
+        body {
+            background-color: #363636;
+        }
     </style>
 </head>
 
-<body>
+<body class="has-navbar-fixed-bottom">
     <div id="app">
-        <div class="tile is-ancestor box">
-            <template v-if="activeSounds.length > 0">
-                <div class="columns">
-                    <div class="column"><button class="button is-danger fill-size" @click="stopAllSound">Stop
-                            All</button></div>
-                    <div class="tile is-parent column" v-for="sound in activeSounds" :key="sound.name">
-                        <div class="tile is-child">
-                            <p class="title">{{ sound.name }}</p>
+        <nav class="navbar is-fixed-bottom is-white padding-1">
+            <div>
+                <template v-if="activeSounds.length > 0">
+                    <div class="columns">
+                        <div class="colum"><button class="button is-danger fill-size" @click="stopAllSound">Stop
+                                All</button></div>
+                        <div class="column" v-for="sound in activeSounds" :key="sound.name">
+                            <p class="title is-5">{{ sound.name }}</p>
                             <progress class="progress" :value="sound.play_duration"
                                 :max="sound.total_duration">{{ sound.play_duration  }}</progress>
                         </div>
                     </div>
-                </div>
-            </template>
-            <div v-else class="tile is-parent">
-                <div class="tile is-child">
-                    <p class="title">No active sounds</p>
+                </template>
+                <div v-else>
+                    <p class="title is-3">No active sounds</p>
                 </div>
             </div>
-        </div>
+        </nav>
+        <section class="hero is-dark is-bold">
+            <div class="hero-body">
+                <div class="container">
+                    <h1 class="title">
+                        soundboard
+                    </h1>
+                </div>
+            </div>
+        </section>
         <div class="tile is-ancestor is-vertical">
             <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.name">
                 <div class="tile is-child box">
                     <p class="title">{{ soundboard.name }}</p>
-                    <template v-for="sound in soundboard.sounds">
-                        <button v-if="!activeSounds.some(item => sound.name == item.name)" class="button is-success"
-                            @click="playSound(soundboard.id, sound.id)" :key="sound.name">{{ sound.name }}</button>
-                        <button v-else class="button is-danger" @click="stopSound(soundboard.id, sound.id)"
-                            :key="sound.name">{{ sound.name }}</button>
-                    </template>
+                    <div class="buttons">
+                        <template v-for="sound in soundboard.sounds">
+
+                            <button v-if="!activeSounds.some(item => sound.name == item.name)" class="button is-success"
+                                @click="playSound(soundboard.id, sound.id)" :key="sound.name">{{ sound.name }}</button>
+                            <button v-else class="button is-danger" @click="stopSound(soundboard.id, sound.id)"
+                                :key="sound.name">{{ sound.name }}</button>
+
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
