@@ -6,8 +6,10 @@ authors = ["Karl Skomski <karl@skomski.com>", "Corin Baurmann <corin.baurmann@fu
 categories = ["multimedia::audio"]
 edition = "2018"
 
-[dependencies]
+[profile.release]
+lto = true
 
+[dependencies]
 cpal = "0.11"
 rodio = "0.11"
 hotkey = { path = "extern/hotkey-rs", version = "0.3" }

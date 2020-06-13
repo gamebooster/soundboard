@@ -21,10 +21,6 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Enable Link Time Optimizations
-      run: |
-        echo "[profile.release]" >> Cargo.toml
-        echo "lto = true" >> Cargo.toml
     - name: Install alsa
       run: sudo apt-get install alsa alsa-tools libasound2-dev
     - name: Build debug soundboard binary
@@ -64,10 +60,6 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Enable Link Time Optimizations
-      run: |
-        echo "[profile.release]" >> Cargo.toml
-        echo "lto = true" >> Cargo.toml
     - name: Build debug soundboard binary
       run: cargo build --verbose
     - name: Build soundboard binary
@@ -105,10 +97,6 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Enable Link Time Optimizations
-      run: |
-        echo "[profile.release]" >> Cargo.toml
-        echo "lto = true" >> Cargo.toml
     - name: Build debug soundboard binary
       env:
         MACOSX_DEPLOYMENT_TARGET: 10.14
