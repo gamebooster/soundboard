@@ -63,7 +63,7 @@ fn main() -> Result<()> {
         )
     });
 
-    if arguments.is_present("http-server") {
+    if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
         let config_file_clone = config_file.clone();
         let gui_sender_clone = gui_sender.clone();
         let gui_receiver_clone = gui_receiver.clone();
@@ -73,7 +73,7 @@ fn main() -> Result<()> {
     }
 
     let config_file_clone = config_file.clone();
-    if arguments.is_present("no-gui") {
+    if arguments.is_present("no-gui") || config_file.no_gui.unwrap_or_default() {
         no_gui_routine(config_file_clone, gui_sender)?;
 
         std::thread::park();

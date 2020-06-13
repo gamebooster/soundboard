@@ -24,6 +24,8 @@ pub struct MainConfig {
     pub output_device: Option<usize>,
     pub loopback_device: Option<usize>,
     pub stop_hotkey: Option<String>,
+    pub http_server: Option<bool>,
+    pub no_gui: Option<bool>,
     #[serde(rename = "soundboard")]
     pub soundboards: Option<Vec<SoundboardConfig>>,
 }
