@@ -26,6 +26,14 @@
             padding-bottom: 10rem;
         }
 
+        .filter {
+            padding: 1.25rem;
+        }
+
+        .filter input {
+            width: 100%;
+        }
+
         .navbar {
             padding: 1rem;
             border-top: 1px solid #363636;
@@ -35,7 +43,11 @@
             border-radius: 0px;
         }
 
-        body {
+        .center {
+            text-align: center;
+        }
+
+        html {
             background-color: #363636;
         }
     </style>
@@ -44,21 +56,24 @@
 <body class="has-navbar-fixed-bottom">
     <div id="app">
         <nav class="navbar is-fixed-bottom is-white padding-1">
-            <div>
+            <div class="columns">
+                <div class="colum">
+                    <div class="filter"><input type="text" placeholder="filter" :value='filter'
+                            @input='evt=>filter=evt.target.value'></div>
+                </div>
                 <template v-if="activeSounds.length > 0">
-                    <div class="columns">
-                        <div class="colum"><button class="button is-danger fill-size" @click="stopAllSound">Stop
-                                All</button></div>
-                        <div class="column" v-for="sound in activeSounds" :key="sound.name">
-                            <p class="title is-5">{{ sound.name }}</p>
-                            <progress class="progress" :value="sound.play_duration"
-                                :max="sound.total_duration">{{ sound.play_duration  }}</progress>
-                        </div>
+                    <div class="colum"><button class="button is-danger fill-size" @click="stopAllSound">Stop
+                            All</button></div>
+                    <div class="column" v-for="sound in activeSounds" :key="sound.name">
+                        <div class="title is-5 center">{{ sound.name }}</div>
+                        <progress class="progress" :value="sound.play_duration"
+                            :max="sound.total_duration">{{ sound.play_duration  }}</progress>
                     </div>
                 </template>
-                <div v-else>
-                    <p class="title is-3">No active sounds</p>
+                <div class="column" v-else>
+                    <p class="title is-3 center">No active sounds</p>
                 </div>
+
             </div>
         </nav>
         <section class="hero is-dark is-bold">
@@ -76,12 +91,13 @@
                     <p class="title">{{ soundboard.name }}</p>
                     <div class="buttons">
                         <template v-for="sound in soundboard.sounds">
-
-                            <button v-if="!activeSounds.some(item => sound.name == item.name)" class="button is-success"
-                                @click="playSound(soundboard.id, sound.id)" :key="sound.name">{{ sound.name }}</button>
-                            <button v-else class="button is-danger" @click="stopSound(soundboard.id, sound.id)"
-                                :key="sound.name">{{ sound.name }}</button>
-
+                            <template v-if="filterRegex.test(sound.name)">
+                                <button v-if="!activeSounds.some(item => sound.name == item.name)"
+                                    class="button is-success" @click="playSound(soundboard.id, sound.id)"
+                                    :key="sound.name">{{ sound.name }}</button>
+                                <button v-else class="button is-danger" @click="stopSound(soundboard.id, sound.id)"
+                                    :key="sound.name">{{ sound.name }}</button>
+                            </template>
                         </template>
                     </div>
                 </div>
@@ -95,7 +111,9 @@
             data: {
                 activeSounds: [],
                 soundboards: [],
-                lastRequestAnswer: ""
+                lastRequestAnswer: "",
+                filter: "",
+                filterRegex: new RegExp("", "i")
             },
             created: function () {
                 const self = this;
@@ -116,6 +134,11 @@
                                 });
                         }
                     });
+            },
+            watch: {
+                filter: function (val, oldVal) {
+                    this.filterRegex = new RegExp(val, "i");
+                }
             },
             methods: {
                 playSound: function (soundboard_id, sound_id) {
