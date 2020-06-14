@@ -54,7 +54,7 @@ input[type="range"].slider {
     text-align: center;
 }
 
-html {
+html, body {
     background-color: #363636;
 }
 
