@@ -41,8 +41,10 @@
                             <div class="column">
                                 <div class="title is-5 center">{{ sound.name }}</div>
                             </div>
-                            <div class="column"> <progress class="progress" :value="sound.play_duration"
-                                    :max="sound.total_duration">{{ sound.play_duration  }}</progress></div>
+                            <div class="column"> <progress v-if="sound.total_duration != 0" class="progress"
+                                    :value="sound.play_duration"
+                                    :max="sound.total_duration">{{ sound.play_duration  }}</progress>
+                                <progress v-else class="progress" :max="100">{{ sound.play_duration  }}</progress></div>
                         </div>
                     </div>
                 </template>

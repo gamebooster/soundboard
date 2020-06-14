@@ -52,6 +52,7 @@ input[type="range"].slider {
 
 .center {
     text-align: center;
+    margin-top: 0.5rem;
 }
 
 html, body {
