@@ -8,15 +8,13 @@ extern crate toml;
 use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use log::{error, info, trace, warn};
-use regex;
+
 use serde::Deserialize;
 use serde::Serialize;
 use std::fmt;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
-use strum;
-use strum_macros;
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
@@ -193,26 +191,24 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
     )?;
     let caps: regex::Captures = re
         .captures(hotkey_string)
-        .ok_or(anyhow!("No valid hotkey match"))?;
+        .ok_or_else(|| anyhow!("No valid hotkey match"))?;
     let mut modifier = Vec::new();
     let mut key: Option<Key> = None;
     for caps in caps.iter().skip(1) {
-        if caps.is_some() {
-            let mut mat = caps.unwrap().as_str().to_uppercase();
+        if let Some(caps) = caps {
+            let mut mat = caps.as_str().to_uppercase();
             if mat.parse::<usize>().is_ok() {
                 mat = format!("KEY_{}", mat);
             }
-            let modifier_try = Modifier::from_str(&mat);
-            if modifier_try.is_ok() {
-                modifier.push(modifier_try.unwrap());
+            if let Ok(res) = Modifier::from_str(&mat) {
+                modifier.push(res);
                 continue;
             }
             if key.is_some() {
                 return Err(anyhow!("hotkey has alread a key specified"));
             }
-            let key_try = Key::from_str(&mat);
-            if key_try.is_ok() {
-                key = Some(key_try.unwrap());
+            if let Ok(res) = Key::from_str(&mat) {
+                key = Some(res);
             }
         }
     }
@@ -220,7 +216,7 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
         return Err(anyhow!("hotkey has no key specified"));
     }
     Ok(Hotkey {
-        modifier: modifier,
+        modifier,
         key: key.unwrap(),
     })
 }
@@ -316,7 +312,7 @@ pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
 }
 
 pub fn parse_arguments() -> clap::ArgMatches {
-    let matches = App::new("soundboard")
+    App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
         .about("play sounds over your microphone")
@@ -367,9 +363,7 @@ pub fn parse_arguments() -> clap::ArgMatches {
                 .long("http-server")
                 .about("Enable http server API and web app"),
         )
-        .get_matches();
-
-    matches
+        .get_matches()
 }
 
 pub fn parse_devices(

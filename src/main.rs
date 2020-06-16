@@ -10,7 +10,6 @@ extern crate strum_macros;
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 
-use crossbeam_channel;
 use iced::Application;
 use iced::Settings;
 
@@ -51,8 +50,8 @@ fn main() -> Result<()> {
     let (input_device_index, output_device_index, loop_device_index) =
         config::parse_devices(&config_file, &arguments)?;
 
-    let sound_receiver_clone = sound_receiver.clone();
-    let sound_sender_clone = sound_sender.clone();
+    let sound_receiver_clone = sound_receiver;
+    let sound_sender_clone = sound_sender;
     std::thread::spawn(move || -> Result<()> {
         sound::init_sound(
             sound_receiver_clone,
@@ -109,7 +108,7 @@ fn no_gui_routine(
         })
         .map_err(|_s| anyhow!("register key"))?;
 
-    let gui_sender_clone = gui_sender.clone();
+    let gui_sender_clone = gui_sender;
     // only register hotkeys for first soundboard in no-gui-mode
     for sound in config_file.soundboards.unwrap()[0]
         .sounds

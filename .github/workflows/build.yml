@@ -1,9 +1,19 @@
 name: Build
-on:
-  push:
-    branches:
-      - master
+on: [push, pull_request]
 jobs:
+  clippy_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
   linux:
     runs-on: ubuntu-latest
     strategy:
@@ -25,23 +35,18 @@ jobs:
       run: sudo apt-get install alsa alsa-tools libasound2-dev
     - name: Build debug soundboard binary
       run: cargo build --verbose
-    - name: Build soundboard binary
-      run: cargo build --verbose --release
-    - name: Archive soundboard binary
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-debian-linux-gnu
-        path: target/release/soundboard
-    - name: Archive soundboard sounds dir
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-debian-linux-gnu
-        path: target/release/sounds/
-    - name: Archive soundboard default config
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-debian-linux-gnu
-        path: target/release/soundboard.toml
+  #  - name: Build soundboard binary
+  #    run: cargo build --verbose --release
+  #  - name: Archive soundboard binary
+  #    uses: actions/upload-artifact@v2
+  #    with:
+  #      name: soundboard-x86_64-debian-linux-gnu
+  #      path: target/release/soundboard
+  #  - name: Archive soundboard default config
+  #    uses: actions/upload-artifact@v2
+  #    with:
+  #      name: soundboard-x86_64-debian-linux-gnu
+  #      path: target/release/soundboard.toml
 
   windows:
     runs-on: windows-latest
@@ -62,23 +67,18 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build debug soundboard binary
       run: cargo build --verbose
-    - name: Build soundboard binary
-      run: cargo build --verbose --release
-    - name: Archive soundboard binary
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-pc-windows-msvc
-        path: target/release/soundboard.exe
-    - name: Archive soundboard sounds dir
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-pc-windows-msvc
-        path: target/release/sounds/
-    - name: Archive soundboard default config
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-pc-windows-msvc
-        path: target/release/soundboard.toml
+    # - name: Build soundboard binary
+    #   run: cargo build --verbose --release
+    # - name: Archive soundboard binary
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: soundboard-x86_64-pc-windows-msvc
+    #     path: target/release/soundboard.exe
+    # - name: Archive soundboard default config
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: soundboard-x86_64-pc-windows-msvc
+    #     path: target/release/soundboard.toml
 
   macos:
     runs-on: macOS-latest
@@ -101,22 +101,17 @@ jobs:
       env:
         MACOSX_DEPLOYMENT_TARGET: 10.14
       run: cargo build --verbose
-    - name: Build soundboard binary
-      env:
-        MACOSX_DEPLOYMENT_TARGET: 10.14
-      run: cargo build --verbose --release
-    - name: Archive soundboard binary
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-apple-darwin
-        path: target/release/soundboard
-    - name: Archive soundboard sounds dir
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-apple-darwin
-        path: target/release/sounds/
-    - name: Archive soundboard default config
-      uses: actions/upload-artifact@v2
-      with:
-        name: soundboard-x86_64-apple-darwin
-        path: target/release/soundboard.toml
+    # - name: Build soundboard binary
+    #   env:
+    #     MACOSX_DEPLOYMENT_TARGET: 10.14
+    #   run: cargo build --verbose --release
+    # - name: Archive soundboard binary
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: soundboard-x86_64-apple-darwin
+    #     path: target/release/soundboard
+    # - name: Archive soundboard default config
+    #   uses: actions/upload-artifact@v2
+    #   with:
+    #     name: soundboard-x86_64-apple-darwin
+    #     path: target/release/soundboard.toml

@@ -26,7 +26,7 @@ pub enum PanelViewMessage {
 }
 
 impl PanelView {
-    pub fn new(sounds: &Vec<config::SoundConfig>) -> Self {
+    pub fn new(sounds: &[config::SoundConfig]) -> Self {
         let (mut pane_state, first) =
             pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton::default()));
         let mut panels: Vec<pane_grid::Pane> = Vec::new();
@@ -86,7 +86,7 @@ impl PanelView {
             {
                 state.playing = true;
                 state.play_duration = sound.1;
-                state.total_duration = sound.2.unwrap_or(std::time::Duration::from_secs(0));
+                state.total_duration = sound.2.unwrap_or_else(|| std::time::Duration::from_secs(0));
             } else {
                 state.playing = false;
             }
@@ -164,7 +164,7 @@ impl PanelButtonView {
             .padding(3)
             .center_y();
 
-        if self.playing == false {
+        if !self.playing {
             Button::new(&mut self.sound_button.state, cont)
                 .on_press(PanelViewMessage::PlaySound(
                     self.sound_button.config.clone(),

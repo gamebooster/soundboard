@@ -14,11 +14,10 @@ pub struct HotkeyManager {
 impl HotkeyManager {
     pub fn new() -> Self {
         let listener = hotkeyExt::Listener::new();
-        let hotkey_manager = HotkeyManager {
+        HotkeyManager {
             listener,
             hashmap: HashMap::<config::Hotkey, ListenerID>::new(),
-        };
-        hotkey_manager
+        }
     }
     pub fn register<Callback: 'static + Fn() + Send>(
         &mut self,
@@ -39,7 +38,7 @@ impl HotkeyManager {
             *self
                 .hashmap
                 .get(&hotkey)
-                .ok_or(anyhow!("no hotkey registered with this id"))?,
+                .ok_or_else(|| anyhow!("no hotkey registered with this id"))?,
         )?;
         Ok(())
     }

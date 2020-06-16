@@ -4,7 +4,6 @@ use iced::{
     Slider, Space, Subscription, Text, VerticalAlignment,
 };
 
-use crossbeam_channel;
 use log::{error, info, trace, warn};
 use std::path::{Path, PathBuf};
 
@@ -88,7 +87,7 @@ impl Application for Soundboard {
         let mut soundboard = Soundboard {
             sound_sender: flags.0,
             sound_receiver: flags.1,
-            config: flags.2.clone(),
+            config: flags.2,
             soundboard_button_states: soundboard_buttons,
             stop_button_state: button::State::new(),
             toggle_layout_button_state: button::State::new(),
@@ -118,12 +117,11 @@ impl Application for Soundboard {
                 self.sound_sender
                     .send(sound::Message::PlayStatus(Vec::new()))
                     .expect("sound channel error");
-                match self.sound_receiver.try_iter().last() {
-                    Some(sound::Message::PlayStatus(sounds)) => {
-                        self.list_view.active_sounds = sounds.clone();
-                        self.panel_view.active_sounds = sounds;
-                    }
-                    _ => {}
+                if let Some(sound::Message::PlayStatus(sounds)) =
+                    self.sound_receiver.try_iter().last()
+                {
+                    self.list_view.active_sounds = sounds.clone();
+                    self.panel_view.active_sounds = sounds;
                 }
             }
             SoundboardMessage::PlaySound(sound_config) => {

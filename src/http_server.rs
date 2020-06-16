@@ -1,7 +1,7 @@
 use super::config;
 use super::sound;
 use anyhow::{anyhow, Context, Result};
-use futures;
+
 use log::{error, info, trace, warn};
 use serde::Deserialize;
 use serde::Serialize;
@@ -49,7 +49,7 @@ struct ResultData<T> {
 
 impl<T> ResultData<T> {
     pub fn with_data(data: T) -> ResultData<T> {
-        return ResultData { data };
+        ResultData { data }
     }
 }
 
@@ -67,13 +67,13 @@ struct ResultErrors {
 
 impl ResultErrors {
     pub fn with_error(code: &str, title: &str, detail: &str) -> ResultErrors {
-        return ResultErrors {
+        ResultErrors {
             errors: vec![ErrorObject {
                 code: code.to_string(),
                 title: title.to_string(),
                 detail: detail.to_string(),
             }],
-        };
+        }
     }
 }
 
@@ -103,7 +103,7 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
         code = StatusCode::NOT_FOUND;
         title = "UnknownSoundError";
         detail = format!("no sound at index {}", unknown_sound_error.0);
-    } else if let Some(_) = err.find::<warp::reject::MethodNotAllowed>() {
+    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         title = "MethodNotAllowed";
     } else {
@@ -163,14 +163,18 @@ pub async fn run(
     let config_file_clone = config_file.clone();
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
-        let mut id = 0;
-        for soundboard in config_file_clone.soundboards.as_ref().unwrap() {
+        for (id, soundboard) in config_file_clone
+            .soundboards
+            .as_ref()
+            .unwrap()
+            .iter()
+            .enumerate()
+        {
             soundboards.push(StrippedSoundboardInfo {
                 name: soundboard.name.clone().unwrap_or_default(),
                 hotkey: soundboard.hotkey.clone().unwrap_or_default(),
                 id,
             });
-            id += 1;
         }
         warp::reply::json(&ResultData::with_data(soundboards))
     });
@@ -222,7 +226,7 @@ pub async fn run(
             warp::reply::with_status(
                 warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                     name: sound.name.clone(),
-                    hotkey: sound.hotkey.clone().unwrap_or_default(),
+                    hotkey: sound.hotkey.unwrap_or_default(),
                     id: index,
                 })),
                 warp::http::StatusCode::OK,
@@ -277,7 +281,7 @@ pub async fn run(
                 .send(sound::Message::SetVolume(volume.volume))
                 .unwrap();
             warp::reply::with_status(
-                warp::reply::json(&ResultData::with_data(format!("SetVolume"))),
+                warp::reply::json(&ResultData::with_data("SetVolume".to_string())),
                 warp::http::StatusCode::OK,
             )
         });
@@ -289,7 +293,7 @@ pub async fn run(
             .map(move || {
                 gui_sender_clone.send(sound::Message::StopAll).unwrap();
                 warp::reply::with_status(
-                    warp::reply::json(&ResultData::with_data(format!("StopAllSound"))),
+                    warp::reply::json(&ResultData::with_data("StopAllSound".to_string())),
                     warp::http::StatusCode::OK,
                 )
             });
@@ -309,14 +313,14 @@ pub async fn run(
                         play_duration: sound.1.as_secs_f32(),
                         total_duration: sound
                             .2
-                            .unwrap_or(std::time::Duration::from_secs(0))
+                            .unwrap_or_else(|| std::time::Duration::from_secs(0))
                             .as_secs_f32(),
                     })
                 }
-                return warp::reply::with_status(
+                warp::reply::with_status(
                     warp::reply::json(&ResultData::with_data(sound_info)),
                     warp::http::StatusCode::OK,
-                );
+                )
             }
             Err(err) => warp::reply::with_status(
                 warp::reply::json(&ResultErrors::with_error(

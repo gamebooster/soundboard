@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use cpal::{Device, Devices, Host};
-use crossbeam_channel;
+
 use log::{error, info, trace, warn};
 use ringbuf::RingBuffer;
 use rodio::source::UniformSourceIterator;
@@ -52,7 +52,7 @@ impl FindDevice for usize {
 
         devices
             .nth(self)
-            .ok_or(anyhow!("No device device from index"))
+            .ok_or_else(|| anyhow!("No device device from index"))
     }
 }
 
@@ -64,20 +64,20 @@ impl FindDevice for String {
 
         devices
             .find(|device: &Device| device.name().unwrap() == self)
-            .ok_or(anyhow!("No device device from name"))
+            .ok_or_else(|| anyhow!("No device device from name"))
     }
 }
 
 fn get_default_input_device() -> Result<Device> {
     let host: Host = cpal::default_host();
     host.default_input_device()
-        .ok_or(anyhow!("no default input device"))
+        .ok_or_else(|| anyhow!("no default input device"))
 }
 
 fn get_default_output_device() -> Result<Device> {
     let host: Host = cpal::default_host();
     host.default_output_device()
-        .ok_or(anyhow!("no default output device"))
+        .ok_or_else(|| anyhow!("no default output device"))
 }
 
 pub fn init_sound<T: FindDevice>(
@@ -205,15 +205,15 @@ fn insert_sink_with_config(
         });
     sink.append(decoder);
 
-    if !sinks.contains_key(&sound_config) {
-        sinks.insert(
-            sound_config,
-            (vec![sink], std::time::Instant::now(), total_duration),
-        );
-    } else {
-        let mut value = sinks.get_mut(&sound_config).unwrap();
-        value.0.push(sink);
-        value.1 = std::time::Instant::now();
+    match sinks.entry(sound_config) {
+        std::collections::hash_map::Entry::Occupied(mut entry) => {
+            let entry = entry.get_mut();
+            entry.0.push(sink);
+            entry.1 = std::time::Instant::now();
+        }
+        std::collections::hash_map::Entry::Vacant(entry) => {
+            entry.insert((vec![sink], std::time::Instant::now(), total_duration));
+        }
     }
     Ok(())
 }
@@ -264,13 +264,10 @@ fn play_thread(
                     }
                 }
                 Message::StopSound(sound_handle) => {
-                    match sinks.remove(&sound_handle) {
-                        Some((vec, _, _)) => {
-                            for sink in vec {
-                                drop(sink);
-                            }
+                    if let Some((vec, _, _)) = sinks.remove(&sound_handle) {
+                        for sink in vec {
+                            drop(sink);
                         }
-                        None => (),
                     };
                 }
                 Message::StopAll => {
@@ -291,7 +288,7 @@ fn play_thread(
                 Message::PlayStatus(_) => {
                     let mut sounds = Vec::new();
                     for (id, (_, instant, total_duration)) in sinks.iter() {
-                        sounds.push((id.clone(), instant.elapsed(), total_duration.clone()));
+                        sounds.push((id.clone(), instant.elapsed(), *total_duration));
                     }
                     sender
                         .send(Message::PlayStatus(sounds))
@@ -303,10 +300,7 @@ fn play_thread(
             }
         };
 
-        sinks.retain(|_, (local_sinks, _, _)| {
-            let playing = local_sinks.iter().any(|s| !s.empty());
-            playing
-        });
+        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.empty()));
     }
 }
 

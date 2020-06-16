@@ -30,7 +30,7 @@ pub enum ListViewMessage {
 }
 
 impl ListView {
-    pub fn new(sounds: &Vec<config::SoundConfig>) -> Self {
+    pub fn new(sounds: &[config::SoundConfig]) -> Self {
         let buttons = sounds
             .iter()
             .fold(Vec::<SoundButton>::new(), |mut buttons, sound| {
