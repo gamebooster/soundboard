@@ -62,17 +62,14 @@ impl HotkeyListener<ListenerID> for Listener {
                 loop {
                     if (xlib.XPending)(display) > 0 {
                         (xlib.XNextEvent)(display, &mut event);
-                        match event.get_type() {
-                            xlib::KeyRelease => {
-                                if let Some(handler) = hotkey_map
-                                    .lock()
-                                    .unwrap()
-                                    .get_mut(&(event.key.keycode as i32, event.key.state))
-                                {
-                                    handler();
-                                }
+                        if let xlib::KeyRelease = event.get_type() {
+                            if let Some(handler) = hotkey_map
+                                .lock()
+                                .unwrap()
+                                .get_mut(&(event.key.keycode as i32, event.key.state))
+                            {
+                                handler();
                             }
-                            _ => (),
                         }
                     }
                     match rx.try_recv() {
@@ -119,7 +116,7 @@ impl HotkeyListener<ListenerID> for Listener {
             let display = (xlib.XOpenDisplay)(ptr::null());
 
             Listener {
-                display: display,
+                display,
                 xlib,
                 handlers: hotkeys,
                 sender: tx,
