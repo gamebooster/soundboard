@@ -2991,6 +2991,7 @@ dependencies = [
  "iced_native",
  "log 0.4.8",
  "miniaudio",
+ "minimp3",
  "mp3-duration",
  "ogg_metadata",
  "random_color",
