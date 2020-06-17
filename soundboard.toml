@@ -1,8 +1,9 @@
-# input_device = 0
-# output_device = 1
-loopback_device = 0
+# input_device = "Mikrofonarray (Realtek High Definition Audio(SST))"
+# output_device = "Speaker/HP (Realtek High Definition Audio(SST))"
+loopback_device = "CABLE Input (VB-Audio Virtual Cable)" # change to your virtual loopback output
+
 stop_hotkey = "ALT-S"
-http_server = true
+http_server = true # 3030 is the default port
 no_gui = false
 
 [[soundboard]]

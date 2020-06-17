@@ -52,15 +52,25 @@ fn main() -> Result<()> {
 
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
-    std::thread::spawn(move || -> Result<()> {
-        sound::init_sound(
+    let _sound_thread_handle = std::thread::spawn(move || {
+        if let Err(err) = sound::init_sound(
             sound_receiver_clone,
             sound_sender_clone,
             input_device_index,
             output_device_index,
             loop_device_index,
-        )
+        ) {
+            error!("init sound thread error:\n\t {}", err);
+        }
     });
+
+    // test for sound thread successfull initialization
+    if let Err(err) = gui_sender.send(sound::Message::PlayStatus(Vec::new())) {
+        return Err(anyhow!(err));
+    }
+    if let Err(err) = gui_receiver.recv() {
+        return Err(anyhow!(err));
+    }
 
     if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
         let config_file_clone = config_file.clone();

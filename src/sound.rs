@@ -68,18 +68,6 @@ pub trait FindDevice {
     fn into_device(self) -> Result<Device>;
 }
 
-impl FindDevice for usize {
-    fn into_device(self) -> Result<Device> {
-        let host = cpal::default_host();
-
-        let mut devices: Devices = host.devices()?;
-
-        devices
-            .nth(self)
-            .ok_or_else(|| anyhow!("No device device from index"))
-    }
-}
-
 impl FindDevice for String {
     fn into_device(self) -> Result<Device> {
         let host = cpal::default_host();
@@ -88,15 +76,15 @@ impl FindDevice for String {
 
         devices
             .find(|device: &Device| device.name().unwrap() == self)
-            .ok_or_else(|| anyhow!("No device device from name"))
+            .ok_or_else(|| anyhow!("No device from name {}", self))
     }
 }
 
-fn get_default_input_device() -> Result<Device> {
-    let host: Host = cpal::default_host();
-    host.default_input_device()
-        .ok_or_else(|| anyhow!("no default input device"))
-}
+// fn get_default_input_device() -> Result<Device> {
+//     let host: Host = cpal::default_host();
+//     host.default_input_device()
+//         .ok_or_else(|| anyhow!("no default input device"))
+// }
 
 fn get_default_output_device() -> Result<Device> {
     let host: Host = cpal::default_host();
@@ -104,50 +92,32 @@ fn get_default_output_device() -> Result<Device> {
         .ok_or_else(|| anyhow!("no default output device"))
 }
 
-pub fn init_sound<T: FindDevice>(
+pub fn init_sound(
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
-    input_device_identifier: Option<T>,
-    output_device_identifier: Option<T>,
-    loop_device_identifier: T,
+    input_device_identifier: Option<String>,
+    output_device_identifier: Option<String>,
+    loop_device_identifier: String,
 ) -> Result<()> {
-    let mut input_device = get_default_input_device()?;
-    if input_device_identifier.is_some() {
-        input_device = input_device_identifier.unwrap().into_device()?;
-    }
     let mut output_device = get_default_output_device()?;
     if output_device_identifier.is_some() {
         output_device = output_device_identifier.unwrap().into_device()?;
     }
 
-    let loop_device = loop_device_identifier.into_device()?;
+    let loop_device = loop_device_identifier.clone().into_device()?;
 
-    info!("Input:  \"{}\"", input_device.name().unwrap());
     info!("Output: \"{}\"", output_device.name().unwrap());
     info!("Loopback: \"{}\"", loop_device.name().unwrap());
 
-    // Input configs
-    if let Ok(conf) = input_device.default_input_format() {
-        println!("Default input stream format:\n      {:?}", conf);
-    }
-
     let shared_loop_device = Arc::new(loop_device);
     let shared_output_device = Arc::new(output_device);
-    let shared_input_device = Arc::new(input_device);
-
-    let shared_loop_device_clone = shared_loop_device.clone();
 
     std::thread::spawn(move || {
-        play_thread(
-            receiver,
-            sender,
-            shared_loop_device_clone,
-            shared_output_device,
-        );
+        play_thread(receiver, sender, shared_loop_device, shared_output_device);
     });
 
     std::thread::spawn(move || -> Result<()> {
-        sound_thread(shared_input_device, shared_loop_device)
+        sound_thread(input_device_identifier, loop_device_identifier)
     });
 
     Ok(())
@@ -328,7 +298,7 @@ fn play_thread(
     }
 }
 
-fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<()> {
+fn sound_thread(input_device: Option<String>, loop_device: String) -> Result<()> {
     let context = Context::new(&[], None).expect("failed to create context");
 
     let mut ms_input_device = None;
@@ -337,23 +307,26 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
     context
         .with_devices(|playback_devices, capture_devices| {
             for (_, device) in playback_devices.iter().enumerate() {
-                println!("\t{}: {}", loop_device.name().unwrap(), device.name());
-                if device.name() == loop_device.name().unwrap() {
+                println!("\t{}: {}", loop_device, device.name());
+                if device.name() == loop_device {
                     ms_loop_device = Some(device.id().clone());
                 }
             }
 
+            if input_device.is_none() {
+                return;
+            };
             for (_, device) in capture_devices.iter().enumerate() {
-                println!("\t{}: {}", input_device.name().unwrap(), device.name());
-                if device.name() == input_device.name().unwrap() {
+                println!("\t{}: {}", input_device.as_ref().unwrap(), device.name());
+                if device.name() == input_device.as_ref().unwrap() {
                     ms_input_device = Some(device.id().clone());
                 }
             }
         })
         .expect("failed to get devices");
 
-    if ms_input_device.is_none() || ms_loop_device.is_none() {
-        error!("could not find input device or loop device in miniaudio");
+    if ms_loop_device.is_none() {
+        error!("could not find loop device in miniaudio");
         return Ok(());
     }
 
@@ -362,7 +335,9 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
         .capture_mut()
         .set_format(miniaudio::Format::F32);
     device_config.capture_mut().set_channels(2);
-    device_config.capture_mut().set_device_id(ms_input_device);
+    if ms_input_device.is_some() {
+        device_config.capture_mut().set_device_id(ms_input_device);
+    }
     device_config.set_sample_rate(48000);
 
     device_config.playback_mut().set_channels(2);
@@ -372,7 +347,7 @@ fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<(
     device_config.playback_mut().set_device_id(ms_loop_device);
 
     device_config.set_data_callback(move |_device, output, input| {
-        output.as_bytes_mut().clone_from_slice(input.as_bytes());
+        output.as_bytes_mut().copy_from_slice(input.as_bytes());
     });
 
     device_config.set_stop_callback(|_device| {
