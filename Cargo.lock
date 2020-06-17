@@ -704,6 +704,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ep-miniaudio-sys"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7f89ade6b40d5e58a7cb641910980ce83027ae27f173cba55a6a5deaf03450c"
+dependencies = [
+ "bindgen",
+ "bitflags",
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "euclid"
 version = "0.19.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1710,6 +1722,16 @@ checksum = "2684d4c2e97d99848d30b324b00c8fcc7e5c897b7cbb5819b09e7c90e8baf212"
 dependencies = [
  "mime 0.3.16",
  "unicase 2.6.0",
+]
+
+[[package]]
+name = "miniaudio"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2c21a07cafb04c784e66248753347756f8443674fdc8c52dc8e9a97761ef01b"
+dependencies = [
+ "bitflags",
+ "ep-miniaudio-sys",
 ]
 
 [[package]]
@@ -2968,6 +2990,7 @@ dependencies = [
  "iced",
  "iced_native",
  "log 0.4.8",
+ "miniaudio",
  "mp3-duration",
  "ogg_metadata",
  "random_color",

@@ -33,6 +33,7 @@ warp = "0.2"
 mp3-duration = "0.1.9"
 ogg_metadata = "0.4"
 futures = "0.3"
+miniaudio = "0.6.0"
 
 [build-dependencies]
 fs_extra = "1.1.0"

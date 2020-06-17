@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use cpal::{Device, Devices, Host};
 
@@ -13,31 +13,55 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-const LATENCY_MS: f32 = 150.0;
-
 use super::config;
 use super::download;
 use super::utils;
 
+use miniaudio::{Context, DeviceId, DeviceType, ShareMode};
+
+pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
+    // This can fail, so we have to check the result.
+    let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {
+        Ok(info) => info,
+        Err(err) => {
+            eprintln!("\t\tfailed to get device info: {}", err);
+            return;
+        }
+    };
+
+    println!(
+        "\t\tSample Rate: {}-{}Hz",
+        info.min_sample_rate(),
+        info.max_sample_rate()
+    );
+
+    println!(
+        "\t\tChannels: {}-{}",
+        info.min_channels(),
+        info.max_channels()
+    );
+
+    println!("\t\tFormats: {:?}", info.formats());
+}
+
 pub fn print_possible_devices() {
-    let host = cpal::default_host();
+    let context = Context::new(&[], None).expect("failed to create context");
 
-    let devices = host.devices().expect("No available sound devices");
+    context
+        .with_devices(|playback_devices, capture_devices| {
+            println!("Playback Devices:");
+            for (idx, device) in playback_devices.iter().enumerate() {
+                println!("\t{}: {}", idx, device.name());
+                print_device_info(&context, DeviceType::Playback, device.id());
+            }
 
-    println!("  Devices: ");
-    for (device_index, device) in devices.enumerate() {
-        println!("  {}. \"{}\"", device_index, device.name().unwrap());
-
-        // Input configs
-        if let Ok(conf) = device.default_input_format() {
-            println!("    Default input stream format:\n      {:?}", conf);
-        }
-
-        // Output configs
-        if let Ok(conf) = device.default_output_format() {
-            println!("    Default output stream format:\n      {:?}", conf);
-        }
-    }
+            println!("Capture Devices:");
+            for (idx, device) in capture_devices.iter().enumerate() {
+                println!("\t{}: {}", idx, device.name());
+                print_device_info(&context, DeviceType::Capture, device.id());
+            }
+        })
+        .expect("failed to get devices");
 }
 
 pub trait FindDevice {
@@ -305,104 +329,62 @@ fn play_thread(
 }
 
 fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<()> {
-    let host = cpal::default_host();
-    let event_loop = host.event_loop();
+    let context = Context::new(&[], None).expect("failed to create context");
 
-    let input_format = input_device.default_input_format().unwrap();
+    let mut ms_input_device = None;
+    let mut ms_loop_device = None;
 
-    // // Build streams.
-    info!(
-        "Attempting to build input stream with `{:?}`.",
-        input_format
-    );
-    let input_stream_id = event_loop
-        .build_input_stream(&*input_device, &input_format)
-        .unwrap();
-    info!("Successfully built input stream.");
+    context
+        .with_devices(|playback_devices, capture_devices| {
+            for (_, device) in playback_devices.iter().enumerate() {
+                println!("\t{}: {}", loop_device.name().unwrap(), device.name());
+                if device.name() == loop_device.name().unwrap() {
+                    ms_loop_device = Some(device.id().clone());
+                }
+            }
 
-    let loop_format = loop_device.default_output_format().unwrap();
+            for (_, device) in capture_devices.iter().enumerate() {
+                println!("\t{}: {}", input_device.name().unwrap(), device.name());
+                if device.name() == input_device.name().unwrap() {
+                    ms_input_device = Some(device.id().clone());
+                }
+            }
+        })
+        .expect("failed to get devices");
 
-    let loop_stream_id = event_loop
-        .build_output_stream(&*loop_device, &loop_format)
-        .unwrap();
-
-    let latency_frames = (LATENCY_MS / 1_000.0) * input_format.sample_rate.0 as f32;
-    let latency_samples = latency_frames as usize * input_format.channels as usize;
-
-    // The buffer to share samples
-    let ring = RingBuffer::new(latency_samples * 2);
-    let (mut producer, mut consumer) = ring.split();
-
-    // Fill the samples with 0.0 equal to the length of the delay.
-    for _ in 0..latency_samples {
-        // The ring buffer has twice as much space as necessary to add latency here,
-        // so this should never fail
-        producer.push(0.0).unwrap();
+    if ms_input_device.is_none() || ms_loop_device.is_none() {
+        error!("could not find input device or loop device in miniaudio");
+        return Ok(());
     }
-    event_loop.play_stream(loop_stream_id.clone())?;
-    event_loop.play_stream(input_stream_id.clone())?;
 
-    event_loop.run(move |id, result| {
-        let data = match result {
-            Ok(data) => data,
-            Err(err) => {
-                error!("an error occurred on stream {:?}: {}", id, err);
-                return;
-            }
-        };
+    let mut device_config = miniaudio::DeviceConfig::new(DeviceType::Duplex);
+    device_config
+        .capture_mut()
+        .set_format(miniaudio::Format::F32);
+    device_config.capture_mut().set_channels(2);
+    device_config.capture_mut().set_device_id(ms_input_device);
+    device_config.set_sample_rate(48000);
 
-        match data {
-            cpal::StreamData::Input {
-                buffer: cpal::UnknownTypeInputBuffer::F32(buffer),
-            } => {
-                assert_eq!(id, input_stream_id);
-                let mut output_fell_behind = false;
-                let mut new_buffer = Vec::new();
-                for &sample in buffer.iter() {
-                    new_buffer.push(sample);
-                }
+    device_config.playback_mut().set_channels(2);
+    device_config
+        .playback_mut()
+        .set_format(miniaudio::Format::F32);
+    device_config.playback_mut().set_device_id(ms_loop_device);
 
-                let buffer = rodio::buffer::SamplesBuffer::new(
-                    input_format.channels,
-                    input_format.sample_rate.0,
-                    new_buffer,
-                );
-
-                let converter = UniformSourceIterator::new(
-                    buffer,
-                    loop_format.channels,
-                    loop_format.sample_rate.0,
-                );
-
-                for sample in converter {
-                    if producer.push(sample).is_err() {
-                        output_fell_behind = true;
-                    }
-                }
-                if output_fell_behind {
-                    eprintln!("output stream fell behind: try increasing latency");
-                }
-            }
-            cpal::StreamData::Output {
-                buffer: cpal::UnknownTypeOutputBuffer::F32(mut buffer),
-            } => {
-                assert_eq!(id, loop_stream_id);
-                let mut input_fell_behind = None;
-
-                for sample in buffer.iter_mut() {
-                    *sample = match consumer.pop() {
-                        Some(s) => s,
-                        None => {
-                            input_fell_behind = Some(0);
-                            0.0
-                        }
-                    };
-                }
-                if input_fell_behind.is_some() {
-                    eprintln!("input stream fell behind: try increasing latency");
-                }
-            }
-            _ => panic!("we're expecting f32 data"),
-        }
+    device_config.set_data_callback(move |_device, output, input| {
+        output.as_bytes_mut().clone_from_slice(input.as_bytes());
     });
+
+    device_config.set_stop_callback(|_device| {
+        println!("Device Stopped.");
+    });
+
+    let device =
+        miniaudio::Device::new(None, &device_config).expect("failed to open playback device");
+    device.start().expect("failed to start device");
+
+    println!("Device Backend: {:?}", device.context().backend());
+
+    std::thread::park();
+    Ok(())
 }
