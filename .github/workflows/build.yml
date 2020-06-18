@@ -20,6 +20,8 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build debug soundboard binary
       run: cargo build --verbose
+    - name: Run tests
+      run: cargo test
   #  - name: Build soundboard binary
   #    run: cargo build --verbose --release
   #  - name: Archive soundboard binary
@@ -57,7 +59,13 @@ jobs:
         scoop install llvm --global
         echo "::set-env name=PATH::$env:PATH"
     - name: Build debug soundboard binary
+      env:
+        LIBCLANG_PATH: "C:\ProgramData\scoop\apps\llvm\current\bin"
       run: cargo build --verbose
+    - name: Run tests
+      env:
+        LIBCLANG_PATH: "C:\ProgramData\scoop\apps\llvm\current\bin"
+      run: cargo test
     # - name: Build soundboard binary
     #   run: cargo build --verbose --release
     # - name: Archive soundboard binary
@@ -92,6 +100,10 @@ jobs:
       env:
         MACOSX_DEPLOYMENT_TARGET: 10.14
       run: cargo build --verbose
+    - name: Run tests
+        env:
+        MACOSX_DEPLOYMENT_TARGET: 10.14
+      run: cargo test
     # - name: Build soundboard binary
     #   env:
     #     MACOSX_DEPLOYMENT_TARGET: 10.14
