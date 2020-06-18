@@ -60,11 +60,11 @@ jobs:
         echo "::set-env name=PATH::$env:PATH"
     - name: Build debug soundboard binary
       env:
-        LIBCLANG_PATH: "C:\ProgramData\scoop\apps\llvm\current\bin"
+        LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
       run: cargo build --verbose
     - name: Run tests
       env:
-        LIBCLANG_PATH: "C:\ProgramData\scoop\apps\llvm\current\bin"
+        LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
       run: cargo test
     # - name: Build soundboard binary
     #   run: cargo build --verbose --release
