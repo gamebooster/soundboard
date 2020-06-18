@@ -51,7 +51,7 @@ pub enum XMError {
     /// The module data is corrupted or invalid
     ModuleDataNotSane,
     /// There was an issue allocating additional memory
-    MemoryAllocationFailed
+    MemoryAllocationFailed,
 }
 
 /// The return values from `XMContext::get_playing_speed()`.
@@ -60,7 +60,7 @@ pub struct PlayingSpeed {
     /// Beats per minute
     pub bpm: u16,
     /// Ticks per line
-    pub tempo: u16
+    pub tempo: u16,
 }
 
 /// The return values from `XMContext::get_position()`.
@@ -73,12 +73,12 @@ pub struct Position {
     /// Row number
     pub row: u8,
     /// Total number of generated samples
-    pub samples: u64
+    pub samples: u64,
 }
 
 /// The XM context.
 pub struct XMContext {
-    raw: *mut raw::xm_context_t
+    raw: *mut raw::xm_context_t,
 }
 
 unsafe impl Send for XMContext {}
@@ -92,19 +92,17 @@ impl XMContext {
     /// * `rate` - The play rate in Hz. Recommended value is 48000.
     pub fn new(mod_data: &[u8], rate: u32) -> Result<XMContext, XMError> {
         unsafe {
-            let mut raw = mem::uninitialized();
+            let mut raw = std::mem::MaybeUninit::uninit().assume_init();
 
             let mod_data_ptr = mem::transmute(mod_data.as_ptr());
             let mod_data_len = mod_data.len() as libc::size_t;
 
             let result = raw::xm_create_context_safe(&mut raw, mod_data_ptr, mod_data_len, rate);
             match result {
-                0 => Ok(XMContext {
-                    raw: raw
-                }),
+                0 => Ok(XMContext { raw }),
                 1 => Err(XMError::ModuleDataNotSane),
                 2 => Err(XMError::MemoryAllocationFailed),
-                _ => Err(XMError::Unknown(result))
+                _ => Err(XMError::Unknown(result)),
             }
         }
     }
@@ -128,7 +126,9 @@ impl XMContext {
     /// generate silence.
     #[inline]
     pub fn set_max_loop_count(&mut self, loopcnt: u8) {
-        unsafe { raw::xm_set_max_loop_count(self.raw, loopcnt); }
+        unsafe {
+            raw::xm_set_max_loop_count(self.raw, loopcnt);
+        }
     }
 
     /// Gets the loop count of the currently playing module.
@@ -213,10 +213,7 @@ impl XMContext {
         let (mut bpm, mut tempo) = (0, 0);
         unsafe { raw::xm_get_playing_speed(self.raw, &mut bpm, &mut tempo) };
 
-        PlayingSpeed {
-            bpm: bpm,
-            tempo: tempo
-        }
+        PlayingSpeed { bpm, tempo }
     }
 
     /// Gets the current position in the module being played.
@@ -224,13 +221,21 @@ impl XMContext {
     pub fn position(&self) -> Position {
         let (mut pattern_index, mut pattern, mut row) = (0, 0, 0);
         let mut samples = 0;
-        unsafe { raw::xm_get_position(self.raw, &mut pattern_index, &mut pattern, &mut row, &mut samples) };
+        unsafe {
+            raw::xm_get_position(
+                self.raw,
+                &mut pattern_index,
+                &mut pattern,
+                &mut row,
+                &mut samples,
+            )
+        };
 
         Position {
-            pattern_index: pattern_index,
-            pattern: pattern,
-            row: row,
-            samples: samples
+            pattern_index,
+            pattern,
+            row,
+            samples,
         }
     }
 

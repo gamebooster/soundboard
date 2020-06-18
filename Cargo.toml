@@ -10,11 +10,12 @@ edition = "2018"
 lto = true
 
 [features]
-default = ["mp3", "flac", "vorbis", "wav", "http", "gui"]
+default = ["mp3", "flac", "vorbis", "wav", "http", "gui", "xm"]
 mp3 = ["minimp3", "mp3-duration"]
 flac = ["claxon"]
 vorbis = ["lewton", "ogg_metadata"]
 wav = ["hound"]
+xm = ["libxm"]
 http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
 
@@ -40,12 +41,13 @@ iced_native = {version = "0.2", optional = true }
 warp = {version = "0.2", optional = true }
 futures = {version = "0.3", optional = true }
 
-mp3-duration = {version = "0.1", optional = true }
+mp3-duration = {version = "0.1.10", optional = true }
 ogg_metadata = {version = "0.4", optional = true }
 minimp3 = {version = "0.3", optional = true }
 hound = {version = "3", optional = true }
 lewton = {version = "0.10", optional = true }
 claxon = {version = "0.4", optional = true }
+libxm = {version = "1", path = "extern/libxm-rs", optional = true }
 
 [build-dependencies]
 fs_extra = "1"

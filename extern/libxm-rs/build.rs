@@ -1,16 +1,14 @@
-extern crate gcc;
+extern crate cc;
 
 fn main() {
     fn parse_env(key: &str, default: bool) -> bool {
         use std::env::{var, VarError};
 
         match var(key) {
-            Ok(val) => {
-                match &val as &str {
-                    "0" => false,
-                    "1" => true,
-                    _ => default
-                }
+            Ok(val) => match &val as &str {
+                "0" => false,
+                "1" => true,
+                _ => default,
             },
             Err(VarError::NotPresent) => default,
             Err(VarError::NotUnicode(_)) => panic!("Environment variable is not unicode: {}", key),
@@ -26,7 +24,10 @@ fn main() {
         Some(if value { "1" } else { "0" })
     }
 
-    gcc::Config::new()
+    #[cfg(target_os = "windows")]
+    std::env::set_var("CC", "clang");
+
+    cc::Build::new()
         .file("libxm/src/context.c")
         .file("libxm/src/load.c")
         .file("libxm/src/play.c")
@@ -36,6 +37,7 @@ fn main() {
         .define("XM_RAMPING", on_off(ramping))
         .define("XM_DEBUG", on_off(debug))
         .define("XM_BIG_ENDIAN", on_off(big_endian))
-        .flag("--std=c11")
+        .define("XM_DEFENSIVE", "0")
+        .define("XM_LIBXMIZE_DELTA_SAMPLES", "1")
         .compile("libxm.a");
 }

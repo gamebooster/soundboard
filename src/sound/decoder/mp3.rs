@@ -2,6 +2,7 @@
 use crate::sound::source::Source;
 use log::{error, info, trace, warn};
 use minimp3::{Decoder, Frame};
+use std::io::SeekFrom;
 use std::io::{Read, Seek};
 use std::time::Duration;
 
@@ -14,13 +15,38 @@ where
     current_frame_offset: usize,
 }
 
+fn is_mp3<R>(mut data: R) -> bool
+where
+    R: Read + Seek,
+{
+    let stream_pos = data.seek(SeekFrom::Current(0)).unwrap();
+
+    let duration = mp3_duration::from_read(&mut data);
+    if duration.is_err()
+        && !matches!(
+            duration.as_ref().err().unwrap().kind,
+            mp3_duration::ErrorKind::UnexpectedEOF
+        )
+    {
+        info!("mp3 error {:?}", duration.err().unwrap());
+        data.seek(SeekFrom::Start(stream_pos)).unwrap();
+        return false;
+    }
+
+    data.seek(SeekFrom::Start(stream_pos)).unwrap();
+    true
+}
+
 impl<R> Mp3Decoder<R>
 where
     R: Read + Seek,
 {
-    pub fn new(data: R) -> Result<Self, ()> {
+    pub fn new(mut data: R) -> Result<Self, R> {
+        if !is_mp3(data.by_ref()) {
+            return Err(data);
+        }
         let mut decoder = Decoder::new(data);
-        let current_frame = decoder.next_frame().map_err(|_| ())?;
+        let current_frame = decoder.next_frame().unwrap();
 
         Ok(Mp3Decoder {
             decoder,

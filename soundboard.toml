@@ -15,8 +15,8 @@ name = "default"
     hotkey = "CTRL-P"
 
     [[soundboard.sound]]
-    name = "Razor1911 Vodka Dance"
-    path = "sounds/vodka/vodka_dance.mp3" # later xm
+    name = "Razor1911 Soldier of Fortune"
+    path = "sounds/vodka/Razor1911 - Soldier Of Fortune intro.xm"
     hotkey = "CTRL-SHIFT-BACKSPACE"
 
     [[soundboard.sound]]
