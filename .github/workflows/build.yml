@@ -101,7 +101,7 @@ jobs:
         MACOSX_DEPLOYMENT_TARGET: 10.14
       run: cargo build --verbose
     - name: Run tests
-        env:
+      env:
         MACOSX_DEPLOYMENT_TARGET: 10.14
       run: cargo test
     # - name: Build soundboard binary
