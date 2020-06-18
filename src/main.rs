@@ -1,7 +1,6 @@
 #![allow(unused_imports)]
 
 extern crate clap;
-extern crate cpal;
 extern crate iced;
 extern crate log;
 extern crate strum;
@@ -30,7 +29,7 @@ fn main() -> Result<()> {
     let arguments = config::parse_arguments();
 
     if arguments.is_present("print-possible-devices") {
-        sound::print_possible_devices();
+        sound::print_possible_devices(true);
         return Ok(());
     }
 

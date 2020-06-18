@@ -19,16 +19,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alsa-sys"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0edcbbf9ef68f15ae1b620f722180b82a98b6f0628d30baa6b8d2a5abc87d58"
-dependencies = [
- "libc",
- "pkg-config",
-]
-
-[[package]]
 name = "andrew"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,42 +490,6 @@ dependencies = [
  "core-graphics 0.19.0",
  "libc",
  "objc",
-]
-
-[[package]]
-name = "coreaudio-rs"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f229761965dad3e9b11081668a6ea00f1def7aa46062321b5ec245b834f6e491"
-dependencies = [
- "bitflags",
- "coreaudio-sys",
-]
-
-[[package]]
-name = "coreaudio-sys"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e81f1c165c33ffab90a03077ac3b03462b34d5947145dfa48102e063d581502c"
-dependencies = [
- "bindgen",
-]
-
-[[package]]
-name = "cpal"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b55d55d69f403f62a95bd3c04b431e0aedf5120c70f15d07a8edd234443dd59"
-dependencies = [
- "alsa-sys",
- "core-foundation-sys 0.6.2",
- "coreaudio-rs",
- "lazy_static",
- "libc",
- "num-traits",
- "stdweb",
- "thiserror",
- "winapi 0.3.8",
 ]
 
 [[package]]
@@ -2322,29 +2276,6 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.3.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "64ac302d8f83c0c1974bf758f6b041c6c8ada916fbb44a609158ca8b064cc76c"
-dependencies = [
- "libc",
- "rand 0.4.6",
-]
-
-[[package]]
-name = "rand"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "552840b97013b1a26992c11eac34bdd778e464601a4c2054b5f0bff7c6761293"
-dependencies = [
- "fuchsia-cprng",
- "libc",
- "rand_core 0.3.1",
- "rdrand",
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "rand"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
@@ -2491,15 +2422,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "random_color"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33f220313911bda3f4e96069b3e2b005978543d5035d2638e40905b201d18549"
-dependencies = [
- "rand 0.3.23",
-]
-
-[[package]]
 name = "range-alloc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2636,26 +2558,6 @@ dependencies = [
  "wasm-bindgen-futures 0.4.13",
  "web-sys",
  "winreg",
-]
-
-[[package]]
-name = "ringbuf"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c2b29d87cfbdce39849012bb5020fff88b8f01f4f5b55846a0b6ef360774eae"
-
-[[package]]
-name = "rodio"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73bbf260262fd5501b7a17d6827e0d25c1127e921eb177150a060faf6e217a70"
-dependencies = [
- "claxon",
- "cpal",
- "hound",
- "lazy_static",
- "lewton",
- "minimp3",
 ]
 
 [[package]]
@@ -2981,24 +2883,23 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "cpal",
+ "claxon",
  "crossbeam-channel",
  "env_logger",
  "fs_extra",
  "futures 0.3.5",
  "hotkey",
+ "hound",
  "iced",
  "iced_native",
+ "lewton",
  "log 0.4.8",
  "miniaudio",
  "minimp3",
  "mp3-duration",
  "ogg_metadata",
- "random_color",
  "regex",
  "reqwest",
- "ringbuf",
- "rodio",
  "serde",
  "strum",
  "strum_macros",
@@ -3026,12 +2927,6 @@ checksum = "f77b6b07e862c66a9f3e62a07588fee67cd90a9135a2b942409f195507b4fb51"
 dependencies = [
  "byteorder",
 ]
-
-[[package]]
-name = "stdweb"
-version = "0.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef5430c8e36b713e13b48a9f709cc21e046723fe44ce34587b73a830203b533e"
 
 [[package]]
 name = "storage-map"

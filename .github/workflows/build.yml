@@ -18,8 +18,6 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install alsa
-      run: sudo apt-get install alsa alsa-tools libasound2-dev
     - name: Build debug soundboard binary
       run: cargo build --verbose
   #  - name: Build soundboard binary
@@ -52,6 +50,12 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install llvm
+      shell: powershell
+      run: |
+        Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+        scoop install llvm --global
+        echo "::set-env name=PATH::$env:PATH"
     - name: Build debug soundboard binary
       run: cargo build --verbose
     # - name: Build soundboard binary
