@@ -19,9 +19,11 @@ xm = ["libxm"]
 http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
 
+[target.'cfg(unix)'.dependencies]
+libpulse-binding = { version = "2.0", features = ["pa_latest_common"] }
+
 [dependencies]
 miniaudio = "0.6"
-libpulse-binding = { version = "2.0", features = ["pa_latest_common"] }
 hotkey = { path = "extern/hotkey-rs", version = "0.3" }
 clap = "3.0.0-beta.1"
 toml = "0.5"
