@@ -1,11 +1,5 @@
-use anyhow::{anyhow, Context, Result};
-use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-use cpal::{Device, Devices, Host};
-
+use anyhow::{anyhow, Result};
 use log::{error, info, trace, warn};
-use ringbuf::RingBuffer;
-use rodio::source::UniformSourceIterator;
-use rodio::{Sink, Source};
 use std::collections::HashMap;
 use std::io::BufReader;
 use std::path::PathBuf;
@@ -13,117 +7,154 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-const LATENCY_MS: f32 = 150.0;
-
 use super::config;
 use super::download;
 use super::utils;
 
-pub fn print_possible_devices() {
-    let host = cpal::default_host();
+mod decoder;
+mod sample;
+mod sink;
+mod source;
 
-    let devices = host.devices().expect("No available sound devices");
+use decoder::Decoder;
+use miniaudio::{Context, DeviceId, DeviceType, ShareMode};
+use sink::Sink;
+use source::Source;
 
-    println!("  Devices: ");
-    for (device_index, device) in devices.enumerate() {
-        println!("  {}. \"{}\"", device_index, device.name().unwrap());
+static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
+    miniaudio::Backend::Wasapi,
+    miniaudio::Backend::DSound,
+    miniaudio::Backend::CoreAudio,
+    miniaudio::Backend::PulseAudio,
+    miniaudio::Backend::Alsa,
+];
 
-        // Input configs
-        if let Ok(conf) = device.default_input_format() {
-            println!("    Default input stream format:\n      {:?}", conf);
+pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
+    // This can fail, so we have to check the result.
+    let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {
+        Ok(info) => info,
+        Err(err) => {
+            error!("\t\tfailed to get device info: {}", err);
+            return;
         }
+    };
 
-        // Output configs
-        if let Ok(conf) = device.default_output_format() {
-            println!("    Default output stream format:\n      {:?}", conf);
-        }
-    }
+    info!(
+        "\t\t\tSample Rate: {}-{}Hz",
+        info.min_sample_rate(),
+        info.max_sample_rate()
+    );
+
+    info!(
+        "\t\t\tChannels: {}-{}",
+        info.min_channels(),
+        info.max_channels()
+    );
+
+    info!("\t\t\tFormats: {:?}", info.formats());
 }
 
-pub trait FindDevice {
-    fn into_device(self) -> Result<Device>;
+pub fn print_possible_devices(full: bool) {
+    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
+
+    info!("Audio Backend: {:?}", context.backend());
+
+    context
+        .with_devices(|playback_devices, capture_devices| {
+            info!("\tOutput Devices:");
+            for (idx, device) in playback_devices.iter().enumerate() {
+                info!("\t\t{}: {}", idx, device.name());
+                if full {
+                    print_device_info(&context, DeviceType::Playback, device.id());
+                }
+            }
+
+            info!("\tInput Devices:");
+            for (idx, device) in capture_devices.iter().enumerate() {
+                info!("\t\t{}: {}", idx, device.name());
+                if full {
+                    print_device_info(&context, DeviceType::Capture, device.id());
+                }
+            }
+        })
+        .expect("failed to get devices");
 }
 
-impl FindDevice for usize {
-    fn into_device(self) -> Result<Device> {
-        let host = cpal::default_host();
-
-        let mut devices: Devices = host.devices()?;
-
-        devices
-            .nth(self)
-            .ok_or_else(|| anyhow!("No device device from index"))
-    }
-}
-
-impl FindDevice for String {
-    fn into_device(self) -> Result<Device> {
-        let host = cpal::default_host();
-
-        let mut devices: Devices = host.devices()?;
-
-        devices
-            .find(|device: &Device| device.name().unwrap() == self)
-            .ok_or_else(|| anyhow!("No device device from name"))
-    }
-}
-
-fn get_default_input_device() -> Result<Device> {
-    let host: Host = cpal::default_host();
-    host.default_input_device()
-        .ok_or_else(|| anyhow!("no default input device"))
-}
-
-fn get_default_output_device() -> Result<Device> {
-    let host: Host = cpal::default_host();
-    host.default_output_device()
-        .ok_or_else(|| anyhow!("no default output device"))
-}
-
-pub fn init_sound<T: FindDevice>(
+pub fn init_sound(
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
-    input_device_identifier: Option<T>,
-    output_device_identifier: Option<T>,
-    loop_device_identifier: T,
+    input_device_identifier: Option<String>,
+    output_device_identifier: Option<String>,
+    loop_device_identifier: String,
 ) -> Result<()> {
-    let mut input_device = get_default_input_device()?;
-    if input_device_identifier.is_some() {
-        input_device = input_device_identifier.unwrap().into_device()?;
+    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
+
+    let mut ms_input_device = None;
+    let mut ms_output_device = None;
+    let mut ms_loop_device = None;
+
+    info!("Possible Devices: ");
+    print_possible_devices(false);
+
+    context
+        .with_devices(|playback_devices, capture_devices| {
+            for (_, device) in playback_devices.iter().enumerate() {
+                if device.name() == loop_device_identifier {
+                    ms_loop_device = Some(device.clone());
+                }
+                if output_device_identifier.is_some()
+                    && device.name() == output_device_identifier.as_ref().unwrap()
+                {
+                    ms_output_device = Some(device.clone());
+                }
+            }
+
+            if input_device_identifier.is_none() {
+                return;
+            };
+            for (_, device) in capture_devices.iter().enumerate() {
+                if device.name() == input_device_identifier.as_ref().unwrap() {
+                    ms_input_device = Some(device.clone());
+                }
+            }
+        })
+        .expect("failed to create context");
+
+    if ms_loop_device.is_none() {
+        error!(
+            "Could not find loop device identifier \"{}\"",
+            loop_device_identifier
+        );
+        return Ok(());
     }
-    let mut output_device = get_default_output_device()?;
-    if output_device_identifier.is_some() {
-        output_device = output_device_identifier.unwrap().into_device()?;
+
+    if let Some(input_device) = ms_input_device.as_ref() {
+        info!("Input device: \"{}\"", input_device.name());
+    } else {
+        info!("Input device: default input device");
     }
-
-    let loop_device = loop_device_identifier.into_device()?;
-
-    info!("Input:  \"{}\"", input_device.name().unwrap());
-    info!("Output: \"{}\"", output_device.name().unwrap());
-    info!("Loopback: \"{}\"", loop_device.name().unwrap());
-
-    // Input configs
-    if let Ok(conf) = input_device.default_input_format() {
-        println!("Default input stream format:\n      {:?}", conf);
+    if let Some(output_device) = ms_output_device.as_ref() {
+        info!("Output device: \"{}\"", output_device.name());
+    } else {
+        info!("Output device: default output device");
     }
+    info!(
+        "Loop device: \"{}\"",
+        ms_loop_device.as_ref().unwrap().name()
+    );
 
-    let shared_loop_device = Arc::new(loop_device);
-    let shared_output_device = Arc::new(output_device);
-    let shared_input_device = Arc::new(input_device);
-
-    let shared_loop_device_clone = shared_loop_device.clone();
-
+    let ms_loop_device_clone = ms_loop_device.clone();
     std::thread::spawn(move || {
         play_thread(
             receiver,
             sender,
-            shared_loop_device_clone,
-            shared_output_device,
+            ms_loop_device_clone.unwrap(),
+            ms_output_device,
         );
     });
 
     std::thread::spawn(move || -> Result<()> {
-        sound_thread(shared_input_device, shared_loop_device)
+        sound_thread(ms_input_device, ms_loop_device.unwrap())
     });
 
     Ok(())
@@ -152,58 +183,39 @@ pub enum Message {
 }
 
 fn insert_sink_with_config(
-    device: &Device,
-    volume: f32,
+    device: Option<miniaudio::DeviceIdAndName>,
     sound_config: config::SoundConfig,
+    volume: f32,
     sinks: &mut SoundMap,
 ) -> Result<()> {
+    let device_name = {
+        if let Some(device) = device.as_ref() {
+            device.name().to_string()
+        } else {
+            "default output".to_string()
+        }
+    };
     info!(
         "Playing sound config: {:?} on device: {}",
-        sound_config,
-        device.name().unwrap()
+        sound_config, device_name
     );
 
     let local_path = download::get_local_path_from_sound_config(&sound_config)?;
 
     let file = std::fs::File::open(&local_path)?;
-
-    let sink = Sink::new(device);
-    sink.set_volume(volume);
-    let decoder = rodio::Decoder::new(BufReader::new(file))?;
-    let total_duration = decoder
-        .total_duration()
-        .or_else(|| -> Option<std::time::Duration> {
-            let duration = mp3_duration::from_path(&local_path);
-            if let Ok(dur) = duration {
-                return Some(dur);
-            } else {
-                trace!("Could not read mp3 tag {:?}", duration.err());
-            }
+    let mut decoder = Decoder::new(file)?;
+    let mut file = std::fs::File::open(&local_path)?;
+    let total_duration = decoder.total_duration_mut(&mut file);
+    let device_id = {
+        if let Some(device) = device {
+            Some(device.id().clone())
+        } else {
             None
-        })
-        .or_else(|| -> Option<std::time::Duration> {
-            use ogg_metadata::AudioMetadata;
-            let file = std::fs::File::open(&local_path);
-            if file.is_err() {
-                return None;
-            }
-            match ogg_metadata::read_format(&file.unwrap()) {
-                Ok(vec) => match &vec[0] {
-                    ogg_metadata::OggFormat::Vorbis(vorbis_metadata) => {
-                        return Some(vorbis_metadata.get_duration().unwrap());
-                    }
-                    ogg_metadata::OggFormat::Opus(opus_metadata) => {
-                        return Some(opus_metadata.get_duration().unwrap());
-                    }
-                    _ => {}
-                },
-                Err(err) => {
-                    trace!("Could not read ogg info {}", err);
-                }
-            }
-            None
-        });
-    sink.append(decoder);
+        }
+    };
+    let sink = Sink::new(decoder, device_id)?;
+    sink.set_volume(volume)?;
+    sink.start()?;
 
     match sinks.entry(sound_config) {
         std::collections::hash_map::Entry::Occupied(mut entry) => {
@@ -221,8 +233,8 @@ fn insert_sink_with_config(
 fn play_thread(
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
-    loop_device: Arc<Device>,
-    output_device: Arc<Device>,
+    loop_device: miniaudio::DeviceIdAndName,
+    output_device: Option<miniaudio::DeviceIdAndName>,
 ) {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
@@ -236,9 +248,9 @@ fn play_thread(
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
                         match insert_sink_with_config(
-                            &*output_device,
-                            volume,
+                            output_device.clone(),
                             sound_config.clone(),
+                            volume,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -250,9 +262,9 @@ fn play_thread(
                     }
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
                         match insert_sink_with_config(
-                            &*loop_device,
-                            volume,
+                            Some(loop_device.clone()),
                             sound_config,
+                            volume,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -281,7 +293,9 @@ fn play_thread(
                     volume = volume_new;
                     for (_, tuple) in sinks.iter_mut() {
                         for sink in &mut tuple.0 {
-                            sink.set_volume(volume);
+                            if let Err(err) = sink.set_volume(volume) {
+                                error!("could not set master volume {}", err);
+                            }
                         }
                     }
                 }
@@ -300,109 +314,56 @@ fn play_thread(
             }
         };
 
-        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.empty()));
+        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.stopped()));
     }
 }
 
-fn sound_thread(input_device: Arc<Device>, loop_device: Arc<Device>) -> Result<()> {
-    let host = cpal::default_host();
-    let event_loop = host.event_loop();
-
-    let input_format = input_device.default_input_format().unwrap();
-
-    // // Build streams.
-    info!(
-        "Attempting to build input stream with `{:?}`.",
-        input_format
-    );
-    let input_stream_id = event_loop
-        .build_input_stream(&*input_device, &input_format)
-        .unwrap();
-    info!("Successfully built input stream.");
-
-    let loop_format = loop_device.default_output_format().unwrap();
-
-    let loop_stream_id = event_loop
-        .build_output_stream(&*loop_device, &loop_format)
-        .unwrap();
-
-    let latency_frames = (LATENCY_MS / 1_000.0) * input_format.sample_rate.0 as f32;
-    let latency_samples = latency_frames as usize * input_format.channels as usize;
-
-    // The buffer to share samples
-    let ring = RingBuffer::new(latency_samples * 2);
-    let (mut producer, mut consumer) = ring.split();
-
-    // Fill the samples with 0.0 equal to the length of the delay.
-    for _ in 0..latency_samples {
-        // The ring buffer has twice as much space as necessary to add latency here,
-        // so this should never fail
-        producer.push(0.0).unwrap();
-    }
-    event_loop.play_stream(loop_stream_id.clone())?;
-    event_loop.play_stream(input_stream_id.clone())?;
-
-    event_loop.run(move |id, result| {
-        let data = match result {
-            Ok(data) => data,
-            Err(err) => {
-                error!("an error occurred on stream {:?}: {}", id, err);
-                return;
-            }
-        };
-
-        match data {
-            cpal::StreamData::Input {
-                buffer: cpal::UnknownTypeInputBuffer::F32(buffer),
-            } => {
-                assert_eq!(id, input_stream_id);
-                let mut output_fell_behind = false;
-                let mut new_buffer = Vec::new();
-                for &sample in buffer.iter() {
-                    new_buffer.push(sample);
-                }
-
-                let buffer = rodio::buffer::SamplesBuffer::new(
-                    input_format.channels,
-                    input_format.sample_rate.0,
-                    new_buffer,
-                );
-
-                let converter = UniformSourceIterator::new(
-                    buffer,
-                    loop_format.channels,
-                    loop_format.sample_rate.0,
-                );
-
-                for sample in converter {
-                    if producer.push(sample).is_err() {
-                        output_fell_behind = true;
-                    }
-                }
-                if output_fell_behind {
-                    eprintln!("output stream fell behind: try increasing latency");
-                }
-            }
-            cpal::StreamData::Output {
-                buffer: cpal::UnknownTypeOutputBuffer::F32(mut buffer),
-            } => {
-                assert_eq!(id, loop_stream_id);
-                let mut input_fell_behind = None;
-
-                for sample in buffer.iter_mut() {
-                    *sample = match consumer.pop() {
-                        Some(s) => s,
-                        None => {
-                            input_fell_behind = Some(0);
-                            0.0
-                        }
-                    };
-                }
-                if input_fell_behind.is_some() {
-                    eprintln!("input stream fell behind: try increasing latency");
-                }
-            }
-            _ => panic!("we're expecting f32 data"),
+fn sound_thread(
+    input_device: Option<miniaudio::DeviceIdAndName>,
+    loop_device: miniaudio::DeviceIdAndName,
+) -> Result<()> {
+    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
+    let loop_info = match context.get_device_info(
+        miniaudio::DeviceType::Playback,
+        loop_device.id(),
+        ShareMode::Shared,
+    ) {
+        Ok(loop_info) => loop_info,
+        Err(err) => {
+            error!("failed to get device info: {}", err);
+            return Err(anyhow!("failed to get device info: {}", err));
         }
+    };
+
+    let mut device_config = miniaudio::DeviceConfig::new(DeviceType::Duplex);
+    device_config
+        .capture_mut()
+        .set_format(loop_info.formats()[0]);
+    device_config
+        .capture_mut()
+        .set_channels(loop_info.max_channels());
+    if let Some(input_device) = input_device {
+        device_config
+            .capture_mut()
+            .set_device_id(Some(input_device.id().clone()));
+    }
+    device_config.set_sample_rate(loop_info.max_sample_rate());
+    device_config
+        .playback_mut()
+        .set_device_id(Some(loop_device.id().clone()));
+
+    device_config.set_data_callback(move |_device, output, input| {
+        output.as_bytes_mut().copy_from_slice(input.as_bytes());
     });
+
+    device_config.set_stop_callback(|_device| {
+        error!("Loopback device stopped!!!");
+    });
+
+    let device =
+        miniaudio::Device::new(None, &device_config).expect("failed to open playback device");
+    device.start().expect("failed to start device");
+
+    std::thread::park();
+    Ok(())
 }

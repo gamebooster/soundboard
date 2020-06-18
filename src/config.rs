@@ -18,9 +18,9 @@ use std::str::FromStr;
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
-    pub input_device: Option<usize>,
-    pub output_device: Option<usize>,
-    pub loopback_device: Option<usize>,
+    pub input_device: Option<String>,
+    pub output_device: Option<String>,
+    pub loopback_device: Option<String>,
     pub stop_hotkey: Option<String>,
     pub http_server: Option<bool>,
     pub no_gui: Option<bool>,
@@ -369,47 +369,31 @@ pub fn parse_arguments() -> clap::ArgMatches {
 pub fn parse_devices(
     config: &MainConfig,
     arguments: &clap::ArgMatches,
-) -> Result<(Option<usize>, Option<usize>, usize)> {
-    let input_device_index: Option<usize> = {
+) -> Result<(Option<String>, Option<String>, String)> {
+    let input_device_index: Option<String> = {
         if arguments.is_present("input-device") {
-            Some(
-                arguments
-                    .value_of("input-device")
-                    .expect("No input device specified")
-                    .parse()
-                    .expect("No number specified"),
-            )
+            Some(arguments.value_of("input-device").unwrap().to_string())
         } else if config.input_device.is_some() {
-            config.input_device
+            config.input_device.clone()
         } else {
             None
         }
     };
-    let output_device_index: Option<usize> = {
+    let output_device_index: Option<String> = {
         if arguments.is_present("output-device") {
-            Some(
-                arguments
-                    .value_of("output-device")
-                    .expect("No ouput device specified")
-                    .parse()
-                    .expect("No number specified"),
-            )
+            Some(arguments.value_of("output-device").unwrap().to_string())
         } else if config.output_device.is_some() {
-            config.output_device
+            config.output_device.clone()
         } else {
             None
         }
     };
 
-    let loop_device_index: usize = {
+    let loop_device_index: String = {
         if arguments.is_present("loopback-device") {
-            arguments
-                .value_of("loopback-device")
-                .expect("No loopback device specified")
-                .parse()
-                .expect("No number specified")
+            arguments.value_of("loopback-device").unwrap().to_string()
         } else if config.loopback_device.is_some() {
-            config.loopback_device.unwrap()
+            config.loopback_device.as_ref().unwrap().clone()
         } else {
             return Err(anyhow!(
                 "No loopback device specified in config or on command line"
