@@ -16,6 +16,8 @@ use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
+use super::sound;
+
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
     pub input_device: Option<String>,
@@ -311,6 +313,7 @@ pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "linux"))]
 pub fn parse_arguments() -> clap::ArgMatches {
     App::new("soundboard")
         .version(crate_version!())
@@ -366,6 +369,67 @@ pub fn parse_arguments() -> clap::ArgMatches {
         .get_matches()
 }
 
+#[cfg(target_os = "linux")]
+pub fn parse_arguments() -> clap::ArgMatches {
+    App::new("soundboard")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about("play sounds over your microphone")
+        .arg(
+            Arg::with_name("config-file")
+                .short('c')
+                .long("config")
+                .value_name("FILE")
+                .default_value("soundboard.toml")
+                .about("sets a custom config file")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("input-device")
+                .short('i')
+                .long("input-device")
+                .about("Sets the input device to use")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("output-device")
+                .short('o')
+                .long("output-device")
+                .about("Sets the output device to use")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("loopback-device")
+                .short('l')
+                .long("loopback-device")
+                .about("Sets the loopback device to use")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("verbose")
+                .long("verbose")
+                .takes_value(true)
+                .about("Sets the level of verbosity"),
+        )
+        .arg(
+            Arg::with_name("print-possible-devices")
+                .long("print-possible-devices")
+                .about("Print possible devices"),
+        )
+        .arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"))
+        .arg(
+            Arg::with_name("http-server")
+                .long("http-server")
+                .about("Enable http server API and web app"),
+        )
+        .arg(
+            Arg::with_name("auto-loop-device")
+                .long("auto-loop-device")
+                .about("Automatically create PulseAudio Loopback Device"),
+        )
+        .get_matches()
+}
+
 pub fn parse_devices(
     config: &MainConfig,
     arguments: &clap::ArgMatches,
@@ -389,6 +453,40 @@ pub fn parse_devices(
         }
     };
 
+    #[cfg(target_os = "linux")]
+    let loop_device_index: String = {
+        let result: Option<String> = {
+            if arguments.is_present("auto-loop-device") {
+                match sound::load_virt_sink() {
+                    Ok(name) => Some(name),
+                    Err(_err) => {
+                        error!("Error in virt-sink: {}", _err);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        };
+
+        if let Some(result) = result {
+            result
+        } else {
+            error!("Connection to Pulse Server failed");
+
+            if arguments.is_present("loopback-device") {
+                arguments.value_of("loopback-device").unwrap().to_string()
+            } else if config.loopback_device.is_some() {
+                config.loopback_device.as_ref().unwrap().clone()
+            } else {
+                return Err(anyhow!(
+                    "No loopback device specified in config or on command line"
+                ));
+            }
+        }
+    };
+
+    #[cfg(not(target_os = "linux"))]
     let loop_device_index: String = {
         if arguments.is_present("loopback-device") {
             arguments.value_of("loopback-device").unwrap().to_string()
