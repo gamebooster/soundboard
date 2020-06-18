@@ -82,9 +82,11 @@ sounds/
 2. select `CABLE Output` as your microphone in your voice app like discord etc`
 
 ### providing virtual microphone on linux 
-1. enter command `pactl load-module module-null-sink sink_name=virtualSink`
-2. use soundboard with loopback **null sink**
-3. use applications with input *Monitor of Null Sink*
+1. create and choose loopback device   
+    a. use flag --auto-loop-device   
+    b. alternative: enter command `pactl load-module module-null-sink sink_name=virtualSink`   
+    and use soundboard with loopback **null sink**
+3. use applications with input *Monitor of Null Sink* or *Monitor of SoundboadLoopbackDevice*
 
 ## default usage
 
