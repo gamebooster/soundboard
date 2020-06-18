@@ -1,0 +1,23 @@
+[package]
+
+name = "libxm"
+version = "1.0.0"
+authors = ["Dan Spencer <dan@atomicpotato.net>"]
+description = "A binding of libxm for Rust. A small XM (FastTracker II Extended Module) player library. Designed for easy integration in demos and such, and provides timing functions for easy sync against specific instruments, samples or channels."
+repository = "https://github.com/nukep/libxm-rs"
+documentation = "https://nukep.github.io/libxm-rs/libxm"
+readme = "README.md"
+keywords = ["xm", "libxm", "FastTracker"]
+license = "WTFPL"
+links = "xm"
+build = "build.rs"
+
+[dependencies]
+libc = "*"
+
+[build-dependencies]
+gcc = "0.3"
+
+[dev-dependencies]
+getopts = "0.2"
+sdl2 = "0.3.0"

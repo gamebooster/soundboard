@@ -1,0 +1,28 @@
+language: rust
+sudo: required
+rust:
+- nightly
+- stable
+install:
+  # Install SDL2 to test the demo
+  - sudo add-apt-repository ppa:team-xbmc/ppa -y
+  - sudo apt-get update -q
+  - sudo apt-get install libsdl2-dev
+before_script:
+- |
+  pip install 'travis-cargo<0.2' --user &&
+  export PATH=$HOME/.local/bin:$PATH
+script:
+- |
+  travis-cargo build &&
+  travis-cargo test &&
+  travis-cargo --only nightly doc
+after_success:
+- travis-cargo --only nightly doc-upload
+env:
+  global:
+  # clang 3.4 is a compiler that supports C11
+  - CC=clang
+  - TRAVIS_CARGO_NIGHTLY_FEATURE=""
+  - LD_LIBRARY_PATH: /usr/local/lib
+  - secure: VIBC5kRdD5ePX/QnzXehiqAp576Q03eaKOurm2jbB6lc1bW3gn6Ai4HdV+BZivAdLtyduIY1p5Lil+z7lT/FHNjXFCmCg6OaJBvLgmoGRh+wig0wn7DFxu4vQFAHSTGDawfD3pQgOSBm4UAvrW12aWfPbmUKKaJiEPvw49Ulvl8=
