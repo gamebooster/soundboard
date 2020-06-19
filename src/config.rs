@@ -312,7 +312,7 @@ pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
 }
 
 pub fn parse_arguments() -> clap::ArgMatches {
-    App::new("soundboard")
+    let matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
         .about("play sounds over your microphone")
@@ -356,14 +356,16 @@ pub fn parse_arguments() -> clap::ArgMatches {
             Arg::with_name("print-possible-devices")
                 .long("print-possible-devices")
                 .about("Print possible devices"),
-        )
-        .arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"))
-        .arg(
-            Arg::with_name("http-server")
-                .long("http-server")
-                .about("Enable http server API and web app"),
-        )
-        .get_matches()
+        );
+    #[cfg(feature = "gui")]
+    let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
+    #[cfg(feature = "http")]
+    let matches = matches.arg(
+        Arg::with_name("http-server")
+            .long("http-server")
+            .about("Enable http server API and web app"),
+    );
+    matches.get_matches()
 }
 
 pub fn parse_devices(

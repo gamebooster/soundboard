@@ -3,6 +3,7 @@ use ::hotkey as hotkeyExt;
 use anyhow::{anyhow, Context, Result};
 use hotkeyExt::HotkeyListener;
 use hotkeyExt::ListenerID;
+use log::{error, info, trace, warn};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -29,6 +30,7 @@ impl HotkeyManager {
             hotkey.key as u32,
             callback,
         )?;
+        info!("register hotkey {}", &hotkey);
         self.hashmap.insert(hotkey, result);
         Ok(())
     }
@@ -40,6 +42,7 @@ impl HotkeyManager {
                 .get(&hotkey)
                 .ok_or_else(|| anyhow!("no hotkey registered with this id"))?,
         )?;
+        info!("unregister hotkey {}", &hotkey);
         Ok(())
     }
     pub fn unregister_all(&mut self) -> Result<()> {
