@@ -21,19 +21,19 @@ where
 {
     let stream_pos = data.seek(SeekFrom::Current(0)).unwrap();
 
-    let duration = mp3_duration::from_read(&mut data);
-    if duration.is_err()
-        && !matches!(
-            duration.as_ref().err().unwrap().kind,
-            mp3_duration::ErrorKind::UnexpectedEOF
-        )
-    {
-        info!("mp3 error {:?}", duration.err().unwrap());
-        data.seek(SeekFrom::Start(stream_pos)).unwrap();
+    let mut decoder = Decoder::new(data);
+    if decoder.next_frame().is_err() {
+        decoder
+            .reader_mut()
+            .seek(SeekFrom::Start(stream_pos))
+            .unwrap();
         return false;
     }
 
-    data.seek(SeekFrom::Start(stream_pos)).unwrap();
+    decoder
+        .reader_mut()
+        .seek(SeekFrom::Start(stream_pos))
+        .unwrap();
     true
 }
 
