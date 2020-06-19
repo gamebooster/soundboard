@@ -11,13 +11,12 @@ where
     R: Read + Seek,
 {
     context: XMContext,
-    //buffer: Vec<u8>,
     current_frame_data: Box<[f32; 4096]>,
     current_frame_offset: usize,
     phantom: PhantomData<R>,
 }
 
-/// Returns true if the stream contains Flac data, then resets it to where it was.
+/// Returns true if the stream contains xm data, then resets it to where it was.
 fn is_xm<R>(mut data: R) -> bool
 where
     R: Read + Seek,
@@ -52,7 +51,6 @@ where
 
         Ok(XMDecoder {
             context: xm,
-            //buffer: data_buffer,
             phantom: PhantomData,
             current_frame_data: Box::new(buffer),
             current_frame_offset: 0,
@@ -81,7 +79,18 @@ where
 
     #[inline]
     fn total_duration(&self) -> Option<Duration> {
-        None
+        let speed = self.context.playing_speed().tempo as f64;
+        let bpm = self.context.playing_speed().bpm as f64;
+        let patterns = self.context.number_of_patterns();
+        let kbps = (bpm * 2.0) / 5.0;
+        let st: f64 = ((1.0 / kbps) * 1000.0) * speed;
+        let mut t: f64 = 0.0;
+        for pattern in 0..patterns - 1 {
+            t = t + self.context.number_of_rows(pattern) as f64;
+        }
+
+        info!("duration: {:?}", Duration::from_millis((t * st) as u64));
+        return Some(Duration::from_millis((t * st) as u64));
     }
 }
 
