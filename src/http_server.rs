@@ -10,9 +10,9 @@ use std::sync::Arc;
 use warp::http::StatusCode;
 use warp::{reject, Filter, Rejection, Reply};
 
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
-struct SoundRequest {
-    name: String,
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct SoundPlayRequest {
+    devices: sound::SoundDevices,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
@@ -238,21 +238,21 @@ pub async fn run(
     let sounds_play_route = check_sound_index(config_file_clone)
         .and(warp::path!("play"))
         .and(warp::post())
-        .map(move |(sound, _): (config::SoundConfig, usize)| {
-            gui_sender_clone
-                .send(sound::Message::PlaySound(
-                    sound.clone(),
-                    sound::SoundDevices::Both,
-                ))
-                .unwrap();
-            warp::reply::with_status(
-                warp::reply::json(&ResultData::with_data(format!(
-                    "PlaySound {:?}",
-                    &sound.path
-                ))),
-                warp::http::StatusCode::OK,
-            )
-        });
+        .and(warp::body::json())
+        .map(
+            move |(sound, _): (config::SoundConfig, usize), request: SoundPlayRequest| {
+                gui_sender_clone
+                    .send(sound::Message::PlaySound(sound.clone(), request.devices))
+                    .unwrap();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(format!(
+                        "PlaySound {:?}",
+                        &sound.path
+                    ))),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
 
     let gui_sender_clone = gui_sender.clone();
     let config_file_clone = config_file.clone();

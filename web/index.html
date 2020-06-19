@@ -29,6 +29,15 @@
                         <div class="column filter"><input class="filter_input" type="text" placeholder="filter"
                                 :value='filter' @input='evt=>filter=evt.target.value' v-on:keyup.enter="hideKeyboard">
                         </div>
+                        <div class="column" id="device_chooser">
+                            <div class="select is-up">
+                                <select v-model="selected_device">
+                                    <option value="Both" selected="selected">Both</option>
+                                    <option value="Output">Output</option>
+                                    <option value="Loop">Loop</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="column"> <input class="slider_input slider is-fullwidth" step="0.1" min="0" max="1"
                                 v-model="volume" type="range"></div>
                     </div>

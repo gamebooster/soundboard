@@ -52,7 +52,6 @@ input[type="range"].slider {
 
 .center {
     text-align: center;
-    margin-top: 0.5rem;
 }
 
 html, body {
@@ -85,11 +84,9 @@ html, body {
         display: block;
     }
 
-    #inputs .columns {
-        display: block;
-    }
-
     #inputs {
         margin-right: 0.5rem;
+        padding: 0.5rem;
+        padding-top: 0.7rem;
     }
 }

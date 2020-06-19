@@ -233,7 +233,17 @@ pub fn init_sound(
 type StartedTime = std::time::Instant;
 type SoundMap = HashMap<config::SoundConfig, (Vec<Sink>, StartedTime, Option<TotalDuration>)>;
 
-#[derive(PartialEq)]
+#[derive(
+    Debug,
+    serde::Deserialize,
+    Copy,
+    Clone,
+    serde::Serialize,
+    strum_macros::EnumString,
+    PartialEq,
+    Hash,
+    Eq,
+)]
 pub enum SoundDevices {
     Loop,
     Output,

@@ -7,7 +7,8 @@ var app = new Vue({
         filter: "",
         volume: 1.0,
         filterRegex: new RegExp("", "i"),
-        show_bottom_menu: true
+        show_bottom_menu: true,
+        selected_device: "Both"
     },
     created: function () {
         const self = this;
@@ -55,7 +56,9 @@ var app = new Vue({
         },
         playSound: function (soundboard_id, sound_id) {
             axios
-                .post('/api/soundboards/' + soundboard_id + '/sounds/' + sound_id + '/play')
+                .post('/api/soundboards/' + soundboard_id + '/sounds/' + sound_id + '/play', {
+                    devices: this.selected_device
+                })
                 .then(response => (this.lastRequestAnswer = response.data.data))
         },
         stopSound: function (soundboard_id, sound_id) {
