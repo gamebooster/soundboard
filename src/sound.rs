@@ -29,6 +29,76 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
     miniaudio::Backend::Alsa,
 ];
 
+#[cfg(feature = "autoloop")]
+pub fn load_virt_sink() -> Result<String> {
+    use libpulse_binding as pulse;
+    use pulse::context::State;
+
+    let mut mainloop = pulse::mainloop::threaded::Mainloop::new()
+        .ok_or_else(|| anyhow!("Pulse Mainloop Creation failed"))?;
+
+    mainloop.start();
+    let mut pulse_context: pulse::context::Context =
+        pulse::context::Context::new(&mainloop, "Soundboard")
+            .ok_or_else(|| anyhow!("Pulse Connection Callback failed"))?;
+
+    pulse_context
+        .connect(None, pulse::context::flags::NOFLAGS, None)
+        .map_err(|err| anyhow!("Pulse Mainloop Creation failed {}", err))?;
+
+    loop {
+        match pulse_context.get_state() {
+            State::Ready => {
+                info!("Connection Ready");
+                break;
+            }
+            State::Failed => {
+                return Err(anyhow!("Failed to connect to Pulse Server: Failed state"))
+            }
+            State::Terminated => {
+                return Err(anyhow!(
+                    "Failed to connect to Pulse Server: Terminated state"
+                ))
+            }
+            State::Connecting => {
+                info!("connecting");
+            }
+            _ => {
+                info!("another state");
+            }
+        };
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+
+    let (sender, receiver): (
+        crossbeam_channel::Sender<Result<u32>>,
+        crossbeam_channel::Receiver<Result<u32>>,
+    ) = crossbeam_channel::unbounded();
+
+    let callback = move |module_index: u32| {
+        sender.send(Ok(module_index));
+        info!("send");
+    };
+
+    //Todo(Corin): Unload Module when application terminates
+    let mut introspector = pulse_context.introspect();
+    introspector.load_module(
+        &"module-null-sink",
+        &"sink_name=soundBoardVirtualSink sink_properties=device.description=SoundboardLoopbackDevice",
+        callback,
+    );
+
+    info!("rec");
+    match receiver.recv() {
+        Err(err) => return Err(anyhow!("Failed to load pulse module {}", err)),
+        Ok(Err(err)) => return Err(anyhow!("Failed to load pulse module {}", err)),
+        Ok(Ok(module_index)) => {}
+    };
+    mainloop.stop();
+    Ok("SoundboardLoopbackDevice".to_string())
+}
+
 pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
     // This can fail, so we have to check the result.
     let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {

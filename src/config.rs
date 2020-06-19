@@ -16,6 +16,8 @@ use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
+use super::sound;
+
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
     pub input_device: Option<String>,
@@ -357,6 +359,12 @@ pub fn parse_arguments() -> clap::ArgMatches {
                 .long("print-possible-devices")
                 .about("Print possible devices"),
         );
+    #[cfg(feature = "autoloop")]
+    let matches = matches.arg(
+        Arg::with_name("auto-loop-device")
+            .long("auto-loop-device")
+            .about("Automatically create PulseAudio Loopback Device"),
+    );
     #[cfg(feature = "gui")]
     let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
     #[cfg(feature = "http")]
@@ -391,6 +399,40 @@ pub fn parse_devices(
         }
     };
 
+    #[cfg(feature = "autoloop")]
+    let loop_device_index: String = {
+        let result: Option<String> = {
+            if arguments.is_present("auto-loop-device") {
+                match sound::load_virt_sink() {
+                    Ok(name) => Some(name),
+                    Err(_err) => {
+                        error!("Error in virt-sink: {}", _err);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
+        };
+
+        if let Some(result) = result {
+            result
+        } else {
+            error!("Connection to Pulse Server failed");
+
+            if arguments.is_present("loopback-device") {
+                arguments.value_of("loopback-device").unwrap().to_string()
+            } else if config.loopback_device.is_some() {
+                config.loopback_device.as_ref().unwrap().clone()
+            } else {
+                return Err(anyhow!(
+                    "No loopback device specified in config or on command line"
+                ));
+            }
+        }
+    };
+
+    #[cfg(not(feature = "autoloop"))]
     let loop_device_index: String = {
         if arguments.is_present("loopback-device") {
             arguments.value_of("loopback-device").unwrap().to_string()

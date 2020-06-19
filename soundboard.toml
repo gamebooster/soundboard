@@ -1,6 +1,6 @@
 # input_device = "Mikrofonarray (Realtek High Definition Audio(SST))"
 # output_device = "Speaker/HP (Realtek High Definition Audio(SST))"
-loopback_device = "CABLE Input (VB-Audio Virtual Cable)" # change to your virtual loopback output
+#loopback_device = "CABLE Input (VB-Audio Virtual Cable)" # change to your virtual loopback output
 
 stop_hotkey = "ALT-S"
 http_server = true # 3030 is the default port
@@ -58,6 +58,14 @@ name = "default"
     [[soundboard.sound]]
     name="Kann es sein das du Dumm bist"
     path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
+    
+    [[soundboard.sound]]
+    name="Krasser Kai Uwe"
+    path="sounds/krasserKaiUwe.mp3"
+    
+    [[soundboard.sound]]
+    name="Warteee EEEY"
+    path="sounds/warteEYY.mp3"
 
 [[soundboard]]
 name = "Myinstants.com"
