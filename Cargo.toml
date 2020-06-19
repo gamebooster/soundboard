@@ -20,8 +20,6 @@ http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
 autoloop = ["libpulse-binding"]
 
-[target.'cfg(unix)'.dependencies]
-
 [dependencies]
 miniaudio = "0.6"
 hotkey = { path = "extern/hotkey-rs", version = "0.3" }
