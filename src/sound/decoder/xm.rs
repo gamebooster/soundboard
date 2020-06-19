@@ -23,8 +23,10 @@ where
 {
     let stream_pos = data.seek(SeekFrom::Current(0)).unwrap();
 
-    let mut data_buffer = Vec::new();
-    if data.read_to_end(&mut data_buffer).is_err() || XMContext::new(&data_buffer, 48000).is_err() {
+    let mut data_buffer = [0; 15];
+    if data.read_exact(&mut data_buffer).is_err()
+        || std::str::from_utf8(&data_buffer).unwrap_or_default() != "Extended Module"
+    {
         data.seek(SeekFrom::Start(stream_pos)).unwrap();
         return false;
     }
@@ -64,7 +66,7 @@ where
 {
     #[inline]
     fn current_frame_len(&self) -> Option<usize> {
-        Some(1)
+        None
     }
 
     #[inline]
