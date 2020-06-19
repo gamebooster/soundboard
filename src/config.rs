@@ -313,9 +313,8 @@ pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     Ok(())
 }
 
-#[cfg(not(target_os = "linux"))]
 pub fn parse_arguments() -> clap::ArgMatches {
-    App::new("soundboard")
+    let matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
         .about("play sounds over your microphone")
@@ -365,69 +364,14 @@ pub fn parse_arguments() -> clap::ArgMatches {
             Arg::with_name("http-server")
                 .long("http-server")
                 .about("Enable http server API and web app"),
-        )
-        .get_matches()
-}
-
-#[cfg(target_os = "linux")]
-pub fn parse_arguments() -> clap::ArgMatches {
-    App::new("soundboard")
-        .version(crate_version!())
-        .author(crate_authors!())
-        .about("play sounds over your microphone")
-        .arg(
-            Arg::with_name("config-file")
-                .short('c')
-                .long("config")
-                .value_name("FILE")
-                .default_value("soundboard.toml")
-                .about("sets a custom config file")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("input-device")
-                .short('i')
-                .long("input-device")
-                .about("Sets the input device to use")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("output-device")
-                .short('o')
-                .long("output-device")
-                .about("Sets the output device to use")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("loopback-device")
-                .short('l')
-                .long("loopback-device")
-                .about("Sets the loopback device to use")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("verbose")
-                .long("verbose")
-                .takes_value(true)
-                .about("Sets the level of verbosity"),
-        )
-        .arg(
-            Arg::with_name("print-possible-devices")
-                .long("print-possible-devices")
-                .about("Print possible devices"),
-        )
-        .arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"))
-        .arg(
-            Arg::with_name("http-server")
-                .long("http-server")
-                .about("Enable http server API and web app"),
-        )
-        .arg(
-            Arg::with_name("auto-loop-device")
-                .long("auto-loop-device")
-                .about("Automatically create PulseAudio Loopback Device"),
-        )
-        .get_matches()
+        );
+    #[cfg(feature = "autoloop")]
+    let matches = matches.arg(
+        Arg::with_name("auto-loop-device")
+            .long("auto-loop-device")
+            .about("Automatically create PulseAudio Loopback Device"),
+    );
+    matches.get_matches()
 }
 
 pub fn parse_devices(
@@ -453,7 +397,7 @@ pub fn parse_devices(
         }
     };
 
-    #[cfg(target_os = "linux")]
+    #[cfg(feature = "autoloop")]
     let loop_device_index: String = {
         let result: Option<String> = {
             if arguments.is_present("auto-loop-device") {
@@ -486,7 +430,7 @@ pub fn parse_devices(
         }
     };
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(feature = "autoloop"))]
     let loop_device_index: String = {
         if arguments.is_present("loopback-device") {
             arguments.value_of("loopback-device").unwrap().to_string()

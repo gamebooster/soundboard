@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use libpulse_binding as pulse;
 use log::{error, info, trace, warn};
 use std::collections::HashMap;
 use std::io::BufReader;
@@ -30,8 +29,9 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
     miniaudio::Backend::Alsa,
 ];
 
-#[cfg(target_os = "linux")]
+#[cfg(feature = "autoloop")]
 pub fn load_virt_sink() -> Result<String> {
+    use libpulse_binding as pulse;
     use pulse::context::State;
 
     let mut mainloop = pulse::mainloop::threaded::Mainloop::new()

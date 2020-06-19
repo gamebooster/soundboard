@@ -10,7 +10,7 @@ edition = "2018"
 lto = true
 
 [features]
-default = ["mp3", "flac", "vorbis", "wav", "http", "gui", "xm"]
+default = ["mp3", "flac", "vorbis", "wav", "http", "gui"]
 mp3 = ["minimp3", "mp3-duration"]
 flac = ["claxon"]
 vorbis = ["lewton", "ogg_metadata"]
@@ -18,9 +18,9 @@ wav = ["hound"]
 xm = ["libxm"]
 http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
+autoloop = ["libpulse-binding"]
 
 [target.'cfg(unix)'.dependencies]
-libpulse-binding = { version = "2.0", features = ["pa_latest_common"] }
 
 [dependencies]
 miniaudio = "0.6"
@@ -37,6 +37,8 @@ strum = "0.18"
 strum_macros = "0.18"
 crossbeam-channel = "0.4"
 tokio = { version = "0.2", features = ["macros"] }
+
+libpulse-binding = { version = "2.0", features = ["pa_latest_common"], optional = true }
 
 iced = { version = "0.1", optional = true, features = ["tokio"] }
 iced_native = {version = "0.2", optional = true }
