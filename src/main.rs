@@ -3,6 +3,7 @@ extern crate clap;
 extern crate log;
 extern crate strum;
 extern crate strum_macros;
+extern crate ctrlc;
 
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
@@ -17,11 +18,16 @@ use iced::Settings;
 #[cfg(feature = "gui")]
 mod gui;
 
+use std::process;
+
 #[cfg(feature = "http")]
 mod http_server;
 
 #[cfg(feature = "telegram")]
 mod telegram;
+
+#[cfg(feature = "autoloop")]
+mod pulseauto;
 
 mod config;
 mod download;
@@ -99,8 +105,30 @@ fn try_main() -> Result<()> {
         crossbeam_channel::Receiver<sound::Message>,
     ) = crossbeam_channel::unbounded();
 
-    let (input_device_index, output_device_index, loop_device_index) =
+    let (input_device_id, output_device_id, mut loop_device_id) =
         config::parse_devices(&config_file, &arguments)?;
+
+    
+    #[cfg(feature = "autoloop")]
+    let mut loop_module_id : Option<u32> = None;
+    
+    #[cfg(feature = "autoloop")]
+    {
+
+        if arguments.is_present("auto-loop-device"){
+            match pulseauto::load_virt_sink(){
+                Ok((name, module_id)) => {
+                    loop_device_id = Some(name);
+                    loop_module_id = Some(module_id);
+                },
+                Err(error) => error!("autoloopback creation failed: {}", error),
+            };
+        }
+
+
+    }
+
+    let loop_device_id = loop_device_id.ok_or_else(|| anyhow!("No loopback device specified"))?;
 
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
@@ -108,9 +136,9 @@ fn try_main() -> Result<()> {
         if let Err(err) = sound::init_sound(
             sound_receiver_clone,
             sound_sender_clone,
-            input_device_index,
-            output_device_index,
-            loop_device_index,
+            input_device_id,
+            output_device_id,
+            loop_device_id,
         ) {
             error!("init sound thread error:\n\t {}", err);
         }
@@ -150,6 +178,17 @@ fn try_main() -> Result<()> {
             });
         }
     }
+
+    #[cfg(feature = "autoloop")]
+    ctrlc::set_handler(move || {
+        
+        if let Some(id) = loop_module_id{
+            pulseauto::destroy_virt_sink(id);
+        }
+        
+        process::exit(0);
+
+    }).expect("Error setting Ctrl-C handler");
 
     #[cfg(feature = "gui")]
     {

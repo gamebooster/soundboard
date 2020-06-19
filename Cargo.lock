@@ -247,6 +247,7 @@ checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "bytes"
+<<<<<<< HEAD
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "206fdffcfa2df7cbe15601ef46c813fce0965eb3286db6b56c583b814b51c81c"
@@ -258,8 +259,14 @@ dependencies = [
 [[package]]
 name = "bytes"
 version = "0.5.4"
+=======
+version = "0.5.5"
+>>>>>>> restructured code into pulseaudio module, wrote function for sink destruction
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "130aac562c0dd69c56b3b1cc8ffd2e17be31d0b6c25b61c96b76231aa23e39e1"
+checksum = "118cf036fbb97d0816e3c34b2d7a1e8cfc60f68fcf63d550ddbe9bd5f59c213b"
+dependencies = [
+ "loom",
+]
 
 [[package]]
 name = "calloop"
@@ -269,7 +276,7 @@ checksum = "7aa2097be53a00de9e8fc349fea6d76221f398f5c4fa550d420669906962d160"
 dependencies = [
  "mio",
  "mio-extras",
- "nix",
+ "nix 0.14.1",
 ]
 
 [[package]]
@@ -557,6 +564,16 @@ dependencies = [
  "autocfg 1.0.0",
  "cfg-if",
  "lazy_static",
+]
+
+[[package]]
+name = "ctrlc"
+version = "3.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a4ba686dff9fa4c1c9636ce1010b0cf98ceb421361b0bb3d6faeec43bd217a7"
+dependencies = [
+ "nix 0.17.0",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -960,6 +977,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
 dependencies = [
  "byteorder",
+]
+
+[[package]]
+name = "generator"
+version = "0.6.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "add72f17bb81521258fcc8a7a3245b1e184e916bfbe34f0ea89558f440df5c68"
+dependencies = [
+ "cc",
+ "libc",
+ "log 0.4.8",
+ "rustc_version",
+ "winapi 0.3.8",
 ]
 
 [[package]]
@@ -1616,6 +1646,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ecc775857611e1df29abba5c41355cdf540e7e9d4acfdf0f355eefee82330b7"
+dependencies = [
+ "cfg-if",
+ "generator",
+ "scoped-tls 0.1.2",
+]
+
+[[package]]
 name = "lyon_geom"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1906,6 +1947,19 @@ name = "nix"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c722bee1037d430d0f8e687bbdbf222f27cc6e4e68d5caf630857bb2b6dbdce"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+ "void",
+]
+
+[[package]]
+name = "nix"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50e4785f2c3b7589a0d0c1dd60285e1188adac4006e8abd6dd578e1567027363"
 dependencies = [
  "bitflags",
  "cc",
@@ -2737,6 +2791,12 @@ dependencies = [
 
 [[package]]
 name = "scoped-tls"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "332ffa32bf586782a3efaeb58f127980944bbc8c4d6913a86107ac2a5ab24b28"
+
+[[package]]
+name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea6a9290e3c9cf0f18145ef7ffa62d68ee0bf5fcd651017e586dc7fd5da448c2"
@@ -2956,7 +3016,7 @@ dependencies = [
  "dlib",
  "lazy_static",
  "memmap",
- "nix",
+ "nix 0.14.1",
  "wayland-client",
  "wayland-protocols",
 ]
@@ -2967,7 +3027,7 @@ version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a59486e68b5596f664deedf01c46297f4af60379adae20175357a814d40f69e"
 dependencies = [
- "nix",
+ "nix 0.14.1",
  "smithay-client-toolkit",
 ]
 
@@ -2991,6 +3051,7 @@ dependencies = [
  "clap",
  "claxon",
  "crossbeam-channel",
+ "ctrlc",
  "env_logger",
  "fs_extra",
  "futures 0.3.5",
@@ -3542,7 +3603,7 @@ dependencies = [
  "mime_guess 2.0.3",
  "multipart",
  "pin-project",
- "scoped-tls",
+ "scoped-tls 1.0.0",
  "serde",
  "serde_json",
  "serde_urlencoded",
@@ -3650,7 +3711,7 @@ dependencies = [
  "downcast-rs",
  "libc",
  "mio",
- "nix",
+ "nix 0.14.1",
  "wayland-commons",
  "wayland-scanner",
  "wayland-sys",
@@ -3662,7 +3723,7 @@ version = "0.23.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb66b0d1a27c39bbce712b6372131c6e25149f03ffb0cd017cf8f7de8d66dbdb"
 dependencies = [
- "nix",
+ "nix 0.14.1",
  "wayland-sys",
 ]
 

@@ -36,6 +36,8 @@ strum = "0.18"
 strum_macros = "0.18"
 crossbeam-channel = "0.4"
 tokio = { version = "0.2", features = ["macros"] }
+ctrlc = { version = "3.1.4", features = ["termination"]}
+
 
 tgbot = { version = "0.10", optional = true }
 fuzzy-matcher = {version = "0.3", optional = true}
