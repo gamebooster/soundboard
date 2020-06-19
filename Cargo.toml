@@ -10,7 +10,7 @@ edition = "2018"
 lto = true
 
 [features]
-default = ["mp3", "flac", "vorbis", "wav", "http", "gui", "xm"]
+default = ["mp3", "flac", "vorbis", "wav", "http", "gui"]
 mp3 = ["minimp3", "mp3-duration"]
 flac = ["claxon"]
 vorbis = ["lewton", "ogg_metadata"]
