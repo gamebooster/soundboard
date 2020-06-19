@@ -92,7 +92,10 @@ impl Sink {
     pub fn start(&self) -> Result<()> {
         self.device
             .start()
-            .map_err(|err| anyhow!("Could not start device {}", err))
+            .map_err(|err| anyhow!("Could not start device {}", err))?;
+        self.stopped
+            .store(false, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
     }
 
     /// Stops the sink
@@ -100,15 +103,22 @@ impl Sink {
     pub fn stop(&self) -> Result<()> {
         self.stopped
             .store(true, std::sync::atomic::Ordering::Relaxed);
-        self.device
-            .stop()
-            .map_err(|err| anyhow!("Could not stop device {}", err))
+        if self.device.is_started() {
+            self.device
+                .stop()
+                .map_err(|err| anyhow!("Could not stop device {}", err))?;
+        }
+        Ok(())
     }
 
     /// Is the sink stopped
     #[inline]
     pub fn stopped(&self) -> bool {
-        self.stopped.load(std::sync::atomic::Ordering::Relaxed)
+        let stopped = self.stopped.load(std::sync::atomic::Ordering::Relaxed);
+        if stopped {
+            self.stop().expect("could not stop device");
+        }
+        stopped
     }
 }
 
