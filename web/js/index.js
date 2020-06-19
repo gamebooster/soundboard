@@ -8,7 +8,8 @@ var app = new Vue({
         volume: 1.0,
         filterRegex: new RegExp("", "i"),
         show_bottom_menu: true,
-        selected_device: "Both"
+        selected_device: "Both",
+        show_status_modal: false
     },
     created: function () {
         const self = this;
@@ -18,7 +19,13 @@ var app = new Vue({
             }
             axios
                 .get('/api/sounds/active')
-                .then(response => (self.activeSounds = response.data.data));
+                .then(response => {
+                    self.show_status_modal = false;
+                    self.activeSounds = response.data.data;
+                }).catch(function (error) {
+                    console.log(error);
+                    self.show_status_modal = true;
+                });
         }, 500);
         axios
             .get('/api/soundboards')
@@ -29,8 +36,14 @@ var app = new Vue({
                         .get('/api/soundboards/' + i + '/sounds')
                         .then(response => {
                             self.soundboards[i].sounds = response.data.data;
+                        }).catch(function (error) {
+                            console.log(error);
+                            self.show_status_modal = true;
                         });
                 }
+            }).catch(function (error) {
+                console.log(error);
+                self.show_status_modal = true;
             });
     },
     watch: {

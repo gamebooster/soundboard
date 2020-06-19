@@ -16,6 +16,12 @@
 
 <body class="has-navbar-fixed-bottom">
     <div id="app">
+        <div class="modal is-active" v-if="show_status_modal" id="status_modal">
+            <div class="modal-background"></div>
+            <div class="notification is-danger">
+                <p class="title is-5 center">Lost connection to soundboard server</p>
+            </div>
+        </div>
         <nav class="navbar is-fixed-bottom is-white padding-1">
             <div class="columns">
                 <div class="column is-hidden-tablet" id="bottom_menu">
