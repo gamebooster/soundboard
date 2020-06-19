@@ -358,18 +358,20 @@ pub fn parse_arguments() -> clap::ArgMatches {
             Arg::with_name("print-possible-devices")
                 .long("print-possible-devices")
                 .about("Print possible devices"),
-        )
-        .arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"))
-        .arg(
-            Arg::with_name("http-server")
-                .long("http-server")
-                .about("Enable http server API and web app"),
         );
     #[cfg(feature = "autoloop")]
     let matches = matches.arg(
         Arg::with_name("auto-loop-device")
             .long("auto-loop-device")
             .about("Automatically create PulseAudio Loopback Device"),
+    );
+    #[cfg(feature = "gui")]
+    let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
+    #[cfg(feature = "http")]
+    let matches = matches.arg(
+        Arg::with_name("http-server")
+            .long("http-server")
+            .about("Enable http server API and web app"),
     );
     matches.get_matches()
 }

@@ -1,7 +1,5 @@
 #![allow(unused_imports)]
-
 extern crate clap;
-extern crate iced;
 extern crate log;
 extern crate strum;
 extern crate strum_macros;
@@ -9,14 +7,21 @@ extern crate strum_macros;
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 
+#[cfg(feature = "gui")]
+extern crate iced;
+#[cfg(feature = "gui")]
 use iced::Application;
+#[cfg(feature = "gui")]
 use iced::Settings;
+#[cfg(feature = "gui")]
+mod gui;
+
+#[cfg(feature = "http")]
+mod http_server;
 
 mod config;
 mod download;
-mod gui;
 mod hotkey;
-mod http_server;
 mod sound;
 mod utils;
 
@@ -71,26 +76,35 @@ fn main() -> Result<()> {
         return Err(anyhow!(err));
     }
 
-    if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
+    #[cfg(feature = "http")]
+    {
+        if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
+            let config_file_clone = config_file.clone();
+            let gui_sender_clone = gui_sender.clone();
+            let gui_receiver_clone = gui_receiver.clone();
+            std::thread::spawn(move || {
+                http_server::run(config_file_clone, gui_sender_clone, gui_receiver_clone);
+            });
+        }
+    }
+
+    #[cfg(feature = "gui")]
+    {
         let config_file_clone = config_file.clone();
-        let gui_sender_clone = gui_sender.clone();
-        let gui_receiver_clone = gui_receiver.clone();
-        std::thread::spawn(move || {
-            http_server::run(config_file_clone, gui_sender_clone, gui_receiver_clone);
-        });
+        if arguments.is_present("no-gui") || config_file.no_gui.unwrap_or_default() {
+            no_gui_routine(config_file_clone, gui_sender)?;
+            std::thread::park();
+            return Ok(());
+        }
+        let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file));
+        settings.window.size = (500, 350);
+        gui::Soundboard::run(settings);
     }
-
-    let config_file_clone = config_file.clone();
-    if arguments.is_present("no-gui") || config_file.no_gui.unwrap_or_default() {
+    #[cfg(not(feature = "gui"))]
+    {
+        let config_file_clone = config_file.clone();
         no_gui_routine(config_file_clone, gui_sender)?;
-
-        std::thread::park();
-        return Ok(());
     }
-
-    let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file));
-    settings.window.size = (500, 350);
-    gui::Soundboard::run(settings);
     Ok(())
 }
 
@@ -129,6 +143,7 @@ fn no_gui_routine(
         }
         let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
         let tx_clone = gui_sender_clone.clone();
+        info!("register hotkey  {} for sound {}", &hotkey, sound.name);
         let _result = hotkey_manager.register(hotkey, move || {
             if let Err(err) = tx_clone.send(sound::Message::PlaySound(
                 sound.clone(),
@@ -139,5 +154,6 @@ fn no_gui_routine(
         })?;
     }
 
+    std::thread::park();
     Ok(())
 }
