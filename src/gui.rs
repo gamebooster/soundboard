@@ -15,6 +15,7 @@ mod list_view;
 mod panel_view;
 mod style;
 use super::hotkey;
+use anyhow::{anyhow, Context, Result};
 use std::time::{Duration, Instant};
 
 #[derive(PartialEq)]
@@ -30,12 +31,20 @@ struct SoundboardButton {
     selected: bool,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum SoundboardState {
+    Loading,
+    Loaded,
+}
+
 pub struct Soundboard {
+    config_file_name: String,
     panel_view: panel_view::PanelView,
     list_view: list_view::ListView,
     sound_sender: crossbeam_channel::Sender<sound::Message>,
     sound_receiver: crossbeam_channel::Receiver<sound::Message>,
     stop_button_state: button::State,
+    reload_button_state: button::State,
     toggle_layout_button_state: button::State,
     volume_slider_state: slider::State,
     current_volume: f32,
@@ -43,6 +52,7 @@ pub struct Soundboard {
     soundboard_button_states: Vec<SoundboardButton>,
     config: config::MainConfig,
     hotkey_manager: hotkey::HotkeyManager,
+    current_state: SoundboardState,
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +65,17 @@ pub enum SoundboardMessage {
     HandleListViewMessage(list_view::ListViewMessage),
     ToggleLayout,
     ShowSoundboard(String),
+    LoadedData(Result<config::MainConfig, String>),
+    ReloadData,
     Tick,
+}
+
+async fn load_config(config_file_name: String) -> Result<config::MainConfig, String> {
+    let result = config::load_and_parse_config(&config_file_name);
+    if let Err(err) = result {
+        return Err(format!("{:?}", err));
+    }
+    Ok(result.unwrap())
 }
 
 impl Application for Soundboard {
@@ -64,32 +84,18 @@ impl Application for Soundboard {
     type Flags = (
         crossbeam_channel::Sender<sound::Message>,
         crossbeam_channel::Receiver<sound::Message>,
-        config::MainConfig,
+        String,
     );
 
     fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
-        let start_soundboard_index = 0;
-
-        let mut soundboard_buttons = flags.2.soundboards.iter().fold(
-            Vec::<SoundboardButton>::new(),
-            |mut buttons, soundboard| {
-                buttons.push(SoundboardButton {
-                    state: button::State::new(),
-                    name: soundboard.name.clone(),
-                    selected: false,
-                });
-                buttons
-            },
-        );
-
-        soundboard_buttons[start_soundboard_index].selected = true;
-
-        let mut soundboard = Soundboard {
+        let soundboard = Soundboard {
+            config_file_name: flags.2.clone(),
             sound_sender: flags.0,
             sound_receiver: flags.1,
-            config: flags.2,
-            soundboard_button_states: soundboard_buttons,
+            config: config::MainConfig::default(),
+            soundboard_button_states: Vec::new(),
             stop_button_state: button::State::new(),
+            reload_button_state: button::State::new(),
             toggle_layout_button_state: button::State::new(),
             volume_slider_state: slider::State::new(),
             current_volume: 1.0,
@@ -97,13 +103,12 @@ impl Application for Soundboard {
             list_view: list_view::ListView::new(&Vec::new()),
             current_style: LayoutStyle::PanelView,
             hotkey_manager: hotkey::HotkeyManager::new(),
+            current_state: SoundboardState::Loading,
         };
-        soundboard.update(SoundboardMessage::ShowSoundboard(
-            soundboard.config.soundboards[start_soundboard_index]
-                .name
-                .clone(),
-        ));
-        (soundboard, Command::none())
+        (
+            soundboard,
+            Command::perform(load_config(flags.2), SoundboardMessage::LoadedData),
+        )
     }
 
     fn title(&self) -> String {
@@ -163,6 +168,36 @@ impl Application for Soundboard {
                     }
                 };
             }
+            SoundboardMessage::ReloadData => {
+                self.current_state = SoundboardState::Loading;
+                return Command::perform(
+                    load_config(self.config_file_name.clone()),
+                    SoundboardMessage::LoadedData,
+                );
+            }
+            SoundboardMessage::LoadedData(result) => match result {
+                Ok(config_file) => {
+                    self.config = config_file;
+                    let mut soundboard_buttons = self.config.soundboards.iter().fold(
+                        Vec::<SoundboardButton>::new(),
+                        |mut buttons, soundboard| {
+                            buttons.push(SoundboardButton {
+                                state: button::State::new(),
+                                name: soundboard.name.clone(),
+                                selected: false,
+                            });
+                            buttons
+                        },
+                    );
+                    soundboard_buttons[0].selected = true;
+                    self.soundboard_button_states = soundboard_buttons;
+                    self.update(SoundboardMessage::ShowSoundboard(
+                        self.config.soundboards[0].name.clone(),
+                    ));
+                    self.current_state = SoundboardState::Loaded;
+                }
+                Err(err) => error!("could not load data {}", err),
+            },
             SoundboardMessage::ShowSoundboard(name) => {
                 for button in &mut self.soundboard_button_states {
                     button.selected = false;
@@ -248,6 +283,24 @@ impl Application for Soundboard {
     }
 
     fn view(&mut self) -> Element<SoundboardMessage> {
+        if self.current_state == SoundboardState::Loading {
+            let content = Column::new()
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .spacing(10)
+                .push(
+                    Text::new("Loading...")
+                        .size(24)
+                        .color(iced::Color::BLACK)
+                        .vertical_alignment(VerticalAlignment::Center),
+                );
+
+            return Container::new(content)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .padding(10)
+                .into();
+        }
         let stop_button_column = Column::new()
             .spacing(5)
             .align_items(Align::Center)
@@ -275,6 +328,22 @@ impl Application for Soundboard {
             );
 
         let toggle_layout_button_container = Container::new(toggle_layout_button_column)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(3)
+            .center_y();
+
+        let reload_button_column = Column::new()
+            .spacing(5)
+            .align_items(Align::Center)
+            .width(Length::Fill)
+            .push(
+                Text::new("Reload")
+                    .size(18)
+                    .vertical_alignment(VerticalAlignment::Center),
+            );
+
+        let reload_button_container = Container::new(reload_button_column)
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(3)
@@ -335,6 +404,13 @@ impl Application for Soundboard {
                 .width(Length::FillPortion(2))
                 .style(style::Button::Neutral),
             )
+            .push(
+                Button::new(&mut self.reload_button_state, reload_button_container)
+                    .on_press(SoundboardMessage::ReloadData)
+                    .height(Length::Fill)
+                    .width(Length::FillPortion(2))
+                    .style(style::Button::Neutral),
+            )
             .push(soundboard_row)
             .push(
                 Slider::new(
@@ -365,7 +441,6 @@ impl Application for Soundboard {
             .push(sound_view)
             .push(Space::with_height(Length::Units(5)))
             .push(bottom_row);
-        //.push(soundboard_row);
 
         Container::new(content)
             .width(Length::Fill)

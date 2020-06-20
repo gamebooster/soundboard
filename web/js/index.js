@@ -101,7 +101,7 @@ var app = new Vue({
                 })
                 .then(response => {
                     this.$buefy.toast.open({
-                        message: 'Update soundboard to name: ' + response.data.data.name,
+                        message: 'Updated soundboard name to: ' + response.data.data.name,
                         type: 'is-success'
                     })
                 }).catch(error => {
@@ -116,3 +116,8 @@ var app = new Vue({
         }
     }
 });
+
+window.onkeydown = function (e) {
+    if (e.keyCode == 8 && e.target == document.body)
+        e.preventDefault();
+}

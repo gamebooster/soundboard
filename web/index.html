@@ -52,7 +52,7 @@
                 <template v-if="showBottomMenu && activeSounds.length > 0">
                     <div class="colum"><button class="button is-danger fill-size" @click="stopAllSound">Stop
                             All</button></div>
-                    <div class="column song_progress is-narrow" v-for="sound in activeSounds" :key="sound.name">
+                    <div class="column song_progress is-narrow" v-for="sound in activeSounds" :key="sound.id">
                         <div class="columns is-mobile">
                             <div class="column">
                                 <div class="title is-5">{{ sound.name }}</div>
@@ -78,13 +78,14 @@
             </div>
         </section>
         <div class="tile is-ancestor is-vertical">
-            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.name">
+            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id">
                 <div class="tile is-child box">
                     <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
                     </p>
-                    <b-field v-else label="Name" label-position="on-border">
-                        <b-input v-model="soundboard.name">{{ soundboard.name }}
-                        </b-input>
+                    <b-field v-else="soundboard.edit" label="Name" label-position="on-border">
+                        <b-input type="text" v-model="soundboard.name"
+                            @keyup.enter.native="soundboard.edit=false; updateSoundboard(soundboard.id);"
+                            @blur="soundboard.edit=false; updateSoundboard(soundboard.id);"></b-input>
                         <p class="control">
                             <b-button @click="soundboard.edit=false; updateSoundboard(soundboard.id);"
                                 class="button is-primary">Submit</b-button>
@@ -95,11 +96,11 @@
                             <template v-if="filterRegex.test(sound.name)">
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                    :key="sound.name">{{ sound.name }}</button>
+                                    :key="sound.id">{{ sound.name }}</button>
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                            :key="sound.name">{{ sound.name }}</button>
+                                            :key="sound.id">{{ sound.name }}</button>
                                         <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
                                             <span class="icon is-small">
                                                 ■

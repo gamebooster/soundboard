@@ -55,7 +55,6 @@ fn try_main() -> Result<()> {
 
     let config_file_name = arguments.value_of("config-file").unwrap().to_string();
     let config_file = config::load_and_parse_config(&config_file_name)?;
-    // println!("{:#?}", config_file);
 
     let (sound_sender, gui_receiver): (
         crossbeam_channel::Sender<sound::Message>,
@@ -94,6 +93,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
+        let config_file_name = config_file_name.clone();
         if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
@@ -105,13 +105,12 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "gui")]
     {
-        let config_file_clone = config_file.clone();
         if arguments.is_present("no-gui") || config_file.no_gui.unwrap_or_default() {
-            no_gui_routine(config_file_clone, gui_sender)?;
+            no_gui_routine(config_file, gui_sender)?;
             std::thread::park();
             return Ok(());
         }
-        let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file));
+        let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file_name));
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }
