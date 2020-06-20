@@ -1,0 +1,48 @@
+name = 'favorites'
+position = 0
+
+[[sound]]
+name = 'Nicht so tief, Rüdiger!'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\nicht-so-tief-rudiger.mp3'
+hotkey = 'CTRL-P'
+
+[[sound]]
+name = 'Ich rascht aus'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\ich-rascht-aus.flac'
+
+[[sound]]
+name = 'Kann es sein dass du dumm bist'
+path = 'https://www.myinstants.com/media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3'
+
+[[sound]]
+name = 'Krasser Kai Uwe'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\krasserKaiUwe.mp3'
+
+[[sound]]
+name = 'Warteee EEEY'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\warteEYY.mp3'
+
+[[sound]]
+name = 'Soldier of Fortune'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\vodka/Razor1911 - Soldier Of Fortune intro.xm'
+hotkey = 'CTRL-SHIFT-BACKSPACE'
+
+[[sound]]
+name = '''It's time to duel'''
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\its-time-to-duel.ogg'
+
+[[sound]]
+name = 'the one and only'
+path = 'K:\projects\soundboard\target\debug\soundboards\favorites\oneandonly.wav'
+
+[[sound]]
+name = 'steam incoming'
+path = 'https://www.myinstants.com/media/sounds/message_2.mp3'
+
+[[sound]]
+name = 'crab rave'
+path = 'https://www.myinstants.com/media/sounds/original_zeowGW1.mp3'
+
+[[sound]]
+name = 'female orgasm'
+path = 'https://www.myinstants.com//media/sounds/epic.swf_1.mp3'

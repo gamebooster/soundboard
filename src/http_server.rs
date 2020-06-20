@@ -133,7 +133,7 @@ fn check_soundboard_index(
     warp::path("soundboards")
         .and(warp::path::param::<usize>())
         .and_then(move |index: usize| {
-            let maybe_soundboard = config_file.soundboards.as_ref().unwrap().iter().nth(index);
+            let maybe_soundboard = config_file.soundboards.get(index);
             if let Some(soundboard) = maybe_soundboard {
                 futures::future::ok((soundboard.clone(), index))
             } else {
@@ -150,7 +150,7 @@ fn check_sound_index(
         .and(warp::path::param::<usize>())
         .and_then(
             move |soundboard: (config::SoundboardConfig, _), index: usize| {
-                let maybe_sound = soundboard.0.sounds.as_ref().unwrap().iter().nth(index);
+                let maybe_sound = soundboard.0.sounds.as_ref().unwrap().get(index);
                 if let Some(sound) = maybe_sound {
                     futures::future::ok((sound.clone(), index))
                 } else {
@@ -169,13 +169,7 @@ pub async fn run(
     let config_file_clone = config_file.clone();
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
-        for (id, soundboard) in config_file_clone
-            .soundboards
-            .as_ref()
-            .unwrap()
-            .iter()
-            .enumerate()
-        {
+        for (id, soundboard) in config_file_clone.soundboards.iter().enumerate() {
             soundboards.push(StrippedSoundboardInfo {
                 name: soundboard.name.clone().unwrap_or_default(),
                 hotkey: soundboard.hotkey.clone().unwrap_or_default(),

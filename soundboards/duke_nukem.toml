@@ -1,4 +1,5 @@
-name = "Duke Nukem"
+name = "duke nukem"
+position = 10
 
 [[sound]]
 name = "Ich rascht aus"

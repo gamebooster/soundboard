@@ -1,3 +1,5 @@
+name = "myinstants"
+
 [[sound]]
 name="BRUH"
 path="https://www.myinstants.com//media/sounds/movie_1.mp3"

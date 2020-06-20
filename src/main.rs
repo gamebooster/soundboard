@@ -76,6 +76,9 @@ fn main() -> Result<()> {
         return Err(anyhow!(err));
     }
 
+    // config_file.soundboards[0].sounds.as_mut().unwrap()[0].name = "test".to_string();
+    // config::save_soundboard_config(&config_file.soundboards[0])?;
+
     #[cfg(feature = "http")]
     {
         if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
@@ -133,7 +136,7 @@ fn no_gui_routine(
 
     let gui_sender_clone = gui_sender;
     // only register hotkeys for first soundboard in no-gui-mode
-    for sound in config_file.soundboards.unwrap()[0]
+    for sound in config_file.soundboards[0]
         .sounds
         .clone()
         .unwrap_or_default()

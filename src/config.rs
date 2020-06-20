@@ -14,6 +14,7 @@ use serde::Serialize;
 use std::fmt;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::sound;
@@ -26,15 +27,17 @@ pub struct MainConfig {
     pub stop_hotkey: Option<String>,
     pub http_server: Option<bool>,
     pub no_gui: Option<bool>,
-    #[serde(rename = "soundboard")]
-    pub soundboards: Option<Vec<SoundboardConfig>>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub soundboards: Vec<SoundboardConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
 pub struct SoundboardConfig {
     pub name: Option<String>,
     pub hotkey: Option<String>,
-    pub path: Option<String>,
+    pub position: Option<usize>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub path: String,
     #[serde(rename = "sound")]
     pub sounds: Option<Vec<SoundConfig>>,
 }
@@ -223,35 +226,22 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
     })
 }
 
+fn get_soundboards_path() -> Result<PathBuf> {
+    let mut soundboards_path = std::env::current_exe()?;
+    soundboards_path.pop();
+    soundboards_path.push("soundboards");
+    Ok(soundboards_path)
+}
+
 pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
     let mut path = std::env::current_exe()?;
     path.pop();
     path.push(name);
     let toml_str = fs::read_to_string(&path)?;
     let mut toml_config: MainConfig = toml::from_str(&toml_str)?;
+    toml_config.soundboards = Vec::new();
 
-    toml_config.soundboards = Some(toml_config.soundboards.unwrap_or_default());
-
-    for soundboard in toml_config.soundboards.as_mut().unwrap() {
-        if soundboard.path.is_none() {
-            continue;
-        }
-        let mut path = std::env::current_exe()?;
-        path.pop();
-        path.push(soundboard.path.as_ref().unwrap());
-        let soundboard_str = fs::read_to_string(&path)?;
-        let soundboard_config: SoundboardConfig = toml::from_str(&soundboard_str)?;
-        if soundboard_config.sounds.is_none() {
-            return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
-        }
-        let mut sounds = soundboard.sounds.clone().unwrap_or_default();
-        sounds.append(&mut soundboard_config.sounds.unwrap());
-        soundboard.sounds = Some(sounds);
-    }
-
-    let mut soundboards_path = std::env::current_exe()?;
-    soundboards_path.pop();
-    soundboards_path.push("soundboards");
+    let soundboards_path = get_soundboards_path()?;
 
     for entry in std::fs::read_dir(&soundboards_path)? {
         if entry.is_err() {
@@ -265,40 +255,56 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
             .unwrap_or_default();
 
         if extension == "toml" {
-            let toml_str = fs::read_to_string(&path)?;
-            let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
-            if soundboard_config.sounds.is_none() {
-                return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
+            let mut sb_config = load_soundboard_config(&path)?;
+            if sb_config.position.is_none() {
+                sb_config.position = Some(usize::max_value());
             }
-            let mut sounds = soundboard_config.sounds.unwrap();
-            for sound in &mut sounds {
-                let relative_path = Path::new(&sound.path);
-                if relative_path.is_absolute() || sound.path.starts_with("http") {
-                    continue;
-                }
-                let mut new_path = soundboards_path.clone();
-                new_path.push(relative_path);
-                sound.path = new_path.to_str().unwrap().to_string();
-            }
-            soundboard_config.sounds = Some(sounds);
-            toml_config
-                .soundboards
-                .as_mut()
-                .unwrap()
-                .push(soundboard_config);
+            toml_config.soundboards.push(sb_config);
         }
     }
 
-    if toml_config.soundboards.as_ref().unwrap().is_empty() {
+    if toml_config.soundboards.is_empty() {
         return Err(anyhow!(
-            "could not find any soundboards in {:?} or {:?}",
-            path,
+            "could not find any soundboards in {:?}",
             soundboards_path
         ));
     }
 
+    toml_config
+        .soundboards
+        .sort_by(|a, b| a.position.cmp(&b.position));
+
     info!("Loaded config file from {}", path.display());
     Ok(toml_config)
+}
+
+pub fn load_soundboard_config(path: &Path) -> Result<SoundboardConfig> {
+    let toml_str = fs::read_to_string(&path)?;
+    let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
+    if soundboard_config.sounds.is_none() {
+        return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
+    }
+    let soundboards_path = get_soundboards_path()?;
+    let mut sounds = soundboard_config.sounds.unwrap();
+    for sound in &mut sounds {
+        let relative_path = Path::new(&sound.path);
+        if relative_path.is_absolute() || sound.path.starts_with("http") {
+            continue;
+        }
+        let mut new_path = soundboards_path.clone();
+        let stem: &str = path
+            .file_stem()
+            .unwrap_or_default()
+            .to_str()
+            .unwrap_or_default();
+        new_path.push(stem);
+        new_path.push(relative_path);
+
+        sound.path = new_path.to_str().unwrap().to_string();
+    }
+    soundboard_config.sounds = Some(sounds);
+    soundboard_config.path = path.as_os_str().to_os_string().into_string().unwrap();
+    Ok(soundboard_config)
 }
 
 #[allow(dead_code)]
@@ -310,6 +316,14 @@ pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     let pretty_string = toml::to_string_pretty(&config)?;
     fs::write(&path, pretty_string)?;
     info!("Saved config file at {}", &path.display());
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub fn save_soundboard_config(config: &SoundboardConfig) -> Result<()> {
+    let pretty_string = toml::to_string_pretty(&config)?;
+    fs::write(&Path::new(&config.path), pretty_string)?;
+    info!("Saved config file at {}", &config.path);
     Ok(())
 }
 

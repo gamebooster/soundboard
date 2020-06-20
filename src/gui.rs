@@ -70,7 +70,7 @@ impl Application for Soundboard {
     fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
         let start_soundboard_index = 0;
 
-        let mut soundboard_buttons = flags.2.clone().soundboards.unwrap().iter().fold(
+        let mut soundboard_buttons = flags.2.soundboards.iter().fold(
             Vec::<SoundboardButton>::new(),
             |mut buttons, soundboard| {
                 buttons.push(SoundboardButton {
@@ -99,7 +99,7 @@ impl Application for Soundboard {
             hotkey_manager: hotkey::HotkeyManager::new(),
         };
         soundboard.update(SoundboardMessage::ShowSoundboard(
-            soundboard.config.soundboards.as_ref().unwrap()[start_soundboard_index]
+            soundboard.config.soundboards[start_soundboard_index]
                 .name
                 .clone()
                 .unwrap(),
@@ -196,8 +196,6 @@ impl Application for Soundboard {
                 let sounds = self
                     .config
                     .soundboards
-                    .as_ref()
-                    .unwrap()
                     .iter()
                     .find(|s| s.name.as_ref().unwrap() == &name)
                     .unwrap()
