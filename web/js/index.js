@@ -3,28 +3,28 @@ var app = new Vue({
     data: {
         activeSounds: [],
         soundboards: [],
-        lastRequestAnswer: "",
-        filter: "",
         volume: 1.0,
+        filter: "",
         filterRegex: new RegExp("", "i"),
-        show_bottom_menu: true,
-        selected_device: "Both",
-        show_status_modal: false
+        showBottomMenu: true,
+        selectedDevice: "Both",
+        showStatusModal: false
     },
     created: function () {
         const self = this;
         setInterval(function () {
             if (getComputedStyle(document.querySelector("#bottom_menu"), null).display === "none") {
-                self.show_bottom_menu = true;
+                self.showBottomMenu = true;
             }
             axios
                 .get('/api/sounds/active')
                 .then(response => {
-                    self.show_status_modal = false;
-                    self.activeSounds = response.data.data;
+                    self.showStatusModal = false;
+                    self.activeSounds = response.data.data.sounds;
+                    self.volume = response.data.data.volume;
                 }).catch(function (error) {
                     console.log(error);
-                    self.show_status_modal = true;
+                    self.showStatusModal = true;
                 });
         }, 500);
         axios
@@ -38,12 +38,12 @@ var app = new Vue({
                             self.soundboards[i].sounds = response.data.data;
                         }).catch(function (error) {
                             console.log(error);
-                            self.show_status_modal = true;
+                            self.showStatusModal = true;
                         });
                 }
             }).catch(function (error) {
                 console.log(error);
-                self.show_status_modal = true;
+                self.showStatusModal = true;
             });
     },
     watch: {
@@ -53,9 +53,12 @@ var app = new Vue({
         volume: function (val, oldVal) {
             axios
                 .post('/api/sounds/volume', { volume: parseFloat(val) })
-                .then(response => (this.lastRequestAnswer = response.data.data))
+                .catch(function (error) {
+                    console.log(error);
+                    self.showStatusModal = true;
+                });
         },
-        show_bottom_menu: function (val, oldVal) {
+        showBottomMenu: function (val, oldVal) {
             if (val) {
                 document.querySelector("nav").classList.remove('hide_bottom_menu');
             } else {
@@ -70,7 +73,7 @@ var app = new Vue({
         playSound: function (soundboard_id, sound_id) {
             axios
                 .post('/api/soundboards/' + soundboard_id + '/sounds/' + sound_id + '/play', {
-                    devices: this.selected_device
+                    devices: this.selectedDevice
                 })
                 .then(response => (this.lastRequestAnswer = response.data.data))
         },

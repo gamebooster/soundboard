@@ -115,13 +115,14 @@ impl Application for Soundboard {
         match message {
             SoundboardMessage::Tick => {
                 self.sound_sender
-                    .send(sound::Message::PlayStatus(Vec::new()))
+                    .send(sound::Message::PlayStatus(Vec::new(), 0.0))
                     .expect("sound channel error");
-                if let Some(sound::Message::PlayStatus(sounds)) =
+                if let Some(sound::Message::PlayStatus(sounds, volume)) =
                     self.sound_receiver.try_iter().last()
                 {
                     self.list_view.active_sounds = sounds.clone();
                     self.panel_view.active_sounds = sounds;
+                    self.current_volume = volume;
                 }
             }
             SoundboardMessage::PlaySound(sound_config) => {

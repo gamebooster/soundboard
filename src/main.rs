@@ -69,7 +69,7 @@ fn main() -> Result<()> {
     });
 
     // test for sound thread successfull initialization
-    if let Err(err) = gui_sender.send(sound::Message::PlayStatus(Vec::new())) {
+    if let Err(err) = gui_sender.send(sound::Message::PlayStatus(Vec::new(), 0.0)) {
         return Err(anyhow!(err));
     }
     if let Err(err) = gui_receiver.recv() {

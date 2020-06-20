@@ -259,7 +259,10 @@ pub enum Message {
     StopSound(config::SoundConfig),
     StopAll,
     SetVolume(f32),
-    PlayStatus(Vec<(config::SoundConfig, PlayDuration, Option<TotalDuration>)>),
+    PlayStatus(
+        Vec<(config::SoundConfig, PlayDuration, Option<TotalDuration>)>,
+        f32,
+    ),
 }
 
 fn insert_sink_with_config(
@@ -379,13 +382,13 @@ fn play_thread(
                         }
                     }
                 }
-                Message::PlayStatus(_) => {
+                Message::PlayStatus(_, _) => {
                     let mut sounds = Vec::new();
                     for (id, (_, instant, total_duration)) in sinks.iter() {
                         sounds.push((id.clone(), instant.elapsed(), *total_duration));
                     }
                     sender
-                        .send(Message::PlayStatus(sounds))
+                        .send(Message::PlayStatus(sounds, volume))
                         .expect("sound channel error");
                 }
             },

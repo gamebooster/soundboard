@@ -28,17 +28,9 @@ html.has-navbar-fixed-bottom {
     padding-bottom: 10rem;
 }
 
-.filter {
-    padding: 1rem;
-}
-
-.filter input {
-    width: 100%;
-}
-
 input[type="range"].slider {
     padding-right: 0.2rem;
-    margin: 0.5rem 0;
+    margin: 0.8rem 0;
 }
 
 .navbar {
@@ -52,6 +44,7 @@ input[type="range"].slider {
 
 .center {
     text-align: center;
+    line-height: 1.5;
 }
 
 html, body {
@@ -64,6 +57,14 @@ html, body {
     left: auto;
 }
 
+.select select:not([multiple]) {
+    width: 100%;
+}
+
+.select:not(.is-multiple) {
+    width: 100%;
+}
+
 @media screen and (max-width:768px) {
     #bottom_menu {
         padding: 0.5rem;
@@ -72,11 +73,6 @@ html, body {
     .title.is-5 {
         font-size: 1rem;
     }
-
-    #inputs button {
-        margin-left: 1rem;
-        margin-top: 0.4rem;
-    }
 }
 
 @media screen and (min-width:768px) {
@@ -84,9 +80,14 @@ html, body {
         display: block;
     }
 
+    .song_progress .columns .column {
+        padding-bottom: 0.2rem;
+    }
+
     #inputs {
         margin-right: 0.5rem;
         padding: 0.5rem;
         padding-top: 0.7rem;
+        margin-top: 0.5rem;
     }
 }

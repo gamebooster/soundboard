@@ -35,6 +35,12 @@ struct StrippedSoundInfo {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct PlayStatusResponse {
+    volume: f32,
+    sounds: Vec<StrippedSoundActiveInfo>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundActiveInfo {
     name: String,
     hotkey: String,
@@ -301,10 +307,10 @@ pub async fn run(
     let gui_sender_clone = gui_sender.clone();
     let sounds_active_route = warp::path!("sounds" / "active").map(move || {
         gui_sender_clone
-            .send(sound::Message::PlayStatus(Vec::new()))
+            .send(sound::Message::PlayStatus(Vec::new(), 0.0))
             .unwrap();
         match gui_receiver.recv() {
-            Ok(sound::Message::PlayStatus(sounds)) => {
+            Ok(sound::Message::PlayStatus(sounds, volume)) => {
                 let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
                 for sound in sounds {
                     sound_info.push(StrippedSoundActiveInfo {
@@ -317,8 +323,12 @@ pub async fn run(
                             .as_secs_f32(),
                     })
                 }
+                let play_status_response = PlayStatusResponse {
+                    sounds: sound_info,
+                    volume,
+                };
                 warp::reply::with_status(
-                    warp::reply::json(&ResultData::with_data(sound_info)),
+                    warp::reply::json(&ResultData::with_data(play_status_response)),
                     warp::http::StatusCode::OK,
                 )
             }
