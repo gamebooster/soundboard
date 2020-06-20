@@ -23,7 +23,7 @@ var app = new Vue({
         },
         volume: function (val, oldVal) {
             axios
-                .post('/api/sounds/volume', { volume: parseFloat(val) })
+                .post('/api/sounds/volume', { volume: val })
                 .catch(function (error) {
                     self.showStatusModal = true;
                 });

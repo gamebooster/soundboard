@@ -46,6 +46,13 @@ input[type="range"].slider {
     text-align: center;
     line-height: 1.5;
 }
+.song_progress .title {
+    text-align: center;
+}
+.song_progress .progress-value {
+    text-align: center;
+    text-shadow: 0 0 1px #363636, 0 0 1px #363636, 0 0 1px #363636, 0 0 1px #363636;
+}
 
 html, body {
     background-color: #363636;

@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/buefy/dist/buefy.min.js" defer></script>
     <script src="js/index.js" defer></script>
     <link rel="stylesheet" href="ext/bulma_0_9_0.min.css">
-    <link rel="stylesheet" href="ext//bulma-slider_2_0_0.min.css">
     <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
     <link rel="stylesheet" href="css/index.css">
     <meta charset="utf-8">
@@ -45,8 +44,9 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="column"> <input class="slider_input slider is-fullwidth" step="0.1" min="0" max="1"
-                                v-model="volume" type="range"></div>
+                        <div class="column">
+                            <b-slider :step="0.1" :min="0.0" :max="1.0" v-model="volume" lazy></b-slider>
+                        </div>
                     </div>
                 </div>
                 <template v-if="showBottomMenu && activeSounds.length > 0">
@@ -57,10 +57,15 @@
                             <div class="column">
                                 <div class="title is-5">{{ sound.name }}</div>
                             </div>
-                            <div class="column"> <progress v-if="sound.total_duration != 0" class="progress"
-                                    :value="sound.play_duration"
-                                    :max="sound.total_duration">{{ sound.play_duration  }}</progress>
-                                <progress v-else class="progress" :max="100">{{ sound.play_duration  }}</progress></div>
+                            <div class="column">
+                                <b-progress v-if="sound.total_duration != 0" :value="sound.play_duration"
+                                    :max="sound.total_duration" size="is-medium" show-value>
+                                    {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }} /
+                                    {{ new Date(sound.total_duration * 1000).toISOString().substr(14, 5)  }}
+                                </b-progress>
+                                <b-progress v-else>
+                                    {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }}</b-progress>
+                            </div>
                         </div>
                     </div>
                 </template>
