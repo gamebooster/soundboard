@@ -25,7 +25,22 @@ mod hotkey;
 mod sound;
 mod utils;
 
-fn main() -> Result<()> {
+fn main() {
+    if let Err(err) = try_main() {
+        error!(
+            r"
+    soundboard encountered an fatal error:
+        Please file a bug report if unexpected at https://github.com/gamebooster/soundboard/issues
+    Description:
+        {:?}",
+            err
+        );
+        std::process::exit(1);
+    }
+    info!("Auf Wiedersehen!");
+}
+
+fn try_main() -> Result<()> {
     env_logger::builder()
         .filter_module("soundboard", log::LevelFilter::Trace)
         .filter_module("warp", log::LevelFilter::Info)
@@ -38,7 +53,8 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let config_file = config::load_and_parse_config(arguments.value_of("config-file").unwrap())?;
+    let config_file_name = arguments.value_of("config-file").unwrap().to_string();
+    let config_file = config::load_and_parse_config(&config_file_name)?;
     // println!("{:#?}", config_file);
 
     let (sound_sender, gui_receiver): (
@@ -76,17 +92,13 @@ fn main() -> Result<()> {
         return Err(anyhow!(err));
     }
 
-    // config_file.soundboards[0].sounds.as_mut().unwrap()[0].name = "test".to_string();
-    // config::save_soundboard_config(&config_file.soundboards[0])?;
-
     #[cfg(feature = "http")]
     {
         if arguments.is_present("http-server") || config_file.http_server.unwrap_or_default() {
-            let config_file_clone = config_file.clone();
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
-                http_server::run(config_file_clone, gui_sender_clone, gui_receiver_clone);
+                http_server::run(config_file_name, gui_sender_clone, gui_receiver_clone);
             });
         }
     }

@@ -230,8 +230,41 @@ pub fn init_sound(
     Ok(())
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct SoundKey {
+    pub name: String,
+    pub path: String,
+    pub hotkey: Option<String>,
+    pub headers: Option<Vec<config::HeaderConfig>>,
+}
+
+impl From<config::SoundConfig> for SoundKey {
+    fn from(sound_config: config::SoundConfig) -> Self {
+        SoundKey {
+            path: sound_config.path,
+            headers: sound_config.headers,
+            name: sound_config.name,
+            hotkey: sound_config.hotkey,
+        }
+    }
+}
+
+impl PartialEq for SoundKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path && self.headers == other.headers
+    }
+}
+impl Eq for SoundKey {}
+
+impl std::hash::Hash for SoundKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
+        self.headers.hash(state);
+    }
+}
+
 type StartedTime = std::time::Instant;
-type SoundMap = HashMap<config::SoundConfig, (Vec<Sink>, StartedTime, Option<TotalDuration>)>;
+type SoundMap = HashMap<SoundKey, (Vec<Sink>, StartedTime, Option<TotalDuration>)>;
 
 #[derive(
     Debug,
@@ -300,7 +333,7 @@ fn insert_sink_with_config(
     sink.set_volume(volume)?;
     sink.start()?;
 
-    match sinks.entry(sound_config) {
+    match sinks.entry(sound_config.into()) {
         std::collections::hash_map::Entry::Occupied(mut entry) => {
             let entry = entry.get_mut();
             entry.0.push(sink);
@@ -359,7 +392,7 @@ fn play_thread(
                     }
                 }
                 Message::StopSound(sound_handle) => {
-                    if let Some((vec, _, _)) = sinks.remove(&sound_handle) {
+                    if let Some((vec, _, _)) = sinks.remove(&sound_handle.into()) {
                         for sink in vec {
                             drop(sink);
                         }
@@ -385,7 +418,17 @@ fn play_thread(
                 Message::PlayStatus(_, _) => {
                     let mut sounds = Vec::new();
                     for (id, (_, instant, total_duration)) in sinks.iter() {
-                        sounds.push((id.clone(), instant.elapsed(), *total_duration));
+                        sounds.push((
+                            config::SoundConfig {
+                                name: id.name.clone(),
+                                path: id.path.clone(),
+                                headers: id.headers.clone(),
+                                hotkey: id.hotkey.clone(),
+                                full_path: String::new(),
+                            },
+                            instant.elapsed(),
+                            *total_duration,
+                        ));
                     }
                     sender
                         .send(Message::PlayStatus(sounds, volume))

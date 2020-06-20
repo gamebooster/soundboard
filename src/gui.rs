@@ -75,7 +75,7 @@ impl Application for Soundboard {
             |mut buttons, soundboard| {
                 buttons.push(SoundboardButton {
                     state: button::State::new(),
-                    name: soundboard.name.clone().unwrap(),
+                    name: soundboard.name.clone(),
                     selected: false,
                 });
                 buttons
@@ -101,8 +101,7 @@ impl Application for Soundboard {
         soundboard.update(SoundboardMessage::ShowSoundboard(
             soundboard.config.soundboards[start_soundboard_index]
                 .name
-                .clone()
-                .unwrap(),
+                .clone(),
         ));
         (soundboard, Command::none())
     }
@@ -197,7 +196,7 @@ impl Application for Soundboard {
                     .config
                     .soundboards
                     .iter()
-                    .find(|s| s.name.as_ref().unwrap() == &name)
+                    .find(|s| s.name == name)
                     .unwrap()
                     .sounds
                     .clone()

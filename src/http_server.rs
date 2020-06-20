@@ -21,16 +21,37 @@ struct VolumeRequest {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct SoundboardChangeRequest {
+    name: String,
+    hotkey: Option<String>,
+    position: Option<usize>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct SoundChangeRequest {
+    name: Option<String>,
+    hotkey: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct SoundAddRequest {
+    name: String,
+    hotkey: Option<String>,
+    path: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundboardInfo {
     name: String,
-    hotkey: String,
+    hotkey: Option<String>,
+    position: Option<usize>,
     id: usize,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundInfo {
     name: String,
-    hotkey: String,
+    hotkey: Option<String>,
     id: usize,
 }
 
@@ -43,7 +64,7 @@ struct PlayStatusResponse {
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundActiveInfo {
     name: String,
-    hotkey: String,
+    hotkey: Option<String>,
     total_duration: f32,
     play_duration: f32,
 }
@@ -128,12 +149,13 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
 }
 
 fn check_soundboard_index(
-    config_file: config::MainConfig,
+    config_file: std::sync::Arc<std::sync::RwLock<config::MainConfig>>,
 ) -> impl Filter<Extract = ((config::SoundboardConfig, usize),), Error = Rejection> + Clone {
     warp::path("soundboards")
         .and(warp::path::param::<usize>())
         .and_then(move |index: usize| {
-            let maybe_soundboard = config_file.soundboards.get(index);
+            let config = config_file.read().unwrap();
+            let maybe_soundboard = config.soundboards.get(index);
             if let Some(soundboard) = maybe_soundboard {
                 futures::future::ok((soundboard.clone(), index))
             } else {
@@ -143,7 +165,7 @@ fn check_soundboard_index(
 }
 
 fn check_sound_index(
-    config_file: config::MainConfig,
+    config_file: std::sync::Arc<std::sync::RwLock<config::MainConfig>>,
 ) -> impl Filter<Extract = ((config::SoundConfig, usize),), Error = Rejection> + Clone {
     check_soundboard_index(config_file)
         .and(warp::path("sounds"))
@@ -162,42 +184,98 @@ fn check_sound_index(
 
 #[tokio::main]
 pub async fn run(
-    config_file: config::MainConfig,
+    config_file_name: String,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     gui_receiver: crossbeam_channel::Receiver<sound::Message>,
 ) {
-    let config_file_clone = config_file.clone();
+    let config_file = config::load_and_parse_config(&config_file_name).unwrap();
+    let config_file_lock = std::sync::Arc::new(std::sync::RwLock::new(config_file));
+
+    let config_file_lock_clone = config_file_lock.clone();
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
-        for (id, soundboard) in config_file_clone.soundboards.iter().enumerate() {
+        let mut config_file = config_file_lock_clone.write().unwrap();
+        let new_config_file = config::load_and_parse_config(&config_file_name).unwrap();
+        *config_file = new_config_file;
+
+        for (id, soundboard) in config_file.soundboards.iter().enumerate() {
             soundboards.push(StrippedSoundboardInfo {
-                name: soundboard.name.clone().unwrap_or_default(),
-                hotkey: soundboard.hotkey.clone().unwrap_or_default(),
+                name: soundboard.name.clone(),
+                hotkey: soundboard.hotkey.clone(),
+                position: soundboard.position,
                 id,
             });
         }
         warp::reply::json(&ResultData::with_data(soundboards))
     });
 
-    let config_file_clone = config_file.clone();
-    let soundboards_soundboard_route = check_soundboard_index(config_file_clone)
+    let soundboards_soundboard_route = check_soundboard_index(config_file_lock.clone())
         .and(warp::path::end())
+        .and(warp::get())
         .map(
             move |(soundboard, index): (config::SoundboardConfig, usize)| {
                 warp::reply::with_status(
                     warp::reply::json(&ResultData::with_data(StrippedSoundboardInfo {
-                        name: soundboard.name.unwrap_or_default(),
-                        hotkey: soundboard.hotkey.unwrap_or_default(),
+                        name: soundboard.name,
+                        hotkey: soundboard.hotkey,
                         id: index,
+                        position: soundboard.position,
                     })),
                     warp::http::StatusCode::OK,
                 )
             },
         );
 
-    let config_file_clone = config_file.clone();
-    let soundboards_sounds_route = check_soundboard_index(config_file_clone)
+    let config_file_lock_clone = config_file_lock.clone();
+    let soundboards_soundboard_change_route = check_soundboard_index(config_file_lock.clone())
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(
+            move |(old_soundboard, index): (config::SoundboardConfig, usize),
+                  soundboard_change_request: SoundboardChangeRequest| {
+                let mut new_soundboard = old_soundboard;
+                if soundboard_change_request.hotkey.is_some()
+                    && !soundboard_change_request
+                        .hotkey
+                        .as_ref()
+                        .unwrap()
+                        .is_empty()
+                {
+                    new_soundboard.hotkey = soundboard_change_request.hotkey;
+                }
+                new_soundboard.name = soundboard_change_request.name;
+                if soundboard_change_request.position.is_some() {
+                    new_soundboard.position = soundboard_change_request.position;
+                }
+
+                if let Err(err) = config::save_soundboard_config(&mut new_soundboard) {
+                    return warp::reply::with_status(
+                        warp::reply::json(&ResultErrors::with_error(
+                            "500",
+                            &"Internal Server Error",
+                            &format!("{}", err),
+                        )),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    );
+                }
+                let mut config_file = config_file_lock_clone.write().unwrap();
+                config_file.soundboards[index] = new_soundboard;
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundboardInfo {
+                        name: config_file.soundboards[index].name.clone(),
+                        hotkey: config_file.soundboards[index].hotkey.clone(),
+                        id: index,
+                        position: config_file.soundboards[index].position,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
+    let soundboards_sounds_route = check_soundboard_index(config_file_lock.clone())
         .and(warp::path!("sounds"))
+        .and(warp::get())
         .map(move |(soundboard, _): (config::SoundboardConfig, usize)| {
             warp::reply::with_status(
                 warp::reply::json(&ResultData::with_data(
@@ -209,7 +287,7 @@ pub async fn run(
                         .fold(Vec::new(), |mut v, a| {
                             v.push(StrippedSoundInfo {
                                 name: a.name.clone(),
-                                hotkey: a.hotkey.clone().unwrap_or_default(),
+                                hotkey: a.hotkey.clone(),
                                 id: v.len(),
                             });
                             v
@@ -219,14 +297,14 @@ pub async fn run(
             )
         });
 
-    let config_file_clone = config_file.clone();
-    let soundboards_sounds_sound_route = check_sound_index(config_file_clone)
+    let soundboards_sounds_sound_route = check_sound_index(config_file_lock.clone())
         .and(warp::path::end())
+        .and(warp::get())
         .map(move |(sound, index): (config::SoundConfig, usize)| {
             warp::reply::with_status(
                 warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                     name: sound.name.clone(),
-                    hotkey: sound.hotkey.unwrap_or_default(),
+                    hotkey: sound.hotkey,
                     id: index,
                 })),
                 warp::http::StatusCode::OK,
@@ -234,8 +312,7 @@ pub async fn run(
         });
 
     let gui_sender_clone = gui_sender.clone();
-    let config_file_clone = config_file.clone();
-    let sounds_play_route = check_sound_index(config_file_clone)
+    let sounds_play_route = check_sound_index(config_file_lock.clone())
         .and(warp::path!("play"))
         .and(warp::post())
         .and(warp::body::json())
@@ -255,8 +332,7 @@ pub async fn run(
         );
 
     let gui_sender_clone = gui_sender.clone();
-    let config_file_clone = config_file.clone();
-    let sounds_stop_route = check_sound_index(config_file_clone)
+    let sounds_stop_route = check_sound_index(config_file_lock.clone())
         .and(warp::path!("stop"))
         .and(warp::post())
         .map(move |(sound, _): (config::SoundConfig, usize)| {
@@ -299,57 +375,61 @@ pub async fn run(
             });
 
     let gui_sender_clone = gui_sender.clone();
-    let sounds_active_route = warp::path!("sounds" / "active").map(move || {
-        gui_sender_clone
-            .send(sound::Message::PlayStatus(Vec::new(), 0.0))
-            .unwrap();
-        match gui_receiver.recv() {
-            Ok(sound::Message::PlayStatus(sounds, volume)) => {
-                let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
-                for sound in sounds {
-                    sound_info.push(StrippedSoundActiveInfo {
-                        name: sound.0.name,
-                        hotkey: sound.0.hotkey.unwrap_or_default(),
-                        play_duration: sound.1.as_secs_f32(),
-                        total_duration: sound
-                            .2
-                            .unwrap_or_else(|| std::time::Duration::from_secs(0))
-                            .as_secs_f32(),
-                    })
+    let sounds_active_route = warp::path!("sounds" / "active")
+        .and(warp::get())
+        .map(move || {
+            gui_sender_clone
+                .send(sound::Message::PlayStatus(Vec::new(), 0.0))
+                .unwrap();
+            match gui_receiver.recv() {
+                Ok(sound::Message::PlayStatus(sounds, volume)) => {
+                    let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
+                    for sound in sounds {
+                        sound_info.push(StrippedSoundActiveInfo {
+                            name: sound.0.name,
+                            hotkey: sound.0.hotkey,
+                            play_duration: sound.1.as_secs_f32(),
+                            total_duration: sound
+                                .2
+                                .unwrap_or_else(|| std::time::Duration::from_secs(0))
+                                .as_secs_f32(),
+                        })
+                    }
+                    let play_status_response = PlayStatusResponse {
+                        sounds: sound_info,
+                        volume,
+                    };
+                    warp::reply::with_status(
+                        warp::reply::json(&ResultData::with_data(play_status_response)),
+                        warp::http::StatusCode::OK,
+                    )
                 }
-                let play_status_response = PlayStatusResponse {
-                    sounds: sound_info,
-                    volume,
-                };
-                warp::reply::with_status(
-                    warp::reply::json(&ResultData::with_data(play_status_response)),
-                    warp::http::StatusCode::OK,
-                )
+                Err(err) => warp::reply::with_status(
+                    warp::reply::json(&ResultErrors::with_error(
+                        "500",
+                        &"Internal Server Error",
+                        &format!("{}", err),
+                    )),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                ),
+                _ => warp::reply::with_status(
+                    warp::reply::json(&ResultErrors::with_error(
+                        "500",
+                        &"Internal Server Error",
+                        &"",
+                    )),
+                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                ),
             }
-            Err(err) => warp::reply::with_status(
-                warp::reply::json(&ResultErrors::with_error(
-                    "500",
-                    &"Internal Server Error",
-                    &format!("{}", err),
-                )),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            ),
-            _ => warp::reply::with_status(
-                warp::reply::json(&ResultErrors::with_error(
-                    "500",
-                    &"Internal Server Error",
-                    &"",
-                )),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            ),
-        }
-    });
+        });
 
     let help_api = warp::path::end()
+        .and(warp::get())
         .map(|| "This is the Soundboard API. Try calling /api/soundboards or /api/sounds/active");
 
     let routes = (warp::path("api").and(
         soundboards_route
+            .or(soundboards_soundboard_change_route)
             .or(soundboards_soundboard_route)
             .or(soundboards_sounds_route)
             .or(soundboards_sounds_sound_route)

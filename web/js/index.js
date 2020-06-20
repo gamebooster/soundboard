@@ -12,39 +12,10 @@ var app = new Vue({
     },
     created: function () {
         const self = this;
+        self.reloadData();
         setInterval(function () {
-            if (getComputedStyle(document.querySelector("#bottom_menu"), null).display === "none") {
-                self.showBottomMenu = true;
-            }
-            axios
-                .get('/api/sounds/active')
-                .then(response => {
-                    self.showStatusModal = false;
-                    self.activeSounds = response.data.data.sounds;
-                    self.volume = response.data.data.volume;
-                }).catch(function (error) {
-                    console.log(error);
-                    self.showStatusModal = true;
-                });
+            self.updatePlayStatus();
         }, 500);
-        axios
-            .get('/api/soundboards')
-            .then(response => {
-                self.soundboards = response.data.data;
-                for (let i = 0; i < self.soundboards.length; i++) {
-                    axios
-                        .get('/api/soundboards/' + i + '/sounds')
-                        .then(response => {
-                            self.soundboards[i].sounds = response.data.data;
-                        }).catch(function (error) {
-                            console.log(error);
-                            self.showStatusModal = true;
-                        });
-                }
-            }).catch(function (error) {
-                console.log(error);
-                self.showStatusModal = true;
-            });
     },
     watch: {
         filter: function (val, oldVal) {
@@ -54,7 +25,6 @@ var app = new Vue({
             axios
                 .post('/api/sounds/volume', { volume: parseFloat(val) })
                 .catch(function (error) {
-                    console.log(error);
                     self.showStatusModal = true;
                 });
         },
@@ -67,6 +37,40 @@ var app = new Vue({
         }
     },
     methods: {
+        updatePlayStatus() {
+            if (getComputedStyle(document.querySelector("#bottom_menu"), null).display === "none") {
+                this.showBottomMenu = true;
+            }
+            axios
+                .get('/api/sounds/active')
+                .then(response => {
+                    this.showStatusModal = false;
+                    this.activeSounds = response.data.data.sounds;
+                    this.volume = response.data.data.volume;
+                }).catch(error => {
+                    console.error(error);
+                    this.showStatusModal = true;
+                });
+        },
+        reloadData() {
+            const self = this;
+            axios
+                .get('/api/soundboards')
+                .then(response => {
+                    self.soundboards = response.data.data;
+                    for (let i = 0; i < self.soundboards.length; i++) {
+                        axios
+                            .get('/api/soundboards/' + i + '/sounds')
+                            .then(response => {
+                                self.soundboards[i].sounds = response.data.data;
+                            }).catch(error => {
+                                self.showStatusModal = true;
+                            });
+                    }
+                }).catch(error => {
+                    self.showStatusModal = true;
+                });
+        },
         hideKeyboard() {
             document.activeElement.blur();
         },
@@ -86,6 +90,29 @@ var app = new Vue({
             axios
                 .post('/api/sounds/stopall')
                 .then(response => (this.lastRequestAnswer = response.data.data))
+        },
+        updateSoundboard: function (soundboard_id) {
+            let soundboard = this.soundboards[soundboard_id];
+            axios
+                .post('/api/soundboards/' + soundboard.id, {
+                    name: soundboard.name,
+                    hotkey: soundboard.hotkey,
+                    position: soundboard.position
+                })
+                .then(response => {
+                    this.$buefy.toast.open({
+                        message: 'Update soundboard to name: ' + response.data.data.name,
+                        type: 'is-success'
+                    })
+                }).catch(error => {
+                    this.$buefy.toast.open({
+                        duration: 5000,
+                        message: `Failed to update soundboard name: ` + JSON.stringify(error.response.data.errors),
+                        position: 'is-top',
+                        type: 'is-danger'
+                    });
+                    this.reloadData();
+                });
         }
     }
-})
+});

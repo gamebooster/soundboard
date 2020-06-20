@@ -5,9 +5,11 @@
     <title>soundboard</title>
     <script src="ext/vue_2_6_11.min.js" defer></script>
     <script src="ext/axios_0_19_2.min.js" defer></script>
+    <script src="https://unpkg.com/buefy/dist/buefy.min.js" defer></script>
     <script src="js/index.js" defer></script>
     <link rel="stylesheet" href="ext/bulma_0_9_0.min.css">
     <link rel="stylesheet" href="ext//bulma-slider_2_0_0.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
     <link rel="stylesheet" href="css/index.css">
     <meta charset="utf-8">
     <meta name="viewport"
@@ -78,7 +80,16 @@
         <div class="tile is-ancestor is-vertical">
             <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.name">
                 <div class="tile is-child box">
-                    <p class="title">{{ soundboard.name }}</p>
+                    <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
+                    </p>
+                    <b-field v-else label="Name" label-position="on-border">
+                        <b-input v-model="soundboard.name">{{ soundboard.name }}
+                        </b-input>
+                        <p class="control">
+                            <b-button @click="soundboard.edit=false; updateSoundboard(soundboard.id);"
+                                class="button is-primary">Submit</b-button>
+                        </p>
+                    </b-field>
                     <div class="buttons">
                         <template v-for="sound in soundboard.sounds">
                             <template v-if="filterRegex.test(sound.name)">

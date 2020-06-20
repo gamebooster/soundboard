@@ -1,407 +1,463 @@
-name = "duke nukem"
-position = 10
+name = 'duke nukem'
+position = 3
 
 [[sound]]
-name = "Ich rascht aus"
-path = "solrosin_soundboard/ich-rascht-aus.flac"
-hotkey = "ALT-8"
+name = 'Ich rascht aus'
+path = 'ich-rascht-aus.flac'
+hotkey = 'ALT-8'
 
 [[sound]]
-name="Balls of steel"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54065"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Balls of steel'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54065'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Balls"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54066"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Balls'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54066'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Steel"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54067"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Steel'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54067'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Have A Taste of My Ball"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=893187"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Have A Taste of My Ball'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=893187'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Looks Like You're F'd"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=893190"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Looks Like You're F'd'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=893190'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I'm Gonna Kill You Old Style"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=893189"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''I'm Gonna Kill You Old Style'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=893189'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You Can See My D*ck From Here"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=893188"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'You Can See My D*ck From Here'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=893188'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I'm an equal opportunity ass kicker"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75556"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''I'm an equal opportunity ass kicker'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75556'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You're an inspiration for birth control"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54068"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''You're an inspiration for birth control'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54068'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I oughta break a broomhandle off in your ass"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75553"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'I oughta break a broomhandle off in your ass'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75553'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Damn, you're ugly"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54069"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Damn, you're ugly'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54069'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You're gonna die for that"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54070"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''You're gonna die for that'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54070'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Rest in pieces"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75561"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Rest in pieces'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75561'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Wasted!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54072"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Wasted!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54072'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I'm gonna kick your ass, bitch!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54073"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''I'm gonna kick your ass, bitch!'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54073'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Blow it out your ass!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54074"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Blow it out your ass!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54074'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Yippie kai-ay mother f***er!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54077"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Yippie kai-ay mother f***er!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54077'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Don't get your panties all in a bunch"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75558"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Don't get your panties all in a bunch'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75558'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Who wants some?"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54078"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Who wants some?'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54078'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Come get some!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54079"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Come get some!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54079'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="This is KTIT..."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54081"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'This is KTIT...'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54081'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Damn, that was annoying."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54082"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Damn, that was annoying.'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54082'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Damn, I'm good."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54083"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Damn, I'm good.'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54083'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Quit wasting my time"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75560"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Quit wasting my time'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75560'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="My name's Duke Nukem"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54084"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''My name's Duke Nukem'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54084'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="This really pisses me off"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54085"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'This really pisses me off'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54085'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You're pissin me off"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54086"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''You're pissin me off'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54086'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Now I'm really pissed off"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75557"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Now I'm really pissed off'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75557'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Get back to work, you slacker!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54087"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Get back to work, you slacker!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54087'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Looks like it's time for me to go postal"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54088"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Looks like it's time for me to go postal'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54088'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I'll rip your head off and shit down your neck"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54089"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''I'll rip your head off and shit down your neck'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54089'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Go ahead, make my day"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54090"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Go ahead, make my day'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54090'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I'm gonna get medieval on your asses"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54091"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''I'm gonna get medieval on your asses'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54091'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Don't have time to play with myself"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54092"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Don't have time to play with myself'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54092'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="See you in hell"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54093"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'See you in hell'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54093'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="It's time to kick ass and chew bubblegum..."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54094"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''It's time to kick ass and chew bubblegum...'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54094'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You guys suck"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54095"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'You guys suck'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54095'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Hail to the king, baby!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54096"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Hail to the king, baby!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54096'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="I like big guns..."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75562"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'I like big guns...'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75562'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="It's my way or..."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75564"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''It's my way or...'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75564'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Shit happens"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54097"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Shit happens'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54097'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="*sniff*  Something smells rotten..."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75566"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '*sniff*  Something smells rotten...'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75566'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Die, you S.O.B.!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54099"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Die, you S.O.B.!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54099'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Eat shit and die"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54100"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Eat shit and die'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54100'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Your face, your ass, what's the difference?"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54101"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Your face, your ass, what's the difference?'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54101'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="My gun's bigger than yours"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75565"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''My gun's bigger than yours'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75565'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Say hello to my little friend"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75563"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Say hello to my little friend'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75563'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Get that crap outta here"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54102"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Get that crap outta here'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54102'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Game over!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54103"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Game over!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54103'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Son of a bitch!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75567"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Son of a bitch!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75567'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Ooooh, that's gotta hurt."
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54104"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Ooooh, that's gotta hurt.'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54104'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Holy cow"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54105"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Holy cow'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54105'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Holy shit!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54106"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'Holy shit!'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54106'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="Let God sort 'em out!"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54107"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''Let God sort 'em out!'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54107'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="What, there's only one of you?"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54108"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = '''What, there's only one of you?'''
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54108'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="It hurts to be you"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=54345"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'It hurts to be you'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54345'
+
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'
 
 [[sound]]
-name="You talkin to me?"
-path="https://www.soundboard.com/handler/playTrack.ashx?id=75559"
-  [[sound.header]]
-    name="referer"
-    value="https://www.soundboard.com/"
+name = 'You talkin to me?'
+path = 'https://www.soundboard.com/handler/playTrack.ashx?id=75559'
 
+[[sound.header]]
+name = 'referer'
+value = 'https://www.soundboard.com/'

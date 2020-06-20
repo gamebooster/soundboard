@@ -82,7 +82,7 @@ impl PanelView {
         self.panes.iter_mut().for_each(|(_, state)| {
             if let Some(sound) = sounds
                 .iter()
-                .find(|(s, _, _)| s == &state.sound_button.config)
+                .find(|(s, _, _)| s.path == state.sound_button.config.path)
             {
                 state.playing = true;
                 state.play_duration = sound.1;

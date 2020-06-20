@@ -1,675 +1,674 @@
-name = "myinstants"
+name = 'myinstants.com'
 
 [[sound]]
-name="BRUH"
-path="https://www.myinstants.com//media/sounds/movie_1.mp3"
+name = 'test'
+path = 'https://www.myinstants.com//media/sounds/movie_1.mp3'
 
 [[sound]]
-name="Female Orgasm"
-path="https://www.myinstants.com//media/sounds/epic.swf_1.mp3"
+name = 'Female Orgasm'
+path = 'https://www.myinstants.com//media/sounds/epic.swf_1.mp3'
 
 [[sound]]
-name="TeamSpeak 3"
-path="https://www.myinstants.com//media/sounds/untitled_291.mp3"
+name = 'TeamSpeak 3'
+path = 'https://www.myinstants.com//media/sounds/untitled_291.mp3'
 
 [[sound]]
-name="Kann es sein das du Dumm bist"
-path="https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3"
+name = 'Kann es sein das du Dumm bist'
+path = 'https://www.myinstants.com//media/sounds/kann-es-sein-das-du-dumm-bist-oder-so-was.mp3'
 
 [[sound]]
-name="Windows XP Error"
-path="https://www.myinstants.com//media/sounds/erro.mp3"
+name = 'Windows XP Error'
+path = 'https://www.myinstants.com//media/sounds/erro.mp3'
 
 [[sound]]
-name="Trololo"
-path="https://www.myinstants.com//media/sounds/trollolol.swf.mp3"
+name = 'Trololo'
+path = 'https://www.myinstants.com//media/sounds/trollolol.swf.mp3'
 
 [[sound]]
-name="Nein! - Doch!- Ohh!"
-path="https://www.myinstants.com//media/sounds/nein-doch-ohh.mp3"
+name = 'Nein! - Doch!- Ohh!'
+path = 'https://www.myinstants.com//media/sounds/nein-doch-ohh.mp3'
 
 [[sound]]
-name="Chewbacca"
-path="https://www.myinstants.com//media/sounds/chewbacca.swf.mp3"
+name = 'Chewbacca'
+path = 'https://www.myinstants.com//media/sounds/chewbacca.swf.mp3'
 
 [[sound]]
-name="MLG AIR HORN!!!!!!!!!!!"
-path="https://www.myinstants.com//media/sounds/mlg-airhorn.mp3"
+name = 'MLG AIR HORN!!!!!!!!!!!'
+path = 'https://www.myinstants.com//media/sounds/mlg-airhorn.mp3'
 
 [[sound]]
-name="Befehl"
-path="https://www.myinstants.com//media/sounds/das-war-ein-befehl.mp3"
+name = 'Befehl'
+path = 'https://www.myinstants.com//media/sounds/das-war-ein-befehl.mp3'
 
 [[sound]]
-name="BADUM TSS"
-path="https://www.myinstants.com//media/sounds/joke_drum_effect.mp3"
+name = 'BADUM TSS'
+path = 'https://www.myinstants.com//media/sounds/joke_drum_effect.mp3'
 
 [[sound]]
-name="Halt Stop!"
-path="https://www.myinstants.com//media/sounds/mein-song-4_2.mp3"
+name = 'Halt Stop!'
+path = 'https://www.myinstants.com//media/sounds/mein-song-4_2.mp3'
 
 [[sound]]
-name="YEAH !!"
-path="https://www.myinstants.com//media/sounds/sound-9______.mp3"
+name = 'YEAH !!'
+path = 'https://www.myinstants.com//media/sounds/sound-9______.mp3'
 
 [[sound]]
-name="This is Sparta!!"
-path="https://www.myinstants.com//media/sounds/thisissparta.swf.mp3"
+name = 'This is Sparta!!'
+path = 'https://www.myinstants.com//media/sounds/thisissparta.swf.mp3'
 
 [[sound]]
-name="Bazinga!"
-path="https://www.myinstants.com//media/sounds/bazinga.swf.mp3"
+name = 'Bazinga!'
+path = 'https://www.myinstants.com//media/sounds/bazinga.swf.mp3'
 
 [[sound]]
-name="ROBLOX oof"
-path="https://www.myinstants.com//media/sounds/roblox-death-sound_1.mp3"
+name = 'ROBLOX oof'
+path = 'https://www.myinstants.com//media/sounds/roblox-death-sound_1.mp3'
 
 [[sound]]
-name="pornhub community intro"
-path="https://www.myinstants.com//media/sounds/pornhub-community-intro.mp3"
+name = 'pornhub community intro'
+path = 'https://www.myinstants.com//media/sounds/pornhub-community-intro.mp3'
 
 [[sound]]
-name="Sexy Sax"
-path="https://www.myinstants.com//media/sounds/george-micael-wham-careless-whisper-1.mp3"
+name = 'Sexy Sax'
+path = 'https://www.myinstants.com//media/sounds/george-micael-wham-careless-whisper-1.mp3'
 
 [[sound]]
-name="Wololo"
-path="https://www.myinstants.com//media/sounds/sound-9.mp3"
+name = 'Wololo'
+path = 'https://www.myinstants.com//media/sounds/sound-9.mp3'
 
 [[sound]]
-name="Fuck off!"
-path="https://www.myinstants.com//media/sounds/fuckoff.mp3"
+name = 'Fuck off!'
+path = 'https://www.myinstants.com//media/sounds/fuckoff.mp3'
 
 [[sound]]
-name="Sad Trombone"
-path="https://www.myinstants.com//media/sounds/sadtrombone.swf.mp3"
+name = 'Sad Trombone'
+path = 'https://www.myinstants.com//media/sounds/sadtrombone.swf.mp3'
 
 [[sound]]
-name="Dramatic Chipmunk"
-path="https://www.myinstants.com//media/sounds/dramatic.swf.mp3"
+name = 'Dramatic Chipmunk'
+path = 'https://www.myinstants.com//media/sounds/dramatic.swf.mp3'
 
 [[sound]]
-name="and his name is John Cenaaaaaa"
-path="https://www.myinstants.com//media/sounds/and-his-name-is-john-cena-1.mp3"
+name = 'and his name is John Cenaaaaaa'
+path = 'https://www.myinstants.com//media/sounds/and-his-name-is-john-cena-1.mp3'
 
 [[sound]]
-name="The Cyka Blyat Song"
-path="https://www.myinstants.com//media/sounds/cyka-blyat.mp3"
+name = 'The Cyka Blyat Song'
+path = 'https://www.myinstants.com//media/sounds/cyka-blyat.mp3'
 
 [[sound]]
-name="Ps1"
-path="https://www.myinstants.com//media/sounds/ps_1.mp3"
+name = 'Ps1'
+path = 'https://www.myinstants.com//media/sounds/ps_1.mp3'
 
 [[sound]]
-name="Surprise Motherfucker"
-path="https://www.myinstants.com//media/sounds/surprise-motherfucker.mp3"
+name = 'Surprise Motherfucker'
+path = 'https://www.myinstants.com//media/sounds/surprise-motherfucker.mp3'
 
 [[sound]]
-name="Over 9000!!"
-path="https://www.myinstants.com//media/sounds/over9000.swf.mp3"
+name = 'Over 9000!!'
+path = 'https://www.myinstants.com//media/sounds/over9000.swf.mp3'
 
 [[sound]]
-name="Boom! Headshot!"
-path="https://www.myinstants.com//media/sounds/boomheadshot.swf.mp3"
+name = 'Boom! Headshot!'
+path = 'https://www.myinstants.com//media/sounds/boomheadshot.swf.mp3'
 
 [[sound]]
-name="Shut up!"
-path="https://www.myinstants.com//media/sounds/shutup.swf.mp3"
+name = 'Shut up!'
+path = 'https://www.myinstants.com//media/sounds/shutup.swf.mp3'
 
 [[sound]]
-name="JA GEGE"
-path="https://www.myinstants.com//media/sounds/gege.mp3"
+name = 'JA GEGE'
+path = 'https://www.myinstants.com//media/sounds/gege.mp3'
 
 [[sound]]
-name="Noooo!"
-path="https://www.myinstants.com//media/sounds/nooo.swf.mp3"
+name = 'Noooo!'
+path = 'https://www.myinstants.com//media/sounds/nooo.swf.mp3'
 
 [[sound]]
-name="Inception Button"
-path="https://www.myinstants.com//media/sounds/inceptionbutton.mp3"
+name = 'Inception Button'
+path = 'https://www.myinstants.com//media/sounds/inceptionbutton.mp3'
 
 [[sound]]
-name="Rimshot"
-path="https://www.myinstants.com//media/sounds/badumtss.swf.mp3"
+name = 'Rimshot'
+path = 'https://www.myinstants.com//media/sounds/badumtss.swf.mp3'
 
 [[sound]]
-name="WTF BOOM!"
-path="https://www.myinstants.com//media/sounds/wtf_boom.mp3"
+name = 'WTF BOOM!'
+path = 'https://www.myinstants.com//media/sounds/wtf_boom.mp3'
 
 [[sound]]
-name="Hallelujah"
-path="https://www.myinstants.com//media/sounds/hallelujahshort.swf.mp3"
+name = 'Hallelujah'
+path = 'https://www.myinstants.com//media/sounds/hallelujahshort.swf.mp3'
 
 [[sound]]
-name="Metal Gear"
-path="https://www.myinstants.com//media/sounds/metalgearsolid.swf.mp3"
+name = 'Metal Gear'
+path = 'https://www.myinstants.com//media/sounds/metalgearsolid.swf.mp3'
 
 [[sound]]
-name="Nein Nein Nein Hitler"
-path="https://www.myinstants.com//media/sounds/hitler-nein_1.mp3"
+name = 'Nein Nein Nein Hitler'
+path = 'https://www.myinstants.com//media/sounds/hitler-nein_1.mp3'
 
 [[sound]]
-name="Crickets"
-path="https://www.myinstants.com//media/sounds/crickets.swf.mp3"
+name = 'Crickets'
+path = 'https://www.myinstants.com//media/sounds/crickets.swf.mp3'
 
 [[sound]]
-name="To be Continued (jojo)"
-path="https://www.myinstants.com//media/sounds/untitled_1071.mp3"
+name = 'To be Continued (jojo)'
+path = 'https://www.myinstants.com//media/sounds/untitled_1071.mp3'
 
 [[sound]]
-name="Kamehameha!"
-path="https://www.myinstants.com//media/sounds/kamehameha.swf.mp3"
+name = 'Kamehameha!'
+path = 'https://www.myinstants.com//media/sounds/kamehameha.swf.mp3'
 
 [[sound]]
-name="Savage Fap"
-path="https://www.myinstants.com//media/sounds/savage-fap.mp3"
+name = 'Savage Fap'
+path = 'https://www.myinstants.com//media/sounds/savage-fap.mp3'
 
 [[sound]]
-name="hahahahihi"
-path="https://www.myinstants.com//media/sounds/hahahahihihihehehe.mp3"
+name = 'hahahahihi'
+path = 'https://www.myinstants.com//media/sounds/hahahahihihihehehe.mp3'
 
 [[sound]]
-name="FBI open UP"
-path="https://www.myinstants.com//media/sounds/fbi-open-up-sfx.mp3"
+name = 'FBI open UP'
+path = 'https://www.myinstants.com//media/sounds/fbi-open-up-sfx.mp3'
 
 [[sound]]
-name="Sad Violin (the meme one)"
-path="https://www.myinstants.com//media/sounds/tf_nemesis.mp3"
+name = 'Sad Violin (the meme one)'
+path = 'https://www.myinstants.com//media/sounds/tf_nemesis.mp3'
 
 [[sound]]
-name="ALARM!"
-path="https://www.myinstants.com//media/sounds/alarm.MP3"
+name = 'ALARM!'
+path = 'https://www.myinstants.com//media/sounds/alarm.MP3'
 
 [[sound]]
-name="Steam Incomming Message"
-path="https://www.myinstants.com//media/sounds/message_2.mp3"
+name = 'Steam Incomming Message'
+path = 'https://www.myinstants.com//media/sounds/message_2.mp3'
 
 [[sound]]
-name="Hey listen !"
-path="https://www.myinstants.com//media/sounds/hey_listen.mp3"
+name = 'Hey listen !'
+path = 'https://www.myinstants.com//media/sounds/hey_listen.mp3'
 
 [[sound]]
-name="DEJA VU MEME"
-path="https://www.myinstants.com//media/sounds/deja-vu.mp3"
+name = 'DEJA VU MEME'
+path = 'https://www.myinstants.com//media/sounds/deja-vu.mp3'
 
 [[sound]]
-name="RUN vine"
-path="https://www.myinstants.com//media/sounds/run-vine-sound-effect.mp3"
+name = 'RUN vine'
+path = 'https://www.myinstants.com//media/sounds/run-vine-sound-effect.mp3'
 
 [[sound]]
-name="windows xp shutdown"
-path="https://www.myinstants.com//media/sounds/preview_4.mp3"
+name = 'windows xp shutdown'
+path = 'https://www.myinstants.com//media/sounds/preview_4.mp3'
 
 [[sound]]
-name="Drama"
-path="https://www.myinstants.com//media/sounds/drama.swf.mp3"
+name = 'Drama'
+path = 'https://www.myinstants.com//media/sounds/drama.swf.mp3'
 
 [[sound]]
-name="Hadouken"
-path="https://www.myinstants.com//media/sounds/hadouken.mp3"
+name = 'Hadouken'
+path = 'https://www.myinstants.com//media/sounds/hadouken.mp3'
 
 [[sound]]
-name="nope.avi"
-path="https://www.myinstants.com//media/sounds/engineer_no01.mp3"
+name = 'nope.avi'
+path = 'https://www.myinstants.com//media/sounds/engineer_no01.mp3'
 
 [[sound]]
-name="My Name Is Jeff"
-path="https://www.myinstants.com//media/sounds/ringtone_20.mp3"
+name = 'My Name Is Jeff'
+path = 'https://www.myinstants.com//media/sounds/ringtone_20.mp3'
 
 [[sound]]
-name="kurz Kacken"
-path="https://www.myinstants.com//media/sounds/kurz-kacken.mp3"
+name = 'kurz Kacken'
+path = 'https://www.myinstants.com//media/sounds/kurz-kacken.mp3'
 
 [[sound]]
-name="Grillen zirpen"
-path="https://www.myinstants.com//media/sounds/grillen-zirpen.mp3"
+name = 'Grillen zirpen'
+path = 'https://www.myinstants.com//media/sounds/grillen-zirpen.mp3'
 
 [[sound]]
-name="Merkel Wir Schaffen Das"
-path="https://www.myinstants.com//media/sounds/facebook-video-1419170238098335.mp3"
+name = 'Merkel Wir Schaffen Das'
+path = 'https://www.myinstants.com//media/sounds/facebook-video-1419170238098335.mp3'
 
 [[sound]]
-name="Wendler - Egal"
-path="https://www.myinstants.com//media/sounds/egal.mp3"
+name = 'Wendler - Egal'
+path = 'https://www.myinstants.com//media/sounds/egal.mp3'
 
 [[sound]]
-name="Vuvuzela"
-path="https://www.myinstants.com//media/sounds/vuvuzela.mp3"
+name = 'Vuvuzela'
+path = 'https://www.myinstants.com//media/sounds/vuvuzela.mp3'
 
 [[sound]]
-name="Tuturu"
-path="https://www.myinstants.com//media/sounds/tuturu_1.mp3"
+name = 'Tuturu'
+path = 'https://www.myinstants.com//media/sounds/tuturu_1.mp3'
 
 [[sound]]
-name="Elotrix Oh nein"
-path="https://www.myinstants.com//media/sounds/elotrix-oh-nein.mp3"
+name = 'Elotrix Oh nein'
+path = 'https://www.myinstants.com//media/sounds/elotrix-oh-nein.mp3'
 
 [[sound]]
-name="omae wa mou shindeiru NANI"
-path="https://www.myinstants.com//media/sounds/nani_Pmxf5n3.mp3"
+name = 'omae wa mou shindeiru NANI'
+path = 'https://www.myinstants.com//media/sounds/nani_Pmxf5n3.mp3'
 
 [[sound]]
-name="Anime Wow"
-path="https://www.myinstants.com//media/sounds/anime-wow-sound-effect.mp3"
+name = 'Anime Wow'
+path = 'https://www.myinstants.com//media/sounds/anime-wow-sound-effect.mp3'
 
 [[sound]]
-name="Leeroy Jenkins"
-path="https://www.myinstants.com//media/sounds/leroy.swf.mp3"
+name = 'Leeroy Jenkins'
+path = 'https://www.myinstants.com//media/sounds/leroy.swf.mp3'
 
 [[sound]]
-name="Metal Gear Solid Alert"
-path="https://www.myinstants.com//media/sounds/tindeck_1.mp3"
+name = 'Metal Gear Solid Alert'
+path = 'https://www.myinstants.com//media/sounds/tindeck_1.mp3'
 
 [[sound]]
-name="teamspeak - Ban"
-path="https://www.myinstants.com//media/sounds/you_were_banned_2.mp3"
+name = 'teamspeak - Ban'
+path = 'https://www.myinstants.com//media/sounds/you_were_banned_2.mp3'
 
 [[sound]]
-name="Ha gay"
-path="https://www.myinstants.com//media/sounds/ha-gay.mp3"
+name = 'Ha gay'
+path = 'https://www.myinstants.com//media/sounds/ha-gay.mp3'
 
 [[sound]]
-name="Minecraft Hurt"
-path="https://www.myinstants.com//media/sounds/classic_hurt.mp3"
+name = 'Minecraft Hurt'
+path = 'https://www.myinstants.com//media/sounds/classic_hurt.mp3'
 
 [[sound]]
-name="Victory!"
-path="https://www.myinstants.com//media/sounds/victoryff.swf.mp3"
+name = 'Victory!'
+path = 'https://www.myinstants.com//media/sounds/victoryff.swf.mp3'
 
 [[sound]]
-name="Here Comes The Money"
-path="https://www.myinstants.com//media/sounds/money_2.mp3"
-hotkey = "CTRL-P"
+name = 'Here Comes The Money'
+path = 'https://www.myinstants.com//media/sounds/money_2.mp3'
+hotkey = 'CTRL-P'
 
 [[sound]]
-name="Lalalalala"
-path="https://www.myinstants.com//media/sounds/lalalalala.swf.mp3"
+name = 'Lalalalala'
+path = 'https://www.myinstants.com//media/sounds/lalalalala.swf.mp3'
 
 [[sound]]
-name="Hello darkness my old friend"
-path="https://www.myinstants.com//media/sounds/hellodarknessmyoldfriend.mp3"
+name = 'Hello darkness my old friend'
+path = 'https://www.myinstants.com//media/sounds/hellodarknessmyoldfriend.mp3'
 
 [[sound]]
-name="Hey wake up (Teamspeak)"
-path="https://www.myinstants.com//media/sounds/you_were_poked.mp3"
+name = 'Hey wake up (Teamspeak)'
+path = 'https://www.myinstants.com//media/sounds/you_were_poked.mp3'
 
 [[sound]]
-name="The Simpsons - Nelson's HA-HA!"
-path="https://www.myinstants.com//media/sounds/the-simpsons-nelsons-haha.mp3"
+name = '''The Simpsons - Nelson's HA-HA!'''
+path = 'https://www.myinstants.com//media/sounds/the-simpsons-nelsons-haha.mp3'
 
 [[sound]]
-name="Fus Ro Dah"
-path="https://www.myinstants.com//media/sounds/fus-ro-dah.mp3"
+name = 'Fus Ro Dah'
+path = 'https://www.myinstants.com//media/sounds/fus-ro-dah.mp3'
 
 [[sound]]
-name="Fart Button"
-path="https://www.myinstants.com//media/sounds/perfect-fart.mp3"
+name = 'Fart Button'
+path = 'https://www.myinstants.com//media/sounds/perfect-fart.mp3'
 
 [[sound]]
-name="Air Horn (club sample)"
-path="https://www.myinstants.com//media/sounds/air-horn-club-sample_1.mp3"
+name = 'Air Horn (club sample)'
+path = 'https://www.myinstants.com//media/sounds/air-horn-club-sample_1.mp3'
 
 [[sound]]
-name="Fatality"
-path="https://www.myinstants.com//media/sounds/fatality.swf.mp3"
+name = 'Fatality'
+path = 'https://www.myinstants.com//media/sounds/fatality.swf.mp3'
 
 [[sound]]
-name="Sasha Real Orgasm"
-path="https://www.myinstants.com//media/sounds/480p_547k_1642481-00_03_18-00_03_25_1.mp3"
+name = 'Sasha Real Orgasm'
+path = 'https://www.myinstants.com//media/sounds/480p_547k_1642481-00_03_18-00_03_25_1.mp3'
 
 [[sound]]
-name="*Click* Nice"
-path="https://www.myinstants.com//media/sounds/nioce.mp3"
+name = '*Click* Nice'
+path = 'https://www.myinstants.com//media/sounds/nioce.mp3'
 
 [[sound]]
-name="Nicht so tief Ruediger"
-path="https://www.myinstants.com//media/sounds/nicht-so-tief-rudiger.mp3"
+name = 'Nicht so tief Ruediger'
+path = 'https://www.myinstants.com//media/sounds/nicht-so-tief-rudiger.mp3'
 
 [[sound]]
-name="Hello Darkness My Old Frieend"
-path="https://www.myinstants.com//media/sounds/saaaadaffleck.mp3"
+name = 'Hello Darkness My Old Frieend'
+path = 'https://www.myinstants.com//media/sounds/saaaadaffleck.mp3'
 
 [[sound]]
-name="Evil Laugh"
-path="https://www.myinstants.com//media/sounds/evillaugh.swf.mp3"
+name = 'Evil Laugh'
+path = 'https://www.myinstants.com//media/sounds/evillaugh.swf.mp3'
 
 [[sound]]
-name="Drop It - Extended"
-path="https://www.myinstants.com//media/sounds/drop-it-2.mp3"
+name = 'Drop It - Extended'
+path = 'https://www.myinstants.com//media/sounds/drop-it-2.mp3'
 
 [[sound]]
-name="Buzzer"
-path="https://www.myinstants.com//media/sounds/wrong-answer-sound-effect.mp3"
+name = 'Buzzer'
+path = 'https://www.myinstants.com//media/sounds/wrong-answer-sound-effect.mp3'
 
 [[sound]]
-name="Wrong!"
-path="https://www.myinstants.com//media/sounds/incorrect.swf.mp3"
+name = 'Wrong!'
+path = 'https://www.myinstants.com//media/sounds/incorrect.swf.mp3'
 
 [[sound]]
-name="Instant Button"
-path="https://www.myinstants.com//media/sounds/sfx_patcher_button_launch.mp3"
+name = 'Instant Button'
+path = 'https://www.myinstants.com//media/sounds/sfx_patcher_button_launch.mp3'
 
 [[sound]]
-name="Hallo, mein name ist..."
-path="https://www.myinstants.com//media/sounds/mein-name-ist-adolf-hitler_1_BfQKF26.mp3"
+name = 'Hallo, mein name ist...'
+path = 'https://www.myinstants.com//media/sounds/mein-name-ist-adolf-hitler_1_BfQKF26.mp3'
 
 [[sound]]
-name="Elevator"
-path="https://www.myinstants.com//media/sounds/musique-dascenseur-mp3cut.mp3"
+name = 'Elevator'
+path = 'https://www.myinstants.com//media/sounds/musique-dascenseur-mp3cut.mp3'
 
 [[sound]]
-name="Succ"
-path="https://www.myinstants.com//media/sounds/succ.mp3"
+name = 'Succ'
+path = 'https://www.myinstants.com//media/sounds/succ.mp3'
 
 [[sound]]
-name="Ha-Ha"
-path="https://www.myinstants.com//media/sounds/haha.swf.mp3"
+name = 'Ha-Ha'
+path = 'https://www.myinstants.com//media/sounds/haha.swf.mp3'
 
 [[sound]]
-name="Trap!"
-path="https://www.myinstants.com//media/sounds/itsatrap.swf.mp3"
+name = 'Trap!'
+path = 'https://www.myinstants.com//media/sounds/itsatrap.swf.mp3'
 
 [[sound]]
-name="Fuck This Shit I'm Out Song"
-path="https://www.myinstants.com//media/sounds/fuck-this-shit-im-out.mp3"
+name = '''Fuck This Shit I'm Out Song'''
+path = 'https://www.myinstants.com//media/sounds/fuck-this-shit-im-out.mp3'
 
 [[sound]]
-name="Ins M�sli kacken"
-path="https://www.myinstants.com//media/sounds/musli.mp3"
+name = 'Ins M�sli kacken'
+path = 'https://www.myinstants.com//media/sounds/musli.mp3'
 
 [[sound]]
-name="It was at this moment"
-path="https://www.myinstants.com//media/sounds/it-was-at-this-moment-that-he-he-knew-he-f-cked-up.mp3"
+name = 'It was at this moment'
+path = 'https://www.myinstants.com//media/sounds/it-was-at-this-moment-that-he-he-knew-he-f-cked-up.mp3'
 
 [[sound]]
-name="Pink Fluffy Unicorns"
-path="https://www.myinstants.com//media/sounds/pink-fluffy-unicorns.mp3"
+name = 'Pink Fluffy Unicorns'
+path = 'https://www.myinstants.com//media/sounds/pink-fluffy-unicorns.mp3'
 
 [[sound]]
-name="sitcom laugh"
-path="https://www.myinstants.com//media/sounds/sitcom-laughing-1.mp3"
+name = 'sitcom laugh'
+path = 'https://www.myinstants.com//media/sounds/sitcom-laughing-1.mp3'
 
 [[sound]]
-name="GG"
-path="https://www.myinstants.com//media/sounds/gg.mp3"
+name = 'GG'
+path = 'https://www.myinstants.com//media/sounds/gg.mp3'
 
 [[sound]]
-name="RUN vine effect sound"
-path="https://www.myinstants.com//media/sounds/run-vine-sound-effect_1.mp3"
+name = 'RUN vine effect sound'
+path = 'https://www.myinstants.com//media/sounds/run-vine-sound-effect_1.mp3'
 
 [[sound]]
-name="Falsche Entscheidung"
-path="https://www.myinstants.com//media/sounds/falscheentscheidung.mp3"
+name = 'Falsche Entscheidung'
+path = 'https://www.myinstants.com//media/sounds/falscheentscheidung.mp3'
 
 [[sound]]
-name="Roblox Death Sound Effect"
-path="https://www.myinstants.com//media/sounds/roblox-death-sound-effect.mp3"
+name = 'Roblox Death Sound Effect'
+path = 'https://www.myinstants.com//media/sounds/roblox-death-sound-effect.mp3'
 
 [[sound]]
-name="Nobody Cares"
-path="https://www.myinstants.com//media/sounds/gravando_2014_10_19_16_04_27_894.mp3"
+name = 'Nobody Cares'
+path = 'https://www.myinstants.com//media/sounds/gravando_2014_10_19_16_04_27_894.mp3'
 
 [[sound]]
-name="bitte k�ss meine muschi"
-path="https://www.myinstants.com//media/sounds/bitte-kuss-meine-muschi.mp3"
+name = 'bitte k�ss meine muschi'
+path = 'https://www.myinstants.com//media/sounds/bitte-kuss-meine-muschi.mp3'
 
 [[sound]]
-name="nomnomnom"
-path="https://www.myinstants.com//media/sounds/sound-8.mp3"
+name = 'nomnomnom'
+path = 'https://www.myinstants.com//media/sounds/sound-8.mp3'
 
 [[sound]]
-name="Combo Breaker"
-path="https://www.myinstants.com//media/sounds/combobreaker.mp3"
+name = 'Combo Breaker'
+path = 'https://www.myinstants.com//media/sounds/combobreaker.mp3'
 
 [[sound]]
-name="Bird is the Word"
-path="https://www.myinstants.com//media/sounds/birdtheword.swf.mp3"
+name = 'Bird is the Word'
+path = 'https://www.myinstants.com//media/sounds/birdtheword.swf.mp3'
 
 [[sound]]
-name="Minecraft Villager Sound"
-path="https://www.myinstants.com//media/sounds/minecraft-villager-sound-effect.mp3"
+name = 'Minecraft Villager Sound'
+path = 'https://www.myinstants.com//media/sounds/minecraft-villager-sound-effect.mp3'
 
 [[sound]]
-name="FinishHim"
-path="https://www.myinstants.com//media/sounds/finishhim.swf.mp3"
+name = 'FinishHim'
+path = 'https://www.myinstants.com//media/sounds/finishhim.swf.mp3'
 
 [[sound]]
-name="LOOK AT THIS DUDE"
-path="https://www.myinstants.com//media/sounds/lol_33.mp3"
+name = 'LOOK AT THIS DUDE'
+path = 'https://www.myinstants.com//media/sounds/lol_33.mp3'
 
 [[sound]]
-name="Discord Notification"
-path="https://www.myinstants.com//media/sounds/discord-notification.mp3"
+name = 'Discord Notification'
+path = 'https://www.myinstants.com//media/sounds/discord-notification.mp3'
 
 [[sound]]
-name="Du DRECKIGER HURENSOHN"
-path="https://www.myinstants.com//media/sounds/du-dreckiger-hurensohn.mp3"
+name = 'Du DRECKIGER HURENSOHN'
+path = 'https://www.myinstants.com//media/sounds/du-dreckiger-hurensohn.mp3'
 
 [[sound]]
-name="NEIN, HALT DIE FRESSE!"
-path="https://www.myinstants.com//media/sounds/fresse.mp3"
+name = 'NEIN, HALT DIE FRESSE!'
+path = 'https://www.myinstants.com//media/sounds/fresse.mp3'
 
 [[sound]]
-name="MLG PWNAGE"
-path="https://www.myinstants.com//media/sounds/swaggityswagger.mp3"
+name = 'MLG PWNAGE'
+path = 'https://www.myinstants.com//media/sounds/swaggityswagger.mp3'
 
 [[sound]]
-name="d*ckhead"
-path="https://www.myinstants.com//media/sounds/dickhead.mp3"
+name = 'd*ckhead'
+path = 'https://www.myinstants.com//media/sounds/dickhead.mp3'
 
 [[sound]]
-name="Karneval Tusch"
-path="https://www.myinstants.com//media/sounds/karnevals-tusch.mp3"
+name = 'Karneval Tusch'
+path = 'https://www.myinstants.com//media/sounds/karnevals-tusch.mp3'
 
 [[sound]]
-name="Extra Life"
-path="https://www.myinstants.com//media/sounds/012-collect-extra-life.mp3"
+name = 'Extra Life'
+path = 'https://www.myinstants.com//media/sounds/012-collect-extra-life.mp3'
 
 [[sound]]
-name="Balls of Steel"
-path="https://www.myinstants.com//media/sounds/ballsofsteel.swf.mp3"
+name = 'Balls of Steel'
+path = 'https://www.myinstants.com//media/sounds/ballsofsteel.swf.mp3'
 
 [[sound]]
-name="quack"
-path="https://www.myinstants.com//media/sounds/quack.mp3"
+name = 'quack'
+path = 'https://www.myinstants.com//media/sounds/quack.mp3'
 
 [[sound]]
-name="Smoke Weed EveryDay"
-path="https://www.myinstants.com//media/sounds/snoop-dogg-smoke-weed-everyday.mp3"
+name = 'Smoke Weed EveryDay'
+path = 'https://www.myinstants.com//media/sounds/snoop-dogg-smoke-weed-everyday.mp3'
 
 [[sound]]
-name="Titanic Flute"
-path="https://www.myinstants.com//media/sounds/titanic-parody-mp3cut.mp3"
+name = 'Titanic Flute'
+path = 'https://www.myinstants.com//media/sounds/titanic-parody-mp3cut.mp3'
 
 [[sound]]
-name="EA Games"
-path="https://www.myinstants.com//media/sounds/ea_games.mp3"
+name = 'EA Games'
+path = 'https://www.myinstants.com//media/sounds/ea_games.mp3'
 
 [[sound]]
-name="Jeopardy"
-path="https://www.myinstants.com//media/sounds/jeopardy.mp3"
+name = 'Jeopardy'
+path = 'https://www.myinstants.com//media/sounds/jeopardy.mp3'
 
 [[sound]]
-name="GO SUCK A DICK"
-path="https://www.myinstants.com//media/sounds/go-suck-a-dick-song-vine7-second-videos.mp3"
+name = 'GO SUCK A DICK'
+path = 'https://www.myinstants.com//media/sounds/go-suck-a-dick-song-vine7-second-videos.mp3'
 
 [[sound]]
-name="VODKA"
-path="https://www.myinstants.com//media/sounds/annuschka.mp3"
+name = 'VODKA'
+path = 'https://www.myinstants.com//media/sounds/annuschka.mp3'
 
 [[sound]]
-name="allah song"
-path="https://www.myinstants.com//media/sounds/allah-muslim-music-mp3cut.mp3"
+name = 'allah song'
+path = 'https://www.myinstants.com//media/sounds/allah-muslim-music-mp3cut.mp3'
 
 [[sound]]
-name="execute order 66"
-path="https://www.myinstants.com//media/sounds/order66.mp3"
+name = 'execute order 66'
+path = 'https://www.myinstants.com//media/sounds/order66.mp3'
 
 [[sound]]
-name="Gun"
-path="https://www.myinstants.com//media/sounds/t-t.mp3"
+name = 'Gun'
+path = 'https://www.myinstants.com//media/sounds/t-t.mp3'
 
 [[sound]]
-name="Ob du behindert bist ?!"
-path="https://www.myinstants.com//media/sounds/ob-du-behindert-bist.mp3"
+name = 'Ob du behindert bist ?!'
+path = 'https://www.myinstants.com//media/sounds/ob-du-behindert-bist.mp3'
 
 [[sound]]
-name="hehe boi ainsley harriott"
-path="https://www.myinstants.com//media/sounds/ainsley_harriott_and_his_spicy_meatconverttoaudio.mp3"
+name = 'hehe boi ainsley harriott'
+path = 'https://www.myinstants.com//media/sounds/ainsley_harriott_and_his_spicy_meatconverttoaudio.mp3'
 
 [[sound]]
-name="Don't Lose Your Way"
-path="https://www.myinstants.com//media/sounds/dontlostyourwaybutton3.mp3"
+name = '''Don't Lose Your Way'''
+path = 'https://www.myinstants.com//media/sounds/dontlostyourwaybutton3.mp3'
 
 [[sound]]
-name="Ka-Ching!"
-path="https://www.myinstants.com//media/sounds/ka-ching.mp3"
+name = 'Ka-Ching!'
+path = 'https://www.myinstants.com//media/sounds/ka-ching.mp3'
 
 [[sound]]
-name="YEET"
-path="https://www.myinstants.com//media/sounds/yeet-sound-effect.mp3"
+name = 'YEET'
+path = 'https://www.myinstants.com//media/sounds/yeet-sound-effect.mp3'
 
 [[sound]]
-name="How Could This Happen To Me"
-path="https://www.myinstants.com//media/sounds/how.mp3"
+name = 'How Could This Happen To Me'
+path = 'https://www.myinstants.com//media/sounds/how.mp3'
 
 [[sound]]
-name="legendary"
-path="https://www.myinstants.com//media/sounds/sound-9____.mp3"
+name = 'legendary'
+path = 'https://www.myinstants.com//media/sounds/sound-9____.mp3'
 
 [[sound]]
-name="Law and Order DUN DUN"
-path="https://www.myinstants.com//media/sounds/dun_dun_1.mp3"
+name = 'Law and Order DUN DUN'
+path = 'https://www.myinstants.com//media/sounds/dun_dun_1.mp3'
 
 [[sound]]
-name="Quality Time with Onii-chan"
-path="https://www.myinstants.com//media/sounds/vocaroo_s1o1nr8lqdq6.mp3"
+name = 'Quality Time with Onii-chan'
+path = 'https://www.myinstants.com//media/sounds/vocaroo_s1o1nr8lqdq6.mp3'
 
 [[sound]]
-name="ultra gay"
-path="https://www.myinstants.com//media/sounds/ultra-gay-seal_1.mp3"
+name = 'ultra gay'
+path = 'https://www.myinstants.com//media/sounds/ultra-gay-seal_1.mp3'
 
 [[sound]]
-name="GTA V - Wasted"
-path="https://www.myinstants.com//media/sounds/gta-v-death-sound-effect-102.mp3"
+name = 'GTA V - Wasted'
+path = 'https://www.myinstants.com//media/sounds/gta-v-death-sound-effect-102.mp3'
 
 [[sound]]
-name="Oh yeah"
-path="https://www.myinstants.com//media/sounds/01-oh-yeah.mp3"
+name = 'Oh yeah'
+path = 'https://www.myinstants.com//media/sounds/01-oh-yeah.mp3'
 
 [[sound]]
-name="Windows XP error music"
-path="https://www.myinstants.com//media/sounds/musica_1.mp3"
+name = 'Windows XP error music'
+path = 'https://www.myinstants.com//media/sounds/musica_1.mp3'
 
 [[sound]]
-name="Windows 10"
-path="https://www.myinstants.com//media/sounds/windows10_sound.mp3"
+name = 'Windows 10'
+path = 'https://www.myinstants.com//media/sounds/windows10_sound.mp3'
 
 [[sound]]
-name="Drumroll"
-path="https://www.myinstants.com//media/sounds/drumroll.swf.mp3"
+name = 'Drumroll'
+path = 'https://www.myinstants.com//media/sounds/drumroll.swf.mp3'
 
 [[sound]]
-name="You Touch My Tralala"
-path="https://www.myinstants.com//media/sounds/tralala_1.mp3"
+name = 'You Touch My Tralala'
+path = 'https://www.myinstants.com//media/sounds/tralala_1.mp3'
 
 [[sound]]
-name="Let's Get Ready to Rumble!!!"
-path="https://www.myinstants.com//media/sounds/lets-get-ready-to-rumble.mp3"
+name = '''Let's Get Ready to Rumble!!!'''
+path = 'https://www.myinstants.com//media/sounds/lets-get-ready-to-rumble.mp3'
 
 [[sound]]
-name="DUN DUN!"
-path="https://www.myinstants.com//media/sounds/DUN_DUN.mp3"
+name = 'DUN DUN!'
+path = 'https://www.myinstants.com//media/sounds/DUN_DUN.mp3'
 
 [[sound]]
-name="Nico Nico nii~"
-path="https://www.myinstants.com//media/sounds/niconiconilovesyou-3_cutted.mp3"
+name = 'Nico Nico nii~'
+path = 'https://www.myinstants.com//media/sounds/niconiconilovesyou-3_cutted.mp3'
 
 [[sound]]
-name="Roger Roger (Star Wars Droid)"
-path="https://www.myinstants.com//media/sounds/star-wars-b1-battle-droid_kampfdroide-roger-roger-sound.mp3"
+name = 'Roger Roger (Star Wars Droid)'
+path = 'https://www.myinstants.com//media/sounds/star-wars-b1-battle-droid_kampfdroide-roger-roger-sound.mp3'
 
 [[sound]]
-name="TV Total Nippel"
-path="https://www.myinstants.com//media/sounds/tv-total.mp3"
+name = 'TV Total Nippel'
+path = 'https://www.myinstants.com//media/sounds/tv-total.mp3'
 
 [[sound]]
-name="oh no no no laugh"
-path="https://www.myinstants.com//media/sounds/oh-no-no-no-no-laugh.mp3"
+name = 'oh no no no laugh'
+path = 'https://www.myinstants.com//media/sounds/oh-no-no-no-no-laugh.mp3'
 
 [[sound]]
-name="Got Item!"
-path="https://www.myinstants.com//media/sounds/zeldaitem.swf.mp3"
+name = 'Got Item!'
+path = 'https://www.myinstants.com//media/sounds/zeldaitem.swf.mp3'
 
 [[sound]]
-name="Omae wa mou shindeiru"
-path="https://www.myinstants.com//media/sounds/omae-wa-mou-shindeiru.mp3"
+name = 'Omae wa mou shindeiru'
+path = 'https://www.myinstants.com//media/sounds/omae-wa-mou-shindeiru.mp3'
 
 [[sound]]
-name="no dont do it im a virgin"
-path="https://www.myinstants.com//media/sounds/no-dont-do-it-im-a-virgin.mp3"
+name = 'no dont do it im a virgin'
+path = 'https://www.myinstants.com//media/sounds/no-dont-do-it-im-a-virgin.mp3'
 
 [[sound]]
-name="R2D2"
-path="https://www.myinstants.com//media/sounds/r2d2.swf.mp3"
+name = 'R2D2'
+path = 'https://www.myinstants.com//media/sounds/r2d2.swf.mp3'
 
 [[sound]]
-name="Psycho"
-path="https://www.myinstants.com//media/sounds/psychofinal.mp3"
+name = 'Psycho'
+path = 'https://www.myinstants.com//media/sounds/psychofinal.mp3'
 
 [[sound]]
-name="Triggered"
-path="https://www.myinstants.com//media/sounds/triggered.mp3"
+name = 'Triggered'
+path = 'https://www.myinstants.com//media/sounds/triggered.mp3'
 
 [[sound]]
-name="running in the 90s"
-path="https://www.myinstants.com//media/sounds/running.mp3"
+name = 'running in the 90s'
+path = 'https://www.myinstants.com//media/sounds/running.mp3'
 
 [[sound]]
-name="Deutschland!"
-path="https://www.myinstants.com//media/sounds/deutschland.mp3"
+name = 'Deutschland!'
+path = 'https://www.myinstants.com//media/sounds/deutschland.mp3'
 
 [[sound]]
-name="senpaiiiiiii"
-path="https://www.myinstants.com//media/sounds/iroha_senppai.mp3"
+name = 'senpaiiiiiii'
+path = 'https://www.myinstants.com//media/sounds/iroha_senppai.mp3'
 
 [[sound]]
-name="HandOfBlood GEIL!"
-path="https://www.myinstants.com//media/sounds/handofblood-geil-sound.mp3"
+name = 'HandOfBlood GEIL!'
+path = 'https://www.myinstants.com//media/sounds/handofblood-geil-sound.mp3'
 
 [[sound]]
-name="Lightsaber ON"
-path="https://www.myinstants.com//media/sounds/lightsaber_02.mp3"
+name = 'Lightsaber ON'
+path = 'https://www.myinstants.com//media/sounds/lightsaber_02.mp3'
 
 [[sound]]
-name="Utini!!"
-path="https://www.myinstants.com//media/sounds/utini.mp3"
+name = 'Utini!!'
+path = 'https://www.myinstants.com//media/sounds/utini.mp3'
 
 [[sound]]
-name="skull trumpet"
-path="https://www.myinstants.com//media/sounds/skullsound2.mp3"
+name = 'skull trumpet'
+path = 'https://www.myinstants.com//media/sounds/skullsound2.mp3'
 
 [[sound]]
-name="Doh!"
-path="https://www.myinstants.com//media/sounds/doh.swf.mp3"
+name = 'Doh!'
+path = 'https://www.myinstants.com//media/sounds/doh.swf.mp3'
 
 [[sound]]
-name="hitmarker.mp3"
-path="https://www.myinstants.com//media/sounds/hitmarker_2.mp3"
+name = 'hitmarker.mp3'
+path = 'https://www.myinstants.com//media/sounds/hitmarker_2.mp3'
 
 [[sound]]
-name="discord call"
-path="https://www.myinstants.com//media/sounds/discord-call-sound.mp3"
+name = 'discord call'
+path = 'https://www.myinstants.com//media/sounds/discord-call-sound.mp3'
 
 [[sound]]
-name="Halo"
-path="https://www.myinstants.com//media/sounds/Halo.mp3"
+name = 'Halo'
+path = 'https://www.myinstants.com//media/sounds/Halo.mp3'
 
 [[sound]]
-name="MLB"
-path="https://www.myinstants.com//media/sounds/mlb.swf.mp3"
+name = 'MLB'
+path = 'https://www.myinstants.com//media/sounds/mlb.swf.mp3'
 
 [[sound]]
-name="U Can't Touch This"
-path="https://www.myinstants.com//media/sounds/mc-hammer-u-cant-touch-this.mp3"
-
+name = '''U Can't Touch This'''
+path = 'https://www.myinstants.com//media/sounds/mc-hammer-u-cant-touch-this.mp3'

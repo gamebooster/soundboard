@@ -11,13 +11,16 @@ use log::{error, info, trace, warn};
 
 use serde::Deserialize;
 use serde::Serialize;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 use super::sound;
+use super::utils;
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
@@ -31,15 +34,37 @@ pub struct MainConfig {
     pub soundboards: Vec<SoundboardConfig>,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct SoundboardConfig {
-    pub name: Option<String>,
+    pub name: String,
     pub hotkey: Option<String>,
     pub position: Option<usize>,
-    #[serde(skip_serializing, skip_deserializing)]
-    pub path: String,
     #[serde(rename = "sound")]
     pub sounds: Option<Vec<SoundConfig>>,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub path: String,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub last_hash: u64,
+}
+
+impl PartialEq for SoundboardConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.hotkey == other.hotkey
+            && self.position == other.position
+            && self.sounds == other.sounds
+    }
+}
+impl Eq for SoundboardConfig {}
+
+impl Hash for SoundboardConfig {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.hotkey.hash(state);
+        self.position.hash(state);
+        self.sounds.hash(state);
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
@@ -49,18 +74,26 @@ pub struct SoundConfig {
     pub hotkey: Option<String>,
     #[serde(rename = "header")]
     pub headers: Option<Vec<HeaderConfig>>,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub full_path: String,
 }
 
 impl PartialEq for SoundConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.headers == other.headers
+        self.name == other.name
+            && self.hotkey == other.hotkey
+            && self.path == other.path
+            && self.headers == other.headers
     }
 }
 impl Eq for SoundConfig {}
 
-impl std::hash::Hash for SoundConfig {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl Hash for SoundConfig {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
         self.path.hash(state);
+        self.hotkey.hash(state);
         self.headers.hash(state);
     }
 }
@@ -227,17 +260,12 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
 }
 
 fn get_soundboards_path() -> Result<PathBuf> {
-    let mut soundboards_path = std::env::current_exe()?;
-    soundboards_path.pop();
-    soundboards_path.push("soundboards");
-    Ok(soundboards_path)
+    Ok(PathBuf::from_str("soundboards")?)
 }
 
 pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
-    let mut path = std::env::current_exe()?;
-    path.pop();
-    path.push(name);
-    let toml_str = fs::read_to_string(&path)?;
+    let config_path = PathBuf::from_str(name)?;
+    let toml_str = fs::read_to_string(&config_path)?;
     let mut toml_config: MainConfig = toml::from_str(&toml_str)?;
     toml_config.soundboards = Vec::new();
 
@@ -255,10 +283,7 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
             .unwrap_or_default();
 
         if extension == "toml" {
-            let mut sb_config = load_soundboard_config(&path)?;
-            if sb_config.position.is_none() {
-                sb_config.position = Some(usize::max_value());
-            }
+            let sb_config = load_soundboard_config(&path)?;
             toml_config.soundboards.push(sb_config);
         }
     }
@@ -272,57 +297,110 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
 
     toml_config
         .soundboards
-        .sort_by(|a, b| a.position.cmp(&b.position));
+        .sort_by(|a, b| match (a.position, b.position) {
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (Some(_), None) => std::cmp::Ordering::Less,
+            _ => a.position.cmp(&b.position),
+        });
 
-    info!("Loaded config file from {}", path.display());
+    info!("Loaded config file from {}", config_path.display());
     Ok(toml_config)
 }
 
-pub fn load_soundboard_config(path: &Path) -> Result<SoundboardConfig> {
-    let toml_str = fs::read_to_string(&path)?;
+fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String> {
+    let relative_path = Path::new(sound_path);
+    if relative_path.is_absolute() || sound_path.starts_with("http") {
+        return Ok(sound_path.to_string());
+    }
+    let mut new_path = get_soundboards_path()?;
+    let stem: &str = soundboard_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default();
+    new_path.push(stem);
+    new_path.push(relative_path);
+
+    if !new_path.exists() || !new_path.is_file() {
+        return Err(anyhow!(
+            "expected sound file at {}",
+            new_path.to_str().unwrap()
+        ));
+    }
+
+    Ok(new_path.to_str().unwrap().to_string())
+}
+
+pub fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
+    let toml_str = fs::read_to_string(&soundboard_path)?;
     let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
     if soundboard_config.sounds.is_none() {
-        return Err(anyhow!("expected sounds in {}", path.to_str().unwrap()));
+        return Err(anyhow!(
+            "expected sounds in {}",
+            soundboard_path.to_str().unwrap()
+        ));
     }
-    let soundboards_path = get_soundboards_path()?;
+    soundboard_config.last_hash = utils::calculate_hash(&soundboard_config);
+
     let mut sounds = soundboard_config.sounds.unwrap();
     for sound in &mut sounds {
-        let relative_path = Path::new(&sound.path);
-        if relative_path.is_absolute() || sound.path.starts_with("http") {
-            continue;
-        }
-        let mut new_path = soundboards_path.clone();
-        let stem: &str = path
-            .file_stem()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
-        new_path.push(stem);
-        new_path.push(relative_path);
-
-        sound.path = new_path.to_str().unwrap().to_string();
+        sound.full_path = resolve_sound_path(soundboard_path, &sound.path)?;
     }
     soundboard_config.sounds = Some(sounds);
-    soundboard_config.path = path.as_os_str().to_os_string().into_string().unwrap();
+    soundboard_config.path = soundboard_path
+        .as_os_str()
+        .to_os_string()
+        .into_string()
+        .unwrap();
     Ok(soundboard_config)
 }
 
 #[allow(dead_code)]
 pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
-    let mut path = std::env::current_exe()?;
-    path.pop();
-    path.push(name);
+    let config_path = PathBuf::from_str(name)?;
 
     let pretty_string = toml::to_string_pretty(&config)?;
-    fs::write(&path, pretty_string)?;
-    info!("Saved config file at {}", &path.display());
+    fs::write(&config_path, pretty_string)?;
+    info!("Saved config file at {}", &config_path.display());
     Ok(())
 }
 
-#[allow(dead_code)]
-pub fn save_soundboard_config(config: &SoundboardConfig) -> Result<()> {
+fn check_soundboard_config_mutated_on_disk(
+    old_path: &Path,
+    new_config: &SoundboardConfig,
+) -> Result<bool> {
+    let toml_str = fs::read_to_string(&old_path)?;
+    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
+
+    let old_config_hash = utils::calculate_hash(&soundboard_config);
+
+    if old_config_hash == new_config.last_hash {
+        return Ok(false);
+    }
+
+    Ok(true)
+}
+
+pub fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
+    let soundboard_config_path = PathBuf::from_str(&config.path)?;
+
+    if config.sounds.is_none() {
+        return Err(anyhow!("save_soundboard: expected sounds",));
+    }
+
+    if check_soundboard_config_mutated_on_disk(&soundboard_config_path, config)? {
+        return Err(anyhow!(
+            "save_soundboard: soundboard config file mutated on disk",
+        ));
+    }
+
+    for sound in config.sounds.as_ref().unwrap() {
+        resolve_sound_path(&soundboard_config_path, &sound.path)?;
+    }
+
     let pretty_string = toml::to_string_pretty(&config)?;
-    fs::write(&Path::new(&config.path), pretty_string)?;
+    fs::write(&soundboard_config_path, pretty_string)?;
+    config.last_hash = utils::calculate_hash(&config);
     info!("Saved config file at {}", &config.path);
     Ok(())
 }
