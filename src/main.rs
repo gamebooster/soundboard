@@ -19,6 +19,9 @@ mod gui;
 #[cfg(feature = "http")]
 mod http_server;
 
+#[cfg(feature = "telegram")]
+mod telegram;
+
 mod config;
 mod download;
 mod hotkey;
@@ -93,15 +96,27 @@ fn try_main() -> Result<()> {
 
   #[cfg(feature = "http")]
   {
-    let config_file_name = config_file_name.clone();
     if arguments.is_present("http-server")
       || config_file.http_server.unwrap_or_default()
       || std::env::var("SB_HTTPSERVER").is_ok()
     {
       let gui_sender_clone = gui_sender.clone();
       let gui_receiver_clone = gui_receiver.clone();
+      let config_file_name = config_file_name.clone();
       std::thread::spawn(move || {
         http_server::run(config_file_name, gui_sender_clone, gui_receiver_clone);
+      });
+    }
+  }
+
+  #[cfg(feature = "telegram")]
+  {
+    if arguments.is_present("telegram") || std::env::var("SB_TELEGRAM").is_ok() {
+      let gui_sender_clone = gui_sender.clone();
+      let gui_receiver_clone = gui_receiver.clone();
+      let config_file_name = config_file_name.clone();
+      std::thread::spawn(move || {
+        telegram::run(config_file_name, gui_sender_clone, gui_receiver_clone);
       });
     }
   }
