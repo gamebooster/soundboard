@@ -19,6 +19,7 @@ use tgbot::{
     },
     Api, Config, UpdateHandler,
 };
+use tokio::task;
 use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 type ConfigLockType = std::sync::Arc<std::sync::RwLock<config::MainConfig>>;
@@ -274,8 +275,8 @@ async fn send_sound_with_name(
     }
 
     if let Some(sound) = maybe_sound {
-        let local_path = download::get_local_path_from_sound_config(&sound)?;
-
+        let sound_clone = sound.clone();
+        let local_path = download::get_local_path_from_sound_config_async(&sound_clone).await?;
         let file = tgbot::types::InputFile::path(local_path.as_path())
             .await
             .unwrap();
@@ -316,6 +317,13 @@ impl UpdateHandler for Handler {
                         .unwrap();
                     match data.method {
                         MethodType::Download => {
+                            let method = tgbot::methods::SendChatAction::new(
+                                query.message.as_ref().unwrap().get_chat_id(),
+                                tgbot::types::ChatAction::UploadAudio,
+                            );
+                            if let Err(err) = self.api.execute(method).await {
+                                error!("telegram api error: {}", err);
+                            }
                             if let Err(err) = send_sound_with_name(
                                 &self.api,
                                 self.config.clone(),
