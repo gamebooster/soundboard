@@ -19,7 +19,7 @@ xm = ["libxm"]
 http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
 autoloop = ["libpulse-binding"]
-telegram = ["tgbot"]
+telegram = ["tgbot", "fuzzy-matcher"]
 
 [dependencies]
 miniaudio = "0.6"
@@ -38,6 +38,7 @@ crossbeam-channel = "0.4"
 tokio = { version = "0.2", features = ["macros"] }
 
 tgbot = { version = "0.10", optional = true }
+fuzzy-matcher = {version = "0.3", optional = true}
 libpulse-binding = { version = "2.0", features = ["pa_latest_common"], optional = true }
 
 iced = { version = "0.1", optional = true, features = ["tokio"] }
