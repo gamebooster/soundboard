@@ -519,7 +519,7 @@ pub fn parse_devices(
             if arguments.is_present("loopback-device") {
                 arguments.value_of("loopback-device").unwrap().to_string()
             } else if std::env::var("SB_LOOPBACK_DEVICE").is_ok() {
-                std::env::var("SB_LOOPBACK_DEVICE").ok()
+                std::env::var("SB_LOOPBACK_DEVICE").unwrap()
             } else if config.loopback_device.is_some() {
                 config.loopback_device.as_ref().unwrap().clone()
             } else {
