@@ -245,7 +245,9 @@ impl UpdateHandler for Handler {
                     );
                     let method = tgbot::methods::AnswerCallbackQuery::new(query.id)
                         .text(format!("Playing sound: {}", &data.sound_name));
-                    self.api.execute(method).await.unwrap();
+                    if let Err(err) = self.api.execute(method).await {
+                        error!("telegram api error: {}", err);
+                    }
                 }
             }
             UpdateKind::Message(message) => {
@@ -287,12 +289,13 @@ impl UpdateHandler for Handler {
                             .await;
                         }
                         _ => {
-                            let api = self.api.clone();
                             let method = SendMessage::new(
                                 command.get_message().get_chat_id(),
                                 format!("Unsupported command received: {}", command.get_name()),
                             );
-                            api.execute(method).await.unwrap();
+                            if let Err(err) = self.api.execute(method).await {
+                                error!("telegram api error: {}", err);
+                            }
                         }
                     }
                 } else {
@@ -309,22 +312,24 @@ impl UpdateHandler for Handler {
                         }
                     }
 
-                    let api = self.api.clone();
-
                     match result {
                         Ok(name) => {
                             let method = SendMessage::new(
                                 message.get_chat_id(),
                                 format!("PlaySound {}", name),
                             );
-                            api.execute(method).await.unwrap();
+                            if let Err(err) = self.api.execute(method).await {
+                                error!("telegram api error: {}", err);
+                            }
                         }
                         Err(err) => {
                             let method = SendMessage::new(
                                 message.get_chat_id(),
                                 format!("PlaySoundError {}", err),
                             );
-                            api.execute(method).await.unwrap();
+                            if let Err(err) = self.api.execute(method).await {
+                                error!("telegram api error: {}", err);
+                            }
                         }
                     }
                 }
