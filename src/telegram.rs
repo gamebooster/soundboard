@@ -77,11 +77,11 @@ fn send_new_sound_config(
 ) -> Result<()> {
     Ok(sender.send(sound::Message::PlaySound(
         config::SoundConfig {
-            name: name,
+            name,
             headers: None,
             hotkey: None,
             full_path: path.clone(),
-            path: path,
+            path,
         },
         sound::SoundDevices::Both,
     ))?)
@@ -100,7 +100,7 @@ async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio)
         path.to_str().unwrap().to_string(),
     )?;
 
-    return Ok(audio.title.clone().unwrap_or_default());
+    Ok(audio.title.clone().unwrap_or_default())
 }
 
 async fn handle_document(
@@ -120,7 +120,7 @@ async fn handle_document(
         path.to_str().unwrap().to_string(),
     )?;
 
-    return Ok(document.file_name.clone().unwrap_or_default());
+    Ok(document.file_name.clone().unwrap_or_default())
 }
 
 async fn handle_stopall_command(
@@ -143,10 +143,10 @@ async fn handle_play_command(
     raw_args: String,
 ) {
     info!("handle_play_command arg: {}", raw_args);
-    if raw_args.len() == 0 {
+    if raw_args.is_empty() {
         let method = SendMessage::new(
             message.get_chat_id(),
-            format!("You need to specify search string after /play!"),
+            "You need to specify search string after /play!".to_string(),
         );
         api.execute(method).await.unwrap();
         return;
@@ -159,7 +159,7 @@ async fn handle_play_command(
     for soundboard in &config.read().unwrap().soundboards {
         for sound in soundboard.sounds.as_ref().unwrap() {
             if let Some(score) = matcher.fuzzy_match(&sound.name, &raw_args) {
-                if possible_matches.len() <= max_matches - 1 {
+                if possible_matches.len() < max_matches {
                     possible_matches.push((score, sound.clone()));
                     possible_matches.sort_unstable_by_key(|e| std::cmp::Reverse(e.0));
                 } else if possible_matches.last().unwrap().0 < score {
@@ -171,7 +171,7 @@ async fn handle_play_command(
         }
     }
 
-    if possible_matches.len() == 0 {
+    if possible_matches.is_empty() {
         let method = SendMessage::new(
             message.get_chat_id(),
             format!("No matches for sound name: {}", raw_args),
@@ -233,7 +233,7 @@ impl UpdateHandler for Handler {
 
         match update.kind {
             UpdateKind::CallbackQuery(query) => {
-                if let Some(_) = query.message {
+                if query.message.is_some() {
                     let data = query
                         .parse_data::<CallbackSoundSelectionData>()
                         .unwrap()
