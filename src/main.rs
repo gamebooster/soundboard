@@ -124,7 +124,9 @@ fn try_main() -> Result<()> {
         }
     }
 
-    let loop_device_id = loop_device_id.ok_or_else(|| anyhow!("No loopback device specified"))?;
+    let loop_device_id = loop_device_id.ok_or_else(|| 
+        anyhow!("No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device")
+    )?;
 
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
