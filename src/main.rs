@@ -1,9 +1,9 @@
 #![allow(unused_imports)]
 extern crate clap;
+extern crate ctrlc;
 extern crate log;
 extern crate strum;
 extern crate strum_macros;
-extern crate ctrlc;
 
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
@@ -108,24 +108,20 @@ fn try_main() -> Result<()> {
     let (input_device_id, output_device_id, mut loop_device_id) =
         config::parse_devices(&config_file, &arguments)?;
 
-    
     #[cfg(feature = "autoloop")]
-    let mut loop_module_id : Option<u32> = None;
-    
+    let mut loop_module_id: Option<u32> = None;
+
     #[cfg(feature = "autoloop")]
     {
-
-        if arguments.is_present("auto-loop-device"){
-            match pulseauto::load_virt_sink(){
+        if arguments.is_present("auto-loop-device") {
+            match pulseauto::load_virt_sink() {
                 Ok((name, module_id)) => {
                     loop_device_id = Some(name);
                     loop_module_id = Some(module_id);
-                },
+                }
                 Err(error) => error!("autoloopback creation failed: {}", error),
             };
         }
-
-
     }
 
     let loop_device_id = loop_device_id.ok_or_else(|| anyhow!("No loopback device specified"))?;
@@ -181,14 +177,13 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "autoloop")]
     ctrlc::set_handler(move || {
-        
-        if let Some(id) = loop_module_id{
+        if let Some(id) = loop_module_id {
             pulseauto::destroy_virt_sink(id);
         }
-        
-        process::exit(0);
 
-    }).expect("Error setting Ctrl-C handler");
+        process::exit(0);
+    })
+    .expect("Error setting Ctrl-C handler");
 
     #[cfg(feature = "gui")]
     {

@@ -1,16 +1,13 @@
 extern crate log;
 
-
-use libpulse_binding as pulse;
-use pulse::context::State;
 use anyhow::{anyhow, Result};
+use libpulse_binding as pulse;
 use log::{error, info, trace, warn};
-
+use pulse::context::State;
 
 pub fn load_virt_sink() -> Result<(String, u32)> {
-    
     let (mut mainloop, pulse_context) = connect_pulse()?;
-    
+
     let (sender, receiver): (
         crossbeam_channel::Sender<Result<u32>>,
         crossbeam_channel::Receiver<Result<u32>>,
@@ -19,7 +16,6 @@ pub fn load_virt_sink() -> Result<(String, u32)> {
     let callback = move |module_index: u32| {
         sender.send(Ok(module_index));
     };
-
 
     mainloop.lock();
 
@@ -37,14 +33,14 @@ pub fn load_virt_sink() -> Result<(String, u32)> {
     match receiver.recv() {
         Err(err) => return Err(anyhow!("Failed to recv from pulse module callback {}", err)),
         Ok(Err(err)) => return Err(anyhow!("Failed to load pulse module {}", err)),
-        Ok(Ok(module_index)) => {index = module_index}
+        Ok(Ok(module_index)) => index = module_index,
     };
 
     mainloop.stop();
     Ok(("SoundboardLoopbackDevice".to_string(), index))
 }
 
-pub fn destroy_virt_sink(loop_module_id : u32) -> Result<()>{
+pub fn destroy_virt_sink(loop_module_id: u32) -> Result<()> {
     let (mut mainloop, pulse_context) = connect_pulse()?;
 
     let (sender, receiver): (
@@ -59,26 +55,22 @@ pub fn destroy_virt_sink(loop_module_id : u32) -> Result<()>{
     mainloop.lock();
 
     let mut introspector = pulse_context.introspect();
-    introspector.unload_module(
-        loop_module_id,
-        callback,
-    );
+    introspector.unload_module(loop_module_id, callback);
 
     mainloop.unlock();
 
     match receiver.recv() {
         Err(err) => return Err(anyhow!("Failed to unload pulse module {}", err)),
         Ok(false) => return Err(anyhow!("Failed to unload pulse module {}")),
-        Ok(true) => {info!("Unloaded Pulse Null Sink Module")},
+        Ok(true) => info!("Unloaded Pulse Null Sink Module"),
     };
-    
+
     mainloop.stop();
 
     Ok(())
 }
 
-fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::context::Context)>{
-
+fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::context::Context)> {
     let mut mainloop = pulse::mainloop::threaded::Mainloop::new()
         .ok_or_else(|| anyhow!("Pulse Mainloop Creation failed"))?;
 

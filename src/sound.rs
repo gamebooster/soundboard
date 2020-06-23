@@ -29,8 +29,6 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
     miniaudio::Backend::Alsa,
 ];
 
-
-
 pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
     // This can fail, so we have to check the result.
     let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {
