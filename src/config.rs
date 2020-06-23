@@ -504,8 +504,8 @@ pub fn parse_devices(
             config.loopback_device.clone()
         } else {
             None //return Err(anyhow!(
-        //"No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device"
-      //));
+                 //"No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device"
+                 //));
         }
     };
 
