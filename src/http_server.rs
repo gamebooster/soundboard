@@ -427,17 +427,22 @@ pub async fn run(
         .and(warp::get())
         .map(|| "This is the Soundboard API. Try calling /api/soundboards or /api/sounds/active");
 
+    let soundboard_routes = soundboards_route
+        .or(soundboards_soundboard_change_route)
+        .or(soundboards_soundboard_route);
+
+    let soundboard_sound_routes = soundboards_sounds_route.or(soundboards_sounds_sound_route);
+
+    let sound_thread_routes = sounds_play_route
+        .or(sounds_stop_route)
+        .or(sounds_stop_all_route)
+        .or(sounds_active_route)
+        .or(sounds_set_volume);
+
     let routes = (warp::path("api").and(
-        soundboards_route
-            .or(soundboards_soundboard_change_route)
-            .or(soundboards_soundboard_route)
-            .or(soundboards_sounds_route)
-            .or(soundboards_sounds_sound_route)
-            .or(sounds_play_route)
-            .or(sounds_stop_route)
-            .or(sounds_stop_all_route)
-            .or(sounds_active_route)
-            .or(sounds_set_volume)
+        soundboard_routes
+            .or(soundboard_sound_routes)
+            .or(sound_thread_routes)
             .or(help_api),
     ))
     .or(warp::get().and(warp::fs::dir("web")))
