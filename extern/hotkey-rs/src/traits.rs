@@ -44,6 +44,7 @@ pub struct Listener {
 }
 
 #[cfg(target_os = "macos")]
+#[allow(dead_code)]
 pub struct Listener {
     pub(crate) handlers: ListenerMap,
     pub(crate) sender: Sender<HotkeyMessage>,

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::mem;
 use std::sync::mpsc;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -45,10 +44,10 @@ impl HotkeyListener<ListenerID> for Listener {
 
         thread::spawn(move || loop {
             match rx.try_recv() {
-                Ok(HotkeyMessage::RegisterHotkey(id, modifiers, key)) => {
+                Ok(HotkeyMessage::RegisterHotkey(_id, _modifiers, _key)) => {
                     unimplemented!();
                 }
-                Ok(HotkeyMessage::UnregisterHotkey(id)) => {
+                Ok(HotkeyMessage::UnregisterHotkey(_id)) => {
                     unimplemented!();
                 }
                 Ok(HotkeyMessage::DropThread) => {
@@ -68,14 +67,14 @@ impl HotkeyListener<ListenerID> for Listener {
 
     fn register_hotkey<CB: 'static + FnMut() + Send>(
         &mut self,
-        modifiers: u32,
-        key: u32,
-        handler: CB,
+        _modifiers: u32,
+        _key: u32,
+        _handler: CB,
     ) -> Result<ListenerID, HotkeyError> {
         Ok(0)
     }
 
-    fn unregister_hotkey(&mut self, id: i32) -> Result<(), HotkeyError> {
+    fn unregister_hotkey(&mut self, _id: i32) -> Result<(), HotkeyError> {
         Ok(())
     }
 }

@@ -60,7 +60,11 @@ impl Sink {
         device_config.set_stop_callback(move |_device| {
             stopped_clone.store(true, std::sync::atomic::Ordering::Relaxed);
         });
-        let device = miniaudio::Device::new(None, &device_config).expect("could not create device");
+        let device = miniaudio::Device::new(
+            Some(crate::sound::GLOBAL_AUDIO_CONTEXT.0.clone()),
+            &device_config,
+        )
+        .expect("could not create device");
         Ok(Sink { device, stopped })
     }
 
@@ -119,12 +123,5 @@ impl Sink {
             self.stop().expect("could not stop device");
         }
         stopped
-    }
-}
-
-impl Drop for Sink {
-    #[inline]
-    fn drop(&mut self) {
-        self.stop().expect("could not stop device");
     }
 }
