@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::os::raw::c_void;
 use std::sync::mpsc;
+#[cfg(not(target_os = "macos"))]
+use std::sync::mpsc::Sender;
+#[cfg(target_os = "macos")]
 use std::sync::mpsc::SyncSender;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -56,15 +59,19 @@ pub type ListenerCallback = dyn FnMut() + 'static + Send;
 #[cfg(not(target_os = "macos"))]
 pub(crate) type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
 
+#[cfg(target_os = "macos")]
 pub struct CarbonRef(pub *mut c_void);
 
+#[cfg(target_os = "macos")]
 impl CarbonRef {
     pub fn new(start: *mut c_void) -> Self {
         CarbonRef(start)
     }
 }
 
+#[cfg(target_os = "macos")]
 unsafe impl Sync for CarbonRef {}
+#[cfg(target_os = "macos")]
 unsafe impl Send for CarbonRef {}
 
 #[cfg(target_os = "macos")]
