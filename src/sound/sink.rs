@@ -45,6 +45,10 @@ impl Sink {
         let stopped_clone = Arc::clone(&stopped);
         let source_arc = Arc::new(std::sync::Mutex::new(source));
         device_config.set_data_callback(move |_device, output, _input| {
+            let stopped = stopped_clone.load(std::sync::atomic::Ordering::Relaxed);
+            if stopped {
+                return;
+            }
             let mut unlocked_source = source_arc.lock().unwrap();
             for sample in output.as_samples_mut() {
                 let next = unlocked_source.next();

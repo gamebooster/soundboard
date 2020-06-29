@@ -379,7 +379,7 @@ fn play_thread(
             }
         };
 
-        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter_mut().any(|s| !s.stopped()));
+        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.stopped()));
     }
 }
 
