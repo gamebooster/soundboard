@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+#[cfg(target_os = "macos")]
 use std::os::raw::c_void;
 use std::sync::mpsc;
 #[cfg(not(target_os = "macos"))]

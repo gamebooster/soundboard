@@ -30,7 +30,6 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
 ];
 
 use once_cell::sync::Lazy;
-
 pub struct GlobalContext(Context);
 
 unsafe impl Sync for GlobalContext {}
@@ -90,13 +89,13 @@ pub fn print_possible_devices(full: bool) {
         .expect("failed to get devices");
 }
 
-pub fn init_sound(
+pub fn run_sound_loop(
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
     input_device_identifier: Option<String>,
     output_device_identifier: Option<String>,
     loop_device_identifier: String,
-) -> Result<()> {
+) -> ! {
     let mut ms_input_device = None;
     let mut ms_output_device = None;
     let mut ms_loop_device = None;
@@ -130,11 +129,10 @@ pub fn init_sound(
         .expect("failed to create context");
 
     if ms_loop_device.is_none() {
-        error!(
+        panic!(
             "Could not find loop device identifier \"{}\"",
             loop_device_identifier
         );
-        return Ok(());
     }
 
     if let Some(input_device) = ms_input_device.as_ref() {
@@ -153,20 +151,10 @@ pub fn init_sound(
     );
 
     let ms_loop_device_clone = ms_loop_device.clone();
-    std::thread::spawn(move || {
-        play_thread(
-            receiver,
-            sender,
-            ms_loop_device_clone.unwrap(),
-            ms_output_device,
-        );
-    });
+    let _loop_back_device = create_duplex_device(ms_input_device, ms_loop_device_clone.unwrap())
+        .expect("create duplex device failed");
 
-    std::thread::spawn(move || -> Result<()> {
-        sound_thread(ms_input_device, ms_loop_device.unwrap())
-    });
-
-    Ok(())
+    run_sound_message_loop(receiver, sender, ms_loop_device.unwrap(), ms_output_device);
 }
 
 #[derive(Debug, Clone, Default)]
@@ -285,19 +273,17 @@ fn insert_sink_with_config(
     Ok(())
 }
 
-fn play_thread(
+fn run_sound_message_loop(
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
     loop_device: miniaudio::DeviceIdAndName,
     output_device: Option<miniaudio::DeviceIdAndName>,
-) {
+) -> ! {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
 
     loop {
-        let receive = receiver.recv();
-
-        match receive {
+        match receiver.recv() {
             Ok(message) => match message {
                 Message::PlaySound(sound_config, sound_devices) => {
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
@@ -383,10 +369,10 @@ fn play_thread(
     }
 }
 
-fn sound_thread(
+fn create_duplex_device(
     input_device: Option<miniaudio::DeviceIdAndName>,
     loop_device: miniaudio::DeviceIdAndName,
-) -> Result<()> {
+) -> Result<miniaudio::Device> {
     let loop_info = match GLOBAL_AUDIO_CONTEXT.0.get_device_info(
         miniaudio::DeviceType::Playback,
         loop_device.id(),
@@ -441,6 +427,5 @@ fn sound_thread(
         .expect("failed to open playback device");
     device.start().expect("failed to start device");
 
-    std::thread::park();
-    Ok(())
+    Ok(device)
 }

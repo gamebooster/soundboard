@@ -106,6 +106,11 @@ fn try_main() -> Result<()> {
         crossbeam_channel::Receiver<sound::Message>,
     ) = crossbeam_channel::unbounded();
 
+    #[cfg(not(feature = "autoloop"))]
+    let (input_device_id, output_device_id, loop_device_id) =
+        config::parse_devices(&config_file, &arguments)?;
+
+    #[cfg(feature = "autoloop")]
     let (input_device_id, output_device_id, mut loop_device_id) =
         config::parse_devices(&config_file, &arguments)?;
 
@@ -132,15 +137,13 @@ fn try_main() -> Result<()> {
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
     let _sound_thread_handle = std::thread::spawn(move || {
-        if let Err(err) = sound::init_sound(
+        sound::run_sound_loop(
             sound_receiver_clone,
             sound_sender_clone,
             input_device_id,
             output_device_id,
             loop_device_id,
-        ) {
-            error!("init sound thread error:\n\t {}", err);
-        }
+        );
     });
 
     // test for sound thread successfull initialization
