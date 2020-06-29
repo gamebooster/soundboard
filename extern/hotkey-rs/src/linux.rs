@@ -35,6 +35,39 @@ pub mod keys {
     pub const PRINT_SCREEN: u32 = keysym::XK_Print;
     pub const INSERT: u32 = keysym::XK_Insert;
     pub const DELETE: u32 = keysym::XK_Delete;
+    pub const KEY_1: u32 = '1' as u32;
+    pub const KEY_2: u32 = '2' as u32;
+    pub const KEY_3: u32 = '3' as u32;
+    pub const KEY_4: u32 = '4' as u32;
+    pub const KEY_5: u32 = '5' as u32;
+    pub const KEY_6: u32 = '6' as u32;
+    pub const KEY_7: u32 = '7' as u32;
+    pub const KEY_8: u32 = '8' as u32;
+    pub const KEY_9: u32 = '9' as u32;
+    pub const A: u32 = 'A' as u32;
+    pub const B: u32 = 'B' as u32;
+    pub const C: u32 = 'C' as u32;
+    pub const D: u32 = 'D' as u32;
+    pub const E: u32 = 'E' as u32;
+    pub const F: u32 = 'F' as u32;
+    pub const G: u32 = 'G' as u32;
+    pub const H: u32 = 'H' as u32;
+    pub const I: u32 = 'I' as u32;
+    pub const J: u32 = 'J' as u32;
+    pub const K: u32 = 'K' as u32;
+    pub const L: u32 = 'L' as u32;
+    pub const M: u32 = 'M' as u32;
+    pub const N: u32 = 'N' as u32;
+    pub const O: u32 = 'O' as u32;
+    pub const P: u32 = 'P' as u32;
+    pub const Q: u32 = 'Q' as u32;
+    pub const R: u32 = 'R' as u32;
+    pub const S: u32 = 'S' as u32;
+    pub const T: u32 = 'T' as u32;
+    pub const V: u32 = 'V' as u32;
+    pub const X: u32 = 'X' as u32;
+    pub const Y: u32 = 'Y' as u32;
+    pub const Z: u32 = 'Z' as u32;
 }
 
 impl HotkeyListener<ListenerID> for Listener {

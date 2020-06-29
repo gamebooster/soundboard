@@ -29,6 +29,17 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
     miniaudio::Backend::Alsa,
 ];
 
+use once_cell::sync::Lazy;
+
+pub struct GlobalContext(Context);
+
+unsafe impl Sync for GlobalContext {}
+unsafe impl Send for GlobalContext {}
+
+pub static GLOBAL_AUDIO_CONTEXT: Lazy<GlobalContext> = Lazy::new(|| {
+    GlobalContext(Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context"))
+});
+
 pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
     // This can fail, so we have to check the result.
     let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {
@@ -55,17 +66,16 @@ pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: 
 }
 
 pub fn print_possible_devices(full: bool) {
-    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
+    info!("Audio Backend: {:?}", GLOBAL_AUDIO_CONTEXT.0.backend());
 
-    info!("Audio Backend: {:?}", context.backend());
-
-    context
+    GLOBAL_AUDIO_CONTEXT
+        .0
         .with_devices(|playback_devices, capture_devices| {
             info!("\tOutput Devices:");
             for (idx, device) in playback_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&context, DeviceType::Playback, device.id());
+                    print_device_info(&GLOBAL_AUDIO_CONTEXT.0, DeviceType::Playback, device.id());
                 }
             }
 
@@ -73,7 +83,7 @@ pub fn print_possible_devices(full: bool) {
             for (idx, device) in capture_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&context, DeviceType::Capture, device.id());
+                    print_device_info(&GLOBAL_AUDIO_CONTEXT.0, DeviceType::Capture, device.id());
                 }
             }
         })
@@ -87,8 +97,6 @@ pub fn init_sound(
     output_device_identifier: Option<String>,
     loop_device_identifier: String,
 ) -> Result<()> {
-    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
-
     let mut ms_input_device = None;
     let mut ms_output_device = None;
     let mut ms_loop_device = None;
@@ -96,7 +104,8 @@ pub fn init_sound(
     info!("Possible Devices: ");
     print_possible_devices(false);
 
-    context
+    GLOBAL_AUDIO_CONTEXT
+        .0
         .with_devices(|playback_devices, capture_devices| {
             for (_, device) in playback_devices.iter().enumerate() {
                 if device.name() == loop_device_identifier {
@@ -370,7 +379,7 @@ fn play_thread(
             }
         };
 
-        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.stopped()));
+        sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter_mut().any(|s| !s.stopped()));
     }
 }
 
@@ -378,8 +387,7 @@ fn sound_thread(
     input_device: Option<miniaudio::DeviceIdAndName>,
     loop_device: miniaudio::DeviceIdAndName,
 ) -> Result<()> {
-    let context = Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context");
-    let loop_info = match context.get_device_info(
+    let loop_info = match GLOBAL_AUDIO_CONTEXT.0.get_device_info(
         miniaudio::DeviceType::Playback,
         loop_device.id(),
         ShareMode::Shared,
@@ -403,7 +411,19 @@ fn sound_thread(
             .capture_mut()
             .set_device_id(Some(input_device.id().clone()));
     }
-    device_config.set_sample_rate(loop_info.max_sample_rate());
+
+    let default_sample_rate = 48000;
+    if loop_info.min_sample_rate() <= default_sample_rate
+        && loop_info.max_sample_rate() >= default_sample_rate
+    {
+        device_config.set_sample_rate(default_sample_rate);
+    } else {
+        warn!(
+            "Using non-default sample-rate: {}",
+            loop_info.min_sample_rate()
+        );
+        device_config.set_sample_rate(loop_info.min_sample_rate());
+    }
     device_config
         .playback_mut()
         .set_device_id(Some(loop_device.id().clone()));
@@ -416,8 +436,8 @@ fn sound_thread(
         error!("Loopback device stopped!!!");
     });
 
-    let device =
-        miniaudio::Device::new(None, &device_config).expect("failed to open playback device");
+    let device = miniaudio::Device::new(Some(GLOBAL_AUDIO_CONTEXT.0.clone()), &device_config)
+        .expect("failed to open playback device");
     device.start().expect("failed to start device");
 
     std::thread::park();

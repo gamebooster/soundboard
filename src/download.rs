@@ -55,6 +55,7 @@ pub fn download_file_if_needed(url: &str, headers: Vec<(String, String)>) -> Res
     }
 }
 
+#[cfg(feature = "telegram")]
 pub async fn get_local_path_from_sound_config_async(
     sound: &config::SoundConfig,
 ) -> Result<PathBuf> {
@@ -75,6 +76,7 @@ pub async fn get_local_path_from_sound_config_async(
     Ok(path)
 }
 
+#[cfg(feature = "telegram")]
 pub async fn download_file_if_needed_async(
     url: &str,
     headers: Vec<(String, String)>,
