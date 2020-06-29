@@ -7,6 +7,11 @@ path = 'nicht-so-tief-rudiger.mp3'
 hotkey = 'CTRL-P'
 
 [[sound]]
+name = 'wo ist der latest shit'
+path = 'wo ist der latest shit.mp3'
+hotkey = 'CTRL-0'
+
+[[sound]]
 name = 'Ich rascht aus'
 path = 'ich-rascht-aus.flac'
 

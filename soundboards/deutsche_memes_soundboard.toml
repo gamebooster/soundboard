@@ -1,0 +1,506 @@
+name = 'deutsche memes'
+position = 1
+
+[[sound]]
+name = 'Allesklar'
+path = 'Allesklar.mp3'
+
+[[sound]]
+name = 'Angelomerte'
+path = 'Angelomerte.mp3'
+
+[[sound]]
+name = 'Arschlochalarm'
+path = 'Arschlochalarm.mp3'
+
+[[sound]]
+name = 'B'
+path = 'B.mp3'
+
+[[sound]]
+name = 'Beasmarty'
+path = 'Beasmarty.mp3'
+
+[[sound]]
+name = 'Bioabfall'
+path = 'Bioabfall.mp3'
+
+[[sound]]
+name = 'Bistdubehindert'
+path = 'Bistdubehindert.mp3'
+
+[[sound]]
+name = 'Blas'
+path = 'Blas.mp3'
+
+[[sound]]
+name = 'Bloedblind'
+path = 'Bloedblind.mp3'
+
+[[sound]]
+name = 'Bruno'
+path = 'Bruno.mp3'
+
+[[sound]]
+name = 'Coolerjunger'
+path = 'Coolerjunger.mp3'
+
+[[sound]]
+name = 'Dergeraet'
+path = 'Dergeraet.mp3'
+
+[[sound]]
+name = 'Diewoodys'
+path = 'Diewoodys.mp3'
+
+[[sound]]
+name = 'Diggawillermich'
+path = 'Diggawillermich.mp3'
+
+[[sound]]
+name = 'Dongsidengsi'
+path = 'Dongsidengsi.mp3'
+
+[[sound]]
+name = 'Dreckiger'
+path = 'Dreckiger.mp3'
+
+[[sound]]
+name = 'Drogenmoney'
+path = 'Drogenmoney.mp3'
+
+[[sound]]
+name = 'Dubistamarsch'
+path = 'Dubistamarsch.mp3'
+
+[[sound]]
+name = 'Dukannstnicht'
+path = 'Dukannstnicht.mp3'
+
+[[sound]]
+name = 'Erbeerkaese'
+path = 'Erbeerkaese.mp3'
+
+[[sound]]
+name = 'Erdbeermarmelade'
+path = 'Erdbeermarmelade.mp3'
+
+[[sound]]
+name = 'Erzfeind'
+path = 'Erzfeind.mp3'
+
+[[sound]]
+name = 'Fichtlslied'
+path = 'Fichtlslied.mp3'
+
+[[sound]]
+name = 'Flammenwerfer'
+path = 'Flammenwerfer.mp3'
+
+[[sound]]
+name = 'Flote'
+path = 'Flote.mp3'
+
+[[sound]]
+name = 'Fuenfzigmctastie'
+path = 'Fuenfzigmctastie.mp3'
+
+[[sound]]
+name = 'Gangundgebe'
+path = 'Gangundgebe.mp3'
+
+[[sound]]
+name = 'Geisterfahrer'
+path = 'Geisterfahrer.mp3'
+
+[[sound]]
+name = 'Geraet'
+path = 'Geraet.mp3'
+
+[[sound]]
+name = 'Gesaugt'
+path = 'Gesaugt.mp3'
+
+[[sound]]
+name = 'Gesundkochen'
+path = 'Gesundkochen.mp3'
+
+[[sound]]
+name = 'Goldkrone'
+path = 'Goldkrone.mp3'
+
+[[sound]]
+name = 'Haltdeinmaul'
+path = 'Haltdeinmaul.mp3'
+
+[[sound]]
+name = 'Haltstop'
+path = 'Haltstop.mp3'
+
+[[sound]]
+name = 'Haltstop2'
+path = 'Haltstop2.mp3'
+
+[[sound]]
+name = 'Hastdugelern'
+path = 'Hastdugelern.mp3'
+
+[[sound]]
+name = 'Hater'
+path = 'Hater.mp3'
+
+[[sound]]
+name = 'Hauptschueler'
+path = 'Hauptschueler.mp3'
+
+[[sound]]
+name = 'Hauptschule'
+path = 'Hauptschule.mp3'
+
+[[sound]]
+name = 'Henrisson'
+path = 'Henrisson.mp3'
+
+[[sound]]
+name = 'Hey'
+path = 'Hey.mp3'
+
+[[sound]]
+name = 'Hitler'
+path = 'Hitler.mp3'
+
+[[sound]]
+name = 'Hygiene'
+path = 'Hygiene.mp3'
+
+[[sound]]
+name = 'Iceburg'
+path = 'Iceburg.mp3'
+
+[[sound]]
+name = 'Ichbiningefahr'
+path = 'Ichbiningefahr.mp3'
+
+[[sound]]
+name = 'Ichdansemitdegense'
+path = 'Ichdansemitdegense.mp3'
+
+[[sound]]
+name = 'Ichhabpolizei'
+path = 'Ichhabpolizei.mp3'
+
+[[sound]]
+name = 'Ichmussraus'
+path = 'Ichmussraus.mp3'
+
+[[sound]]
+name = 'Indertat'
+path = 'Indertat.mp3'
+
+[[sound]]
+name = 'Jagermeister'
+path = 'Jagermeister.mp3'
+
+[[sound]]
+name = 'Jesus'
+path = 'Jesus.mp3'
+
+[[sound]]
+name = 'Jetztgehtslos'
+path = 'Jetztgehtslos.mp3'
+
+[[sound]]
+name = 'Jetztredeich'
+path = 'Jetztredeich.mp3'
+
+[[sound]]
+name = 'Jetztreichtsmirlangsam'
+path = 'Jetztreichtsmirlangsam.mp3'
+
+[[sound]]
+name = 'Jowahrscheinlich'
+path = 'Jowahrscheinlich.mp3'
+
+[[sound]]
+name = 'Junge'
+path = 'Junge.mp3'
+
+[[sound]]
+name = 'Kaese'
+path = 'Kaese.mp3'
+
+[[sound]]
+name = 'Kannstdudichentschuldigen'
+path = 'Kannstdudichentschuldigen.mp3'
+
+[[sound]]
+name = 'Kebab'
+path = 'Kebab.mp3'
+
+[[sound]]
+name = 'Kokain'
+path = 'Kokain.mp3'
+
+[[sound]]
+name = 'Kokain2'
+path = 'Kokain2.mp3'
+
+[[sound]]
+name = 'Kokainzwei'
+path = 'Kokainzwei.mp3'
+
+[[sound]]
+name = 'Kokuksmilch'
+path = 'Kokuksmilch.mp3'
+
+[[sound]]
+name = 'Kommrunter'
+path = 'Kommrunter.mp3'
+
+[[sound]]
+name = 'Kreuzweise'
+path = 'Kreuzweise.mp3'
+
+[[sound]]
+name = 'Krieg'
+path = 'Krieg.mp3'
+
+[[sound]]
+name = 'Ksmafia'
+path = 'Ksmafia.mp3'
+
+[[sound]]
+name = 'Lecker'
+path = 'Lecker.mp3'
+
+[[sound]]
+name = 'Machhinne'
+path = 'Machhinne.mp3'
+
+[[sound]]
+name = 'Mann'
+path = 'Mann.mp3'
+
+[[sound]]
+name = 'Marsch'
+path = 'Marsch.mp3'
+
+[[sound]]
+name = 'Marsch2'
+path = 'Marsch2.mp3'
+
+[[sound]]
+name = 'Maske'
+path = 'Maske.mp3'
+
+[[sound]]
+name = 'Mctastyvergleich'
+path = 'Mctastyvergleich.mp3'
+
+[[sound]]
+name = 'Migrationshintergrund'
+path = 'Migrationshintergrund.mp3'
+
+[[sound]]
+name = 'Moneyboysorry'
+path = 'Moneyboysorry.mp3'
+
+[[sound]]
+name = 'Multikulti'
+path = 'Multikulti.mp3'
+
+[[sound]]
+name = 'Neindochoh'
+path = 'Neindochoh.mp3'
+
+[[sound]]
+name = 'Neinichbinalbaner'
+path = 'Neinichbinalbaner.mp3'
+
+[[sound]]
+name = 'Nichtbeantworten'
+path = 'Nichtbeantworten.mp3'
+
+[[sound]]
+name = 'Nichtsotief'
+path = 'Nichtsotief.mp3'
+
+[[sound]]
+name = 'Oberzicke'
+path = 'Oberzicke.mp3'
+
+[[sound]]
+name = 'Obst'
+path = 'Obst.mp3'
+
+[[sound]]
+name = 'Omaparadies'
+path = 'Omaparadies.mp3'
+
+[[sound]]
+name = 'Partyhard'
+path = 'Partyhard.mp3'
+
+[[sound]]
+name = 'Partymaesig'
+path = 'Partymaesig.mp3'
+
+[[sound]]
+name = 'Passmalauf'
+path = 'Passmalauf.mp3'
+
+[[sound]]
+name = 'Pfeffer'
+path = 'Pfeffer.mp3'
+
+[[sound]]
+name = 'Raphuhn'
+path = 'Raphuhn.mp3'
+
+[[sound]]
+name = 'Reifenverlust'
+path = 'Reifenverlust.mp3'
+
+[[sound]]
+name = 'Satansschuh'
+path = 'Satansschuh.mp3'
+
+[[sound]]
+name = 'Sauberundfair'
+path = 'Sauberundfair.mp3'
+
+[[sound]]
+name = 'Saufen'
+path = 'Saufen.mp3'
+
+[[sound]]
+name = 'Schnauze'
+path = 'Schnauze.mp3'
+
+[[sound]]
+name = 'Schnauzezwei'
+path = 'Schnauzezwei.mp3'
+
+[[sound]]
+name = 'Sheesh'
+path = 'Sheesh.mp3'
+
+[[sound]]
+name = 'Spende'
+path = 'Spende.mp3'
+
+[[sound]]
+name = 'Spinnerfidget'
+path = 'Spinnerfidget.mp3'
+
+[[sound]]
+name = 'Startedasspiel'
+path = 'Startedasspiel.mp3'
+
+[[sound]]
+name = 'Stroh'
+path = 'Stroh.mp3'
+
+[[sound]]
+name = 'Summasummarum'
+path = 'Summasummarum.mp3'
+
+[[sound]]
+name = 'Takeoishi'
+path = 'Takeoishi.mp3'
+
+[[sound]]
+name = 'Teletubbies'
+path = 'Teletubbies.mp3'
+
+[[sound]]
+name = 'Toetenundficken'
+path = 'Toetenundficken.mp3'
+
+[[sound]]
+name = 'Traumjob'
+path = 'Traumjob.mp3'
+
+[[sound]]
+name = 'Tvtotalknopf'
+path = 'Tvtotalknopf.mp3'
+
+[[sound]]
+name = 'Umgebracht'
+path = 'Umgebracht.mp3'
+
+[[sound]]
+name = 'Umweltschutz'
+path = 'Umweltschutz.mp3'
+
+[[sound]]
+name = 'Unsinn'
+path = 'Unsinn.mp3'
+
+[[sound]]
+name = 'Uriniert'
+path = 'Uriniert.mp3'
+
+[[sound]]
+name = 'Verhalten'
+path = 'Verhalten.mp3'
+
+[[sound]]
+name = 'Warum'
+path = 'Warum.mp3'
+
+[[sound]]
+name = 'Waslos'
+path = 'Waslos.mp3'
+
+[[sound]]
+name = 'Wasmachensachen'
+path = 'Wasmachensachen.mp3'
+
+[[sound]]
+name = 'Wassingtda'
+path = 'Wassingtda.mp3'
+
+[[sound]]
+name = 'Wauh'
+path = 'Wauh.mp3'
+
+[[sound]]
+name = 'Wenjuckts'
+path = 'Wenjuckts.mp3'
+
+[[sound]]
+name = 'Wicked'
+path = 'Wicked.mp3'
+
+[[sound]]
+name = 'Wochenendesaufen'
+path = 'Wochenendesaufen.mp3'
+
+[[sound]]
+name = 'Wohnung'
+path = 'Wohnung.mp3'
+
+[[sound]]
+name = 'Wolfgang'
+path = 'Wolfgang.mp3'
+
+[[sound]]
+name = 'Worahnhatsgelegen'
+path = 'Worahnhatsgelegen.mp3'
+
+[[sound]]
+name = 'Zicke'
+path = 'Zicke.mp3'
+
+[[sound]]
+name = 'Zickezacke'
+path = 'Zickezacke.mp3'
+
+[[sound]]
+name = 'Zigaretten'
+path = 'Zigaretten.mp3'
+
+[[sound]]
+name = 'Zueckerli'
+path = 'Zueckerli.mp3'
