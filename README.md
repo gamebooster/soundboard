@@ -20,21 +20,28 @@ cross-platform desktop application to spice up your audio/video conferences
 1. run `soundboard --print-possible-devices`
 2. run `soundboard --loopback-device "<name>"` or put in config file
     * loopback-device should be the installed virtual output device name
-3. Press hotkeys or use gui to play sounds or open web ui
+3. Press hotkeys or use native gui or open web ui http://localhost:3030
 4. `???`
 5. Press `CTRL-C` to exit or press x on window
 
 ### providing virtual microphone on windows
 
 1. download and install vb-audio virtual cable from https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack43.zip
-2. select `CABLE Output` as your microphone in your voice app like discord etc`
+2. start soundboard with loopback device `CABLE Input` 
+3. use applications with input `CABLE Output`
 
 ### providing virtual microphone on linux 
 1. create and choose loopback device   
     a. use flag --auto-loop-device   
     b. alternative: enter command `pactl load-module module-null-sink sink_name=virtualSink`   
-    and use soundboard with loopback **null sink**
-3. use applications with input *Monitor of Null Sink* or *Monitor of SoundboadLoopbackDevice*
+2. start soundboard with loopback device `null sink`
+3. use applications with input `Monitor of Null Sink` or `Monitor of SoundboadLoopbackDevice`
+
+### providing virtual microphone on macos
+1. download and install soundflower kernel extension from https://github.com/mattingalls/Soundflower/releases
+2. set sample rate via Audio MIDI Setup for Soundflower (2ch) to 48000 hz
+3. start soundboard with loopback device: `Soundflower (2ch)`
+4. use applications with input: `Soundflower (2ch)`
 
 ### config file example
 
