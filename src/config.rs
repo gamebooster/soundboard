@@ -471,8 +471,8 @@ pub fn parse_arguments() -> clap::ArgMatches {
 pub fn parse_devices(
     config: &MainConfig,
     arguments: &clap::ArgMatches,
-) -> Result<(Option<String>, Option<String>, String)> {
-    let input_device_index: Option<String> = {
+) -> Result<(Option<String>, Option<String>, Option<String>)> {
+    let input_device_id: Option<String> = {
         if arguments.is_present("input-device") {
             Some(arguments.value_of("input-device").unwrap().to_string())
         } else if std::env::var("SB_INPUT_DEVICE").is_ok() {
@@ -483,7 +483,7 @@ pub fn parse_devices(
             None
         }
     };
-    let output_device_index: Option<String> = {
+    let output_device_id: Option<String> = {
         if arguments.is_present("output-device") {
             Some(arguments.value_of("output-device").unwrap().to_string())
         } else if std::env::var("SB_OUTPUT_DEVICE").is_ok() {
@@ -495,57 +495,21 @@ pub fn parse_devices(
         }
     };
 
-    #[cfg(feature = "autoloop")]
-    let loop_device_index: String = {
-        let result: Option<String> = {
-            if arguments.is_present("auto-loop-device") {
-                match sound::load_virt_sink() {
-                    Ok(name) => Some(name),
-                    Err(_err) => {
-                        error!("Error in virt-sink: {}", _err);
-                        None
-                    }
-                }
-            } else {
-                None
-            }
-        };
-
-        if let Some(result) = result {
-            result
-        } else {
-            error!("Connection to Pulse Server failed");
-
-            if arguments.is_present("loopback-device") {
-                arguments.value_of("loopback-device").unwrap().to_string()
-            } else if std::env::var("SB_LOOPBACK_DEVICE").is_ok() {
-                std::env::var("SB_LOOPBACK_DEVICE").unwrap()
-            } else if config.loopback_device.is_some() {
-                config.loopback_device.as_ref().unwrap().clone()
-            } else {
-                return Err(anyhow!(
-                    "No loopback device specified in config or on command line"
-                ));
-            }
-        }
-    };
-
-    #[cfg(not(feature = "autoloop"))]
-    let loop_device_index: String = {
+    let loop_device_id: Option<String> = {
         if arguments.is_present("loopback-device") {
-            arguments.value_of("loopback-device").unwrap().to_string()
+            Some(arguments.value_of("loopback-device").unwrap().to_string())
         } else if std::env::var("SB_LOOPBACK_DEVICE").is_ok() {
-            std::env::var("SB_LOOPBACK_DEVICE").unwrap()
+            std::env::var("SB_LOOPBACK_DEVICE").ok()
         } else if config.loopback_device.is_some() {
-            config.loopback_device.as_ref().unwrap().clone()
+            config.loopback_device.clone()
         } else {
-            return Err(anyhow!(
-        "No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device"
-      ));
+            None //return Err(anyhow!(
+                 //"No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device"
+                 //));
         }
     };
 
-    Ok((input_device_index, output_device_index, loop_device_index))
+    Ok((input_device_id, output_device_id, loop_device_id))
 }
 
 #[cfg(test)]
