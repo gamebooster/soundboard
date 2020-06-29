@@ -1,4 +1,4 @@
-name: Build
+name: BuildDebug
 on: [push, pull_request]
 jobs:
   linux:
