@@ -2,11 +2,6 @@ name = 'duke nukem'
 position = 3
 
 [[sound]]
-name = 'Ich rascht aus'
-path = 'ich-rascht-aus.flac'
-hotkey = 'ALT-8'
-
-[[sound]]
 name = 'Balls of steel'
 path = 'https://www.soundboard.com/handler/playTrack.ashx?id=54065'
 

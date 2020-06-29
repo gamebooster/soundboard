@@ -38,7 +38,6 @@ enum SoundboardState {
 }
 
 pub struct Soundboard {
-    config_file_name: String,
     panel_view: panel_view::PanelView,
     list_view: list_view::ListView,
     sound_sender: crossbeam_channel::Sender<sound::Message>,
@@ -70,8 +69,8 @@ pub enum SoundboardMessage {
     Tick,
 }
 
-async fn load_config(config_file_name: String) -> Result<config::MainConfig, String> {
-    let result = config::load_and_parse_config(&config_file_name);
+async fn load_config() -> Result<config::MainConfig, String> {
+    let result = config::load_and_parse_config();
     if let Err(err) = result {
         return Err(format!("{:?}", err));
     }
@@ -84,12 +83,10 @@ impl Application for Soundboard {
     type Flags = (
         crossbeam_channel::Sender<sound::Message>,
         crossbeam_channel::Receiver<sound::Message>,
-        String,
     );
 
     fn new(flags: Self::Flags) -> (Soundboard, Command<SoundboardMessage>) {
         let soundboard = Soundboard {
-            config_file_name: flags.2.clone(),
             sound_sender: flags.0,
             sound_receiver: flags.1,
             config: config::MainConfig::default(),
@@ -107,7 +104,7 @@ impl Application for Soundboard {
         };
         (
             soundboard,
-            Command::perform(load_config(flags.2), SoundboardMessage::LoadedData),
+            Command::perform(load_config(), SoundboardMessage::LoadedData),
         )
     }
 
@@ -170,10 +167,7 @@ impl Application for Soundboard {
             }
             SoundboardMessage::ReloadData => {
                 self.current_state = SoundboardState::Loading;
-                return Command::perform(
-                    load_config(self.config_file_name.clone()),
-                    SoundboardMessage::LoadedData,
-                );
+                return Command::perform(load_config(), SoundboardMessage::LoadedData);
             }
             SoundboardMessage::LoadedData(result) => match result {
                 Ok(config_file) => {

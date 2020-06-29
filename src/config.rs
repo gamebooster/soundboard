@@ -130,8 +130,6 @@ pub enum Modifier {
 impl fmt::Display for Modifier {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-        // or, alternatively:
-        // fmt::Debug::fmt(self, f)
     }
 }
 
@@ -207,8 +205,6 @@ pub enum Key {
 impl fmt::Display for Key {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
-        // or, alternatively:
-        // fmt::Debug::fmt(self, f)
     }
 }
 
@@ -236,11 +232,15 @@ impl fmt::Display for Hotkey {
     }
 }
 
-pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
-    let re = regex::Regex::new(
+use once_cell::sync::Lazy;
+static REGEX_HOTKEY_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
+    regex::Regex::new(
         r"^(?i)(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(\w+)$",
-    )?;
-    let caps: regex::Captures = re
+    ).unwrap()
+});
+
+pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
+    let caps: regex::Captures = REGEX_HOTKEY_PATTERN
         .captures(hotkey_string)
         .ok_or_else(|| anyhow!("No valid hotkey match"))?;
     let mut modifier = Vec::new();
@@ -272,15 +272,81 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
     })
 }
 
-fn get_soundboards_path() -> Result<PathBuf> {
-    Ok(PathBuf::from_str("soundboards")?)
+fn get_config_file_path() -> Result<Option<PathBuf>> {
+    let mut relative_from_exe = std::env::current_exe()?;
+    relative_from_exe.pop();
+    relative_from_exe.push("soundboard.toml");
+    if relative_from_exe.is_file() {
+        return Ok(Some(relative_from_exe));
+    }
+    if let Some(mut config_path) = dirs::config_dir() {
+        config_path.push("soundboard");
+        config_path.push("soundboard.toml");
+        if config_path.is_file() {
+            return Ok(Some(config_path));
+        }
+    }
+    if let Some(mut config_path) = dirs::home_dir() {
+        config_path.push(".config");
+        config_path.push("soundboard");
+        config_path.push("soundboard.toml");
+        if config_path.is_file() {
+            return Ok(Some(config_path));
+        }
+    }
+    if let Some(mut config_path) = dirs::home_dir() {
+        config_path.push(".soundboard");
+        config_path.push("soundboard.toml");
+        if config_path.is_file() {
+            return Ok(Some(config_path));
+        }
+    }
+    Ok(None)
 }
 
-pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
-    let config_path = PathBuf::from_str(name)?;
-    let toml_str = fs::read_to_string(&config_path)?;
-    let mut toml_config: MainConfig = toml::from_str(&toml_str)?;
-    toml_config.soundboards = Vec::new();
+fn get_soundboards_path() -> Result<PathBuf> {
+    let mut relative_from_exe = std::env::current_exe()?;
+    relative_from_exe.pop();
+    relative_from_exe.push("soundboards");
+    if relative_from_exe.is_dir() {
+        return Ok(relative_from_exe);
+    }
+    if let Some(mut config_path) = dirs::config_dir() {
+        config_path.push("soundboard");
+        config_path.push("soundboards");
+        if config_path.is_dir() {
+            return Ok(config_path);
+        }
+    }
+    if let Some(mut config_path) = dirs::home_dir() {
+        config_path.push(".config");
+        config_path.push("soundboard");
+        config_path.push("soundboards");
+        if config_path.is_dir() {
+            return Ok(config_path);
+        }
+    }
+    if let Some(mut config_path) = dirs::home_dir() {
+        config_path.push(".soundboard");
+        config_path.push("soundboards");
+        if config_path.is_dir() {
+            return Ok(config_path);
+        }
+    }
+    Err(anyhow!("could not find soundboards directory"))
+}
+
+pub fn load_and_parse_config() -> Result<MainConfig> {
+    let config_path = get_config_file_path()?;
+
+    let mut toml_config: MainConfig = {
+        if let Some(config_path) = config_path.as_ref() {
+            let toml_str = fs::read_to_string(&config_path)?;
+            toml::from_str(&toml_str)?
+        } else {
+            MainConfig::default()
+        }
+    };
 
     let soundboards_path = get_soundboards_path()?;
 
@@ -316,7 +382,8 @@ pub fn load_and_parse_config(name: &str) -> Result<MainConfig> {
             _ => a.position.cmp(&b.position),
         });
 
-    info!("Loaded config file from {}", config_path.display());
+    info!("Loaded config file from {:?}", config_path);
+    info!("Loaded soundboards from {}", soundboards_path.display());
     Ok(toml_config)
 }
 
@@ -423,15 +490,6 @@ pub fn parse_arguments() -> clap::ArgMatches {
         .version(crate_version!())
         .author(crate_authors!())
         .about("play sounds over your microphone")
-        .arg(
-            Arg::with_name("config-file")
-                .short('c')
-                .long("config")
-                .value_name("FILE")
-                .default_value("soundboard.toml")
-                .about("sets a custom config file")
-                .takes_value(true),
-        )
         .arg(
             Arg::with_name("input-device")
                 .short('i')

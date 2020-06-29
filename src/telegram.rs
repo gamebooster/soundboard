@@ -28,7 +28,6 @@ struct Handler {
     api: Api,
     sender: Sender<sound::Message>,
     receiver: Receiver<sound::Message>,
-    config_file_name: String,
     config: ConfigLockType,
 }
 
@@ -458,11 +457,7 @@ impl UpdateHandler for Handler {
 }
 
 #[tokio::main]
-pub async fn run(
-    config_file_name: String,
-    sender: Sender<sound::Message>,
-    receiver: Receiver<sound::Message>,
-) {
+pub async fn run(sender: Sender<sound::Message>, receiver: Receiver<sound::Message>) {
     let token = env::var("SB_TELEGRAM_TOKEN").expect("SB_TELEGRAM_TOKEN is not set");
     let api = Api::new(Config::new(token)).expect("Failed to create API");
     api.execute(tgbot::methods::SetMyCommands::new(vec![
@@ -478,7 +473,7 @@ pub async fn run(
     .await
     .expect("SetMyCommands failed");
 
-    let config_file = config::load_and_parse_config(&config_file_name).unwrap();
+    let config_file = config::load_and_parse_config().unwrap();
     let config = std::sync::Arc::new(std::sync::RwLock::new(config_file));
 
     LongPoll::new(
@@ -487,7 +482,6 @@ pub async fn run(
             api,
             sender,
             receiver,
-            config_file_name,
             config,
         },
     )

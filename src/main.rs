@@ -93,8 +93,7 @@ fn try_main() -> Result<()> {
         return Ok(());
     }
 
-    let config_file_name = arguments.value_of("config-file").unwrap().to_string();
-    let config_file = config::load_and_parse_config(&config_file_name)?;
+    let config_file = config::load_and_parse_config()?;
 
     let (sound_sender, gui_receiver): (
         crossbeam_channel::Sender<sound::Message>,
@@ -162,9 +161,8 @@ fn try_main() -> Result<()> {
         {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
-            let config_file_name = config_file_name.clone();
             std::thread::spawn(move || {
-                http_server::run(config_file_name, gui_sender_clone, gui_receiver_clone);
+                http_server::run(gui_sender_clone, gui_receiver_clone);
             });
         }
     }
@@ -174,9 +172,8 @@ fn try_main() -> Result<()> {
         if arguments.is_present("telegram") || std::env::var("SB_TELEGRAM").is_ok() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
-            let config_file_name = config_file_name.clone();
             std::thread::spawn(move || {
-                telegram::run(config_file_name, gui_sender_clone, gui_receiver_clone);
+                telegram::run(gui_sender_clone, gui_receiver_clone);
             });
         }
     }
@@ -201,7 +198,7 @@ fn try_main() -> Result<()> {
             std::thread::park();
             return Ok(());
         }
-        let mut settings = Settings::with_flags((gui_sender, gui_receiver, config_file_name));
+        let mut settings = Settings::with_flags((gui_sender, gui_receiver));
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }

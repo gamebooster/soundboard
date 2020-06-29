@@ -184,18 +184,17 @@ fn check_sound_index(
 
 #[tokio::main]
 pub async fn run(
-    config_file_name: String,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     gui_receiver: crossbeam_channel::Receiver<sound::Message>,
 ) {
-    let config_file = config::load_and_parse_config(&config_file_name).unwrap();
+    let config_file = config::load_and_parse_config().unwrap();
     let config_file_lock = std::sync::Arc::new(std::sync::RwLock::new(config_file));
 
     let config_file_lock_clone = config_file_lock.clone();
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
         let mut config_file = config_file_lock_clone.write().unwrap();
-        let new_config_file = config::load_and_parse_config(&config_file_name).unwrap();
+        let new_config_file = config::load_and_parse_config().unwrap();
         *config_file = new_config_file;
 
         for (id, soundboard) in config_file.soundboards.iter().enumerate() {
