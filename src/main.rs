@@ -43,7 +43,7 @@ fn main() {
 soundboard encountered an fatal error:
     Please file a bug report if unexpected at https://github.com/gamebooster/soundboard/issues
 Description:
-    {:?}
+    {}
 Location:
     {}"
     };
