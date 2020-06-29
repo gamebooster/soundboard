@@ -7,33 +7,21 @@ jobs:
       matrix:
         rust: [stable, nightly]
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.rust }}
-    - uses: actions/checkout@master
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build debug soundboard binary
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test
-  #  - name: Build soundboard binary
-  #    run: cargo build --verbose --release
-  #  - name: Archive soundboard binary
-  #    uses: actions/upload-artifact@v2
-  #    with:
-  #      name: soundboard-x86_64-debian-linux-gnu
-  #      path: target/release/soundboard
-  #  - name: Archive soundboard default config
-  #    uses: actions/upload-artifact@v2
-  #    with:
-  #      name: soundboard-x86_64-debian-linux-gnu
-  #      path: target/release/soundboard.toml
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build debug soundboard binary
+        run: cargo build --verbose
+      - name: Run tests
+        run: cargo test
 
   windows:
     runs-on: windows-latest
@@ -41,80 +29,54 @@ jobs:
       matrix:
         rust: [stable, nightly]
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.rust }}
-    - uses: actions/checkout@master
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install llvm
-      shell: powershell
-      run: |
-        Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
-        scoop install llvm --global
-        echo "::set-env name=PATH::$env:PATH"
-    - name: Build debug soundboard binary
-      env:
-        LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
-      run: cargo build --verbose
-    - name: Run tests
-      env:
-        LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
-      run: cargo test
-    # - name: Build soundboard binary
-    #   run: cargo build --verbose --release
-    # - name: Archive soundboard binary
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: soundboard-x86_64-pc-windows-msvc
-    #     path: target/release/soundboard.exe
-    # - name: Archive soundboard default config
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: soundboard-x86_64-pc-windows-msvc
-    #     path: target/release/soundboard.toml
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install llvm
+        shell: powershell
+        run: |
+          Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
+          scoop install llvm --global
+          echo "::set-env name=PATH::$env:PATH"
+      - name: Build debug soundboard binary
+        env:
+          LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
+        run: cargo build --verbose
+      - name: Run tests
+        env:
+          LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
+        run: cargo test
 
   macos:
-    runs-on: macOS-latest
+    runs-on: macos-latest
     strategy:
       matrix:
         rust: [stable, nightly]
     steps:
-    - uses: hecrj/setup-rust-action@v1
-      with:
-        rust-version: ${{ matrix.rust }}
-    - uses: actions/checkout@master
-    - uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Build debug soundboard binary
-      env:
-        MACOSX_DEPLOYMENT_TARGET: 10.14
-      run: cargo build --verbose
-    - name: Run tests
-      env:
-        MACOSX_DEPLOYMENT_TARGET: 10.14
-      run: cargo test
-    # - name: Build soundboard binary
-    #   env:
-    #     MACOSX_DEPLOYMENT_TARGET: 10.14
-    #   run: cargo build --verbose --release
-    # - name: Archive soundboard binary
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: soundboard-x86_64-apple-darwin
-    #     path: target/release/soundboard
-    # - name: Archive soundboard default config
-    #   uses: actions/upload-artifact@v2
-    #   with:
-    #     name: soundboard-x86_64-apple-darwin
-    #     path: target/release/soundboard.toml
+      - uses: hecrj/setup-rust-action@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+      - uses: actions/checkout@master
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build debug soundboard binary
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.14
+        run: cargo build --verbose
+      - name: Run tests
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.14
+        run: cargo test
