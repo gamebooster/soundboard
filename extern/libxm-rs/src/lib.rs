@@ -39,7 +39,6 @@ extern crate libc;
 
 pub mod ffi;
 use ffi as raw;
-use std::mem;
 
 /// Possible errors from the `XMContext::new` method.
 #[derive(Copy, Clone, Debug)]
@@ -94,7 +93,7 @@ impl XMContext {
         unsafe {
             let mut raw = std::mem::MaybeUninit::uninit().assume_init();
 
-            let mod_data_ptr = mem::transmute(mod_data.as_ptr());
+            let mod_data_ptr = mod_data.as_ptr() as *const i8;
             let mod_data_len = mod_data.len() as libc::size_t;
 
             let result = raw::xm_create_context_safe(&mut raw, mod_data_ptr, mod_data_len, rate);

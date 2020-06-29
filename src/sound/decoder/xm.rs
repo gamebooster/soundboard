@@ -88,11 +88,11 @@ where
         let st: f64 = ((1.0 / kbps) * 1000.0) * speed;
         let mut t: f64 = 0.0;
         for pattern in 0..patterns - 1 {
-            t = t + self.context.number_of_rows(pattern) as f64;
+            t += self.context.number_of_rows(pattern) as f64;
         }
 
         info!("duration: {:?}", Duration::from_millis((t * st) as u64));
-        return Some(Duration::from_millis((t * st) as u64));
+        Some(Duration::from_millis((t * st) as u64))
     }
 }
 
