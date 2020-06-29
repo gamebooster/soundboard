@@ -14,7 +14,7 @@ pub fn load_virt_sink() -> Result<(String, u32)> {
     ) = crossbeam_channel::unbounded();
 
     let callback = move |module_index: u32| {
-        sender.send(Ok(module_index));
+        sender.send(Ok(module_index)).expect("send channel error");
     };
 
     mainloop.lock();
@@ -49,7 +49,7 @@ pub fn destroy_virt_sink(loop_module_id: u32) -> Result<()> {
     ) = crossbeam_channel::unbounded();
 
     let callback = move |result| {
-        sender.send(result);
+        sender.send(result).expect("channel send error");
     };
 
     mainloop.lock();
@@ -74,7 +74,9 @@ fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::contex
     let mut mainloop = pulse::mainloop::threaded::Mainloop::new()
         .ok_or_else(|| anyhow!("Pulse Mainloop Creation failed"))?;
 
-    mainloop.start();
+    mainloop
+        .start()
+        .map_err(|err| anyhow!("Pulse Mainloop Start failed {}", err))?;
 
     mainloop.lock();
 

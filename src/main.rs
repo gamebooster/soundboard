@@ -181,7 +181,7 @@ fn try_main() -> Result<()> {
     #[cfg(feature = "autoloop")]
     ctrlc::set_handler(move || {
         if let Some(id) = loop_module_id {
-            pulseauto::destroy_virt_sink(id);
+            pulseauto::destroy_virt_sink(id).expect("destroy virtual sink error");
         }
 
         process::exit(0);
