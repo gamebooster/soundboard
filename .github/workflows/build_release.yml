@@ -58,6 +58,8 @@ jobs:
           scoop install llvm --global
           echo "::set-env name=PATH::$env:PATH"
       - name: Build soundboard binary
+        env:
+          LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
         run: cargo build --verbose --release
       - name: Archive soundboard binary
         uses: actions/upload-artifact@v2
