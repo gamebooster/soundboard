@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 extern crate clap;
+#[cfg(feature = "autoloop")]
 extern crate ctrlc;
 extern crate log;
 extern crate strum;
