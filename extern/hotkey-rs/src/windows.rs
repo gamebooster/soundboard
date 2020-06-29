@@ -36,6 +36,7 @@ pub mod keys {
     pub const PRINT_SCREEN: u32 = winuser::VK_SNAPSHOT as u32;
     pub const INSERT: u32 = winuser::VK_INSERT as u32;
     pub const DELETE: u32 = winuser::VK_DELETE as u32;
+    pub const KEY_0: u32 = '0' as u32;
     pub const KEY_1: u32 = '1' as u32;
     pub const KEY_2: u32 = '2' as u32;
     pub const KEY_3: u32 = '3' as u32;

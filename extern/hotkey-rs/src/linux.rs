@@ -35,6 +35,7 @@ pub mod keys {
     pub const PRINT_SCREEN: u32 = keysym::XK_Print;
     pub const INSERT: u32 = keysym::XK_Insert;
     pub const DELETE: u32 = keysym::XK_Delete;
+    pub const KEY_0: u32 = '0' as u32;
     pub const KEY_1: u32 = '1' as u32;
     pub const KEY_2: u32 = '2' as u32;
     pub const KEY_3: u32 = '3' as u32;
