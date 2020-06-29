@@ -400,30 +400,31 @@ fn sound_thread(
     };
 
     let mut device_config = miniaudio::DeviceConfig::new(DeviceType::Duplex);
-    device_config
-        .capture_mut()
-        .set_format(loop_info.formats()[0]);
-    device_config
-        .capture_mut()
-        .set_channels(loop_info.max_channels());
+    let format = loop_info.formats()[0];
+    info!("duplex: format {:?}", format);
+    device_config.capture_mut().set_format(format);
+    let channels = loop_info.max_channels();
+    info!("duplex: channels {}", channels);
+    device_config.capture_mut().set_channels(channels);
     if let Some(input_device) = input_device {
         device_config
             .capture_mut()
             .set_device_id(Some(input_device.id().clone()));
     }
 
-    let default_sample_rate = 48000;
-    if loop_info.min_sample_rate() <= default_sample_rate
-        && loop_info.max_sample_rate() >= default_sample_rate
-    {
-        device_config.set_sample_rate(default_sample_rate);
-    } else {
-        warn!(
-            "Using non-default sample-rate: {}",
+    let sample_rate = {
+        let default_sample_rate = 48000;
+
+        if loop_info.min_sample_rate() <= default_sample_rate
+            && loop_info.max_sample_rate() >= default_sample_rate
+        {
+            default_sample_rate
+        } else {
             loop_info.min_sample_rate()
-        );
-        device_config.set_sample_rate(loop_info.min_sample_rate());
-    }
+        }
+    };
+    info!("duplex: sample_rate {}", sample_rate);
+    device_config.set_sample_rate(sample_rate);
     device_config
         .playback_mut()
         .set_device_id(Some(loop_device.id().clone()));

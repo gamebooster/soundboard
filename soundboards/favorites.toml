@@ -48,13 +48,13 @@ name = 'female orgasm'
 path = 'https://www.myinstants.com//media/sounds/epic.swf_1.mp3'
 
 [[sound]]
-name="Kranplätze"
-path="https://alleswirdaushackgemacht.de/audio/ronny/kranplaetze.mp3"
+name = 'Kranplätze'
+path = 'https://alleswirdaushackgemacht.de/audio/ronny/kranplaetze.mp3'
 
 [[sound]]
-name="Vollidioten"
-path="https://alleswirdaushackgemacht.de/audio/ronny/vollidioten.mp3"
+name = 'Vollidioten'
+path = 'https://alleswirdaushackgemacht.de/audio/ronny/vollidioten.mp3'
 
 [[sound]]
-name="Hierhoch"
-path="https://alleswirdaushackgemacht.de/audio/ronny/hierhoch.mp3"
+name = 'Hierhoch'
+path = 'https://alleswirdaushackgemacht.de/audio/ronny/hierhoch.mp3'
