@@ -1,4 +1,5 @@
 fn main() {
+    #[cfg(target_os = "macos")]
     if std::env::var("TARGET").unwrap().contains("-apple") {
         println!("cargo:rustc-link-lib=framework=Carbon");
         cc::Build::new()
