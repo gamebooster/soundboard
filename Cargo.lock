@@ -3124,6 +3124,7 @@ dependencies = [
  "tokio",
  "toml",
  "warp",
+ "winit",
 ]
 
 [[package]]

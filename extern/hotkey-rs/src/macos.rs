@@ -142,7 +142,6 @@ impl HotkeyListener<ListenerID> for Listener {
 
         thread::spawn(move || {
             let callback = Box::new(move |id| {
-                eprintln!("{}", id);
                 if let Err(err) = tx_clone.send(HotkeyMessage::ReceivedHotkeyMessage(id)) {
                     eprintln!("send hotkey failed {}", err);
                 }

@@ -214,6 +214,17 @@ fn no_gui_routine(
     config_file: config::MainConfig,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> Result<()> {
+    use winit::{
+        event::{Event, WindowEvent},
+        event_loop::{ControlFlow, EventLoop},
+        window::WindowBuilder,
+    };
+
+    let event_loop = EventLoop::new();
+    let window = WindowBuilder::new()
+        .with_visible(false)
+        .build(&event_loop)
+        .unwrap();
     let mut hotkey_manager = hotkey::HotkeyManager::new();
 
     let stop_hotkey = {
@@ -256,6 +267,14 @@ fn no_gui_routine(
         })?;
     }
 
-    std::thread::park();
-    Ok(())
+    event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+        match event {
+            Event::WindowEvent {
+                event: WindowEvent::CloseRequested,
+                window_id,
+            } if window_id == window.id() => *control_flow = ControlFlow::Exit,
+            _ => (),
+        }
+    });
 }
