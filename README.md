@@ -15,6 +15,12 @@ cross-platform desktop application to spice up your audio/video conferences
 * web user interface
 * http api
 
+### install
+
+1. `cargo install soundboard`
+2. create soundboard config directory with soundboards (see below for example config)
+3. (optional) copy `web` directory in soundboard config directory for webui
+
 ## default usage
 
 1. run `soundboard --print-possible-devices`
@@ -45,6 +51,15 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ### config file example
 
+soundboard.toml is optional. soundboards directory is mandatory.
+
+config search path:
+````
+{soundboard exe location}
+$XDG_CONFIG_HOME/soundboard/
+$HOME/.config/soundboard/
+$HOME/.soundboard/
+````
 
 <details>
   <summary>soundboard.toml</summary>
@@ -96,7 +111,6 @@ path="https://www.myinstants.com//media/sounds/dramatic.swf.mp3"
   <summary>expected directory structure for example config files</summary>
 
 ````
-soundboard{.exe}
 soundboard.toml
 soundboards/
   favorites/
