@@ -7,6 +7,10 @@ categories = ["multimedia::audio"]
 license = "Unlicense"
 repository = "https://github.com/gamebooster/soundboard"
 edition = "2018"
+exclude = [
+    "/soundboards",
+    "/extern"
+]
 
 [profile.release]
 lto = true
