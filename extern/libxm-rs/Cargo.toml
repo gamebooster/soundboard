@@ -1,22 +1,15 @@
 [package]
-name = "libxm"
-version = "1.0.0"
-authors = ["Dan Spencer <dan@atomicpotato.net>"]
-description = "A binding of libxm for Rust. A small XM (FastTracker II Extended Module) player library. Designed for easy integration in demos and such, and provides timing functions for easy sync against specific instruments, samples or channels."
-repository = "https://github.com/nukep/libxm-rs"
-documentation = "https://nukep.github.io/libxm-rs/libxm"
+name = "libxm-soundboard"
+version = "0.0.1"
+authors = ["Dan Spencer <dan@atomicpotato.net>", "Karl Skomski <karl@skomski.com>"]
+description = "An modified fork of libxm-rs https://github.com/nukep/libxm-rs for internal usage with the project soundboard"
 readme = "README.md"
-keywords = ["xm", "libxm", "FastTracker"]
-license = "WTFPL"
-links = "xm"
+license = "Unlicense"
 build = "build.rs"
+repository = "https://github.com/gamebooster/soundboard/tree/master/extern/libxm-rs"
 
 [dependencies]
 libc = "0.2"
 
 [build-dependencies]
 cc = "1.0"
-
-[dev-dependencies]
-getopts = "0.2"
-sdl2 = "0.3.0"
