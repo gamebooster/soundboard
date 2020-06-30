@@ -41,11 +41,12 @@ fn main() {
     () => {
       r"
 soundboard encountered an fatal error:
-    Please file a bug report if unexpected at https://github.com/gamebooster/soundboard/issues
-Description:
+  Description:
     {}
-Location:
-    {}"
+  Location:
+    {}
+  Additional:
+    If unexpected please file a bug report at https://github.com/gamebooster/soundboard/issues"
     };
   };
     panic::set_hook(Box::new(|panic_info| {
@@ -129,9 +130,13 @@ fn try_main() -> Result<()> {
         }
     }
 
-    let loop_device_id = loop_device_id.ok_or_else(||
-        anyhow!("No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device")
-    )?;
+    let loop_device_id = loop_device_id.ok_or_else(|| {
+        anyhow!(
+            r"No loopback device specified in config file with loopback_device or
+                                 in env with SB_LOOPBACK_DEVICE or
+                                 in cmd arguments with --loopback-device"
+        )
+    })?;
 
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
