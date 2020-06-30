@@ -29,7 +29,9 @@ pub struct MainConfig {
     pub loopback_device: Option<String>,
     pub stop_hotkey: Option<String>,
     pub http_server: Option<bool>,
+    pub telegram: Option<bool>,
     pub no_gui: Option<bool>,
+    pub auto_loop_device: Option<bool>,
     #[serde(skip_serializing, skip_deserializing)]
     pub soundboards: Vec<SoundboardConfig>,
 }
@@ -483,6 +485,17 @@ pub fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
     config.last_hash = utils::calculate_hash(&config);
     info!("Saved config file at {}", &config.path);
     Ok(())
+}
+
+pub fn is_flag_set(args: &clap::ArgMatches, config_option: &Option<bool>, name: &str) -> bool {
+    if args.is_present(name)
+        || config_option.unwrap_or_default()
+        || std::env::var("SB".to_owned() + &name.to_ascii_uppercase().replace("-", "_")).is_ok()
+    {
+        return true;
+    }
+
+    false
 }
 
 pub fn parse_arguments() -> clap::ArgMatches {

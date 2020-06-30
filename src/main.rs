@@ -119,7 +119,11 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "autoloop")]
     {
-        if arguments.is_present("auto-loop-device") {
+        if config::is_flag_set(
+            &arguments,
+            &config_file.auto_loop_device,
+            "auto-loop-device",
+        ) {
             match pulseauto::load_virt_sink() {
                 Ok((name, module_id)) => {
                     loop_device_id = Some(name);
@@ -160,10 +164,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if arguments.is_present("http-server")
-            || config_file.http_server.unwrap_or_default()
-            || std::env::var("SB_HTTPSERVER").is_ok()
-        {
+        if config::is_flag_set(&arguments, &config_file.http_server, "http-server") {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -174,7 +175,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "telegram")]
     {
-        if arguments.is_present("telegram") || std::env::var("SB_TELEGRAM").is_ok() {
+        if config::is_flag_set(&arguments, &config_file.telegram, "telegram") {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -195,10 +196,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "gui")]
     {
-        if arguments.is_present("no-gui")
-            || config_file.no_gui.unwrap_or_default()
-            || std::env::var("SB_NOGUI").is_ok()
-        {
+        if config::is_flag_set(&arguments, &config_file.no_gui, "no-gui") {
             no_gui_routine(config_file, gui_sender)?;
             std::thread::park();
             return Ok(());
