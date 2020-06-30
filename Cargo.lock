@@ -1620,8 +1620,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "libxm"
-version = "1.0.0"
+name = "libxm-soundboard"
+version = "0.0.1"
 dependencies = [
  "cc",
  "libc",
@@ -3130,7 +3130,7 @@ dependencies = [
  "iced_native",
  "lewton",
  "libpulse-binding",
- "libxm",
+ "libxm-soundboard",
  "log 0.4.8",
  "miniaudio",
  "minimp3",

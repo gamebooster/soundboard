@@ -15,7 +15,7 @@ mp3 = ["minimp3", "mp3-duration"]
 flac = ["claxon"]
 vorbis = ["lewton", "ogg_metadata"]
 wav = ["hound"]
-xm = ["libxm"]
+xm = ["libxm-soundboard"]
 http = ["warp", "futures"]
 gui = ["iced", "iced_native"]
 autoloop = ["libpulse-binding", "ctrlc"]
@@ -58,7 +58,7 @@ minimp3 = {version = "0.3", optional = true }
 hound = {version = "3", optional = true }
 lewton = {version = "0.10", optional = true }
 claxon = {version = "0.4", optional = true }
-libxm = {version = "1", path = "extern/libxm-rs", optional = true }
+libxm-soundboard = {version = "0.0.1", path = "extern/libxm-rs", optional = true }
 
 [build-dependencies]
 fs_extra = "1"

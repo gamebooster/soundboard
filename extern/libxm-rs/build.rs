@@ -31,7 +31,6 @@ fn main() {
         .file("libxm/src/context.c")
         .file("libxm/src/load.c")
         .file("libxm/src/play.c")
-        .file("libxm/src/xm.c")
         .include("libxm/include")
         .define("XM_LINEAR_INTERPOLATION", on_off(linear_interpolation))
         .define("XM_RAMPING", on_off(ramping))

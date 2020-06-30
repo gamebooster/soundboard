@@ -1,6 +1,6 @@
 // Initial version from Rodio APACHE LICENSE 2.0
 use crate::sound::source::Source;
-use libxm::XMContext;
+use libxm_soundboard::XMContext;
 use log::{error, info, trace, warn};
 use std::io::{Read, Seek, SeekFrom};
 use std::marker::PhantomData;
