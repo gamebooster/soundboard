@@ -7,13 +7,15 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ![soundboard screenshot](https://i.imgur.com/5OBElu2.png)
 
-### features
+### features (rust feature name: rfm)
 
 * play local and remote sounds (http) to your microphone and output device
+   * supported codecs: mp3 (rfm: mp3), flac (rfm: flac), wav (rfm: wav), vorbis (rfm: vorbis), xm (rfm: xm, non-default)
 * hotkeys
-* native user interface
-* web user interface
-* http api
+* native user interface (rfm: gui)
+* web user interface and http api (rfm: http)
+* telegram bot (rfm: telegram, non-default)
+* automatic handling of loopback device in pulse audio (rfm: auto-loop, non-default)
 
 ### install
 
