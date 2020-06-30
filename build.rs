@@ -8,18 +8,22 @@ fn main() {
     let mut copy_options = fs_extra::dir::CopyOptions::new();
     copy_options.overwrite = true;
     copy_options.skip_exist = true;
-    fs_extra::dir::copy(
-        "soundboards",
-        Path::new(&target_dir_path).join("..").join("..").join(".."),
-        &copy_options,
-    )
-    .expect("copy failed");
-    fs_extra::dir::copy(
-        "web",
-        Path::new(&target_dir_path).join("..").join("..").join(".."),
-        &copy_options,
-    )
-    .expect("copy failed");
+    if Path::new("soundboards").exists() {
+        fs_extra::dir::copy(
+            "soundboards",
+            Path::new(&target_dir_path).join("..").join("..").join(".."),
+            &copy_options,
+        )
+        .expect("copy failed");
+    }
+    if Path::new("web").exists() {
+        fs_extra::dir::copy(
+            "web",
+            Path::new(&target_dir_path).join("..").join("..").join(".."),
+            &copy_options,
+        )
+        .expect("copy failed");
+    }
 }
 
 fn copy_file<S: AsRef<std::ffi::OsStr> + ?Sized, P: Copy + AsRef<Path>>(
