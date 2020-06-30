@@ -17,9 +17,11 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ### install
 
-1. `cargo install soundboard`
+1. use compiled release package from https://github.com/gamebooster/soundboard/releases/
+or `cargo install soundboard` (compile time is a coffee break)
 2. create soundboard config directory with soundboards (see below for example config)
-3. (optional) copy `web` directory in soundboard config directory for webui
+3. provide virtual microphone (instructions below)
+4. (optional) copy `web` directory in soundboard config directory for webui
 
 ## default usage
 

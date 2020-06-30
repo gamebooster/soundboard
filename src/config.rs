@@ -507,7 +507,7 @@ pub fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
 pub fn is_flag_set(args: &clap::ArgMatches, config_option: &Option<bool>, name: &str) -> bool {
     if args.is_present(name)
         || config_option.unwrap_or_default()
-        || std::env::var("SB".to_owned() + &name.to_ascii_uppercase().replace("-", "_")).is_ok()
+        || std::env::var("SB_".to_owned() + &name.to_ascii_uppercase().replace("-", "_")).is_ok()
     {
         return true;
     }
