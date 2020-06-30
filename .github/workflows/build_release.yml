@@ -28,11 +28,6 @@ jobs:
         with:
           name: soundboard-x86_64-debian-linux-gnu
           path: target/release/soundboard
-      - name: Archive soundboard default config
-        uses: actions/upload-artifact@v2
-        with:
-          name: soundboard-x86_64-debian-linux-gnu
-          path: target/release/soundboard.toml
 
   windows:
     runs-on: windows-latest
@@ -66,11 +61,6 @@ jobs:
         with:
           name: soundboard-x86_64-pc-windows-msvc
           path: target/release/soundboard.exe
-      - name: Archive soundboard default config
-        uses: actions/upload-artifact@v2
-        with:
-          name: soundboard-x86_64-pc-windows-msvc
-          path: target/release/soundboard.toml
 
   macos:
     runs-on: macos-latest
@@ -98,8 +88,3 @@ jobs:
         with:
           name: soundboard-x86_64-apple-darwin
           path: target/release/soundboard
-      - name: Archive soundboard default config
-        uses: actions/upload-artifact@v2
-        with:
-          name: soundboard-x86_64-apple-darwin
-          path: target/release/soundboard.toml
