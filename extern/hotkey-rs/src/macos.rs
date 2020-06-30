@@ -161,7 +161,7 @@ impl HotkeyListener<ListenerID> for Listener {
                         let handler_ref = register_hotkey(id, modifiers as i32, key as i32);
                         if handler_ref.is_null() {
                             eprintln!("register_hotkey failed!");
-                            return;
+                            continue;
                         }
                         if let Some((_, handler)) = hotkey_map.lock().unwrap().get_mut(&id) {
                             *handler = CarbonRef::new(handler_ref);
@@ -177,6 +177,7 @@ impl HotkeyListener<ListenerID> for Listener {
                             let _result = unregister_hotkey(handler_ref.0);
                             // eprintln!("unregister_hotkey: {}", result);
                         }
+                        hotkey_map.lock().unwrap().remove(&id);
                     },
                     Ok(HotkeyMessage::DropThread) => unsafe {
                         for (_, handler_ref) in hotkey_map.lock().unwrap().values() {
@@ -228,8 +229,8 @@ impl HotkeyListener<ListenerID> for Listener {
 
 impl Drop for Listener {
     fn drop(&mut self) {
-        self.sender
-            .send(HotkeyMessage::DropThread)
-            .expect("cant close thread");
+        if let Err(err) = self.sender.send(HotkeyMessage::DropThread) {
+            eprintln!("cant send close thread message {}", err);
+        }
     }
 }

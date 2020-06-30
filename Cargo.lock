@@ -1271,8 +1271,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "hotkey"
-version = "0.3.0"
+name = "hotkey-soundboard"
+version = "0.0.1"
 dependencies = [
  "cc",
  "thiserror",
@@ -3124,7 +3124,7 @@ dependencies = [
  "fs_extra",
  "futures 0.3.5",
  "fuzzy-matcher",
- "hotkey",
+ "hotkey-soundboard",
  "hound",
  "iced",
  "iced_native",

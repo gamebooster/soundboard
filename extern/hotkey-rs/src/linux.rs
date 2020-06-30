@@ -185,9 +185,9 @@ impl HotkeyListener<ListenerID> for Listener {
 
 impl Drop for Listener {
     fn drop(&mut self) {
-        self.sender
-            .send(HotkeyMessage::DropThread)
-            .expect("cant close thread");
+        if let Err(err) = self.sender.send(HotkeyMessage::DropThread) {
+            eprintln!("cant send close thread message {}", err);
+        }
         unsafe {
             (self.xlib.XCloseDisplay)(self.display);
         }

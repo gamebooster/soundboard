@@ -1,20 +1,20 @@
 use super::config;
-use ::hotkey as hotkeyExt;
 use anyhow::{anyhow, Context, Result};
-use hotkeyExt::HotkeyListener;
-use hotkeyExt::ListenerID;
+use hotkey_soundboard::HotkeyListener;
+use hotkey_soundboard::Listener;
+use hotkey_soundboard::ListenerID;
 use log::{error, info, trace, warn};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
 pub struct HotkeyManager {
-    listener: hotkeyExt::Listener,
+    listener: Listener,
     hashmap: HashMap<config::Hotkey, ListenerID>,
 }
 
 impl HotkeyManager {
     pub fn new() -> Self {
-        let listener = hotkeyExt::Listener::new();
+        let listener = Listener::new();
         HotkeyManager {
             listener,
             hashmap: HashMap::<config::Hotkey, ListenerID>::new(),
@@ -46,7 +46,7 @@ impl HotkeyManager {
         Ok(())
     }
     pub fn unregister_all(&mut self) -> Result<()> {
-        self.listener = hotkeyExt::Listener::new();
+        self.listener = Listener::new();
         Ok(())
     }
 }

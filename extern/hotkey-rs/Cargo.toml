@@ -1,21 +1,20 @@
 [package]
-name = "hotkey"
-version = "0.3.0"
+name = "hotkey-soundboard"
+version = "0.0.1"
 license = "MIT"
-description = "Register global hotkeys"
-documentation = "https://docs.rs/hotkey"
-repository = "https://github.com/UnwrittenFun/hotkey-rs"
-authors = ["James Birtles <jameshbirtles@gmail.com>"]
+description = "An modified fork of hotkey-rs https://github.com/UnwrittenFun/hotkey-rs for internal usage with the project soundboard"
+repository = "https://github.com/gamebooster/soundboard/tree/master/extern/hotkey-rs"
+authors = ["James Birtles <jameshbirtles@gmail.com>", "Karl Skomski <karl@skomski.com>"]
 edition = "2018"
 
 [dependencies]
 thiserror = "1"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.8", features = ["winuser"] }
+winapi = { version = "0.3", features = ["winuser"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-x11-dl = "2.18.1"
+x11-dl = "2.18"
 
 [target.'cfg(target_os = "macos")'.build-dependencies]
 cc = "1"

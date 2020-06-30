@@ -1,14 +1,15 @@
 extern crate anyhow;
 extern crate clap;
-extern crate hotkey;
+extern crate hotkey_soundboard;
 extern crate log;
 extern crate serde;
 extern crate toml;
 
 use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
+use hotkey_soundboard::keys;
+use hotkey_soundboard::modifiers;
 use log::{error, info, trace, warn};
-
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::hash_map::DefaultHasher;
@@ -123,10 +124,10 @@ impl Hotkey {
 )]
 #[repr(u32)]
 pub enum Modifier {
-    ALT = hotkey::modifiers::ALT,
-    CTRL = hotkey::modifiers::CONTROL,
-    SHIFT = hotkey::modifiers::SHIFT,
-    SUPER = hotkey::modifiers::SUPER,
+    ALT = modifiers::ALT,
+    CTRL = modifiers::CONTROL,
+    SHIFT = modifiers::SHIFT,
+    SUPER = modifiers::SUPER,
 }
 
 impl fmt::Display for Modifier {
@@ -141,67 +142,67 @@ impl fmt::Display for Modifier {
 )]
 #[repr(u32)]
 pub enum Key {
-    BACKSPACE = hotkey::keys::BACKSPACE,
-    TAB = hotkey::keys::TAB,
-    ENTER = hotkey::keys::ENTER,
-    CAPS_LOCK = hotkey::keys::CAPS_LOCK,
-    ESCAPE = hotkey::keys::ESCAPE,
-    SPACEBAR = hotkey::keys::SPACEBAR,
-    PAGE_UP = hotkey::keys::PAGE_UP,
-    PAGE_DOWN = hotkey::keys::PAGE_DOWN,
-    END = hotkey::keys::END,
-    HOME = hotkey::keys::HOME,
-    ARROW_LEFT = hotkey::keys::ARROW_LEFT,
-    ARROW_RIGHT = hotkey::keys::ARROW_RIGHT,
-    ARROW_UP = hotkey::keys::ARROW_UP,
-    ARROW_DOWN = hotkey::keys::ARROW_DOWN,
-    PRINT_SCREEN = hotkey::keys::PRINT_SCREEN,
-    INSERT = hotkey::keys::INSERT,
-    DELETE = hotkey::keys::DELETE,
+    BACKSPACE = keys::BACKSPACE,
+    TAB = keys::TAB,
+    ENTER = keys::ENTER,
+    CAPS_LOCK = keys::CAPS_LOCK,
+    ESCAPE = keys::ESCAPE,
+    SPACEBAR = keys::SPACEBAR,
+    PAGE_UP = keys::PAGE_UP,
+    PAGE_DOWN = keys::PAGE_DOWN,
+    END = keys::END,
+    HOME = keys::HOME,
+    ARROW_LEFT = keys::ARROW_LEFT,
+    ARROW_RIGHT = keys::ARROW_RIGHT,
+    ARROW_UP = keys::ARROW_UP,
+    ARROW_DOWN = keys::ARROW_DOWN,
+    PRINT_SCREEN = keys::PRINT_SCREEN,
+    INSERT = keys::INSERT,
+    DELETE = keys::DELETE,
     #[serde(rename = "0")]
-    KEY_0 = hotkey::keys::KEY_0,
+    KEY_0 = keys::KEY_0,
     #[serde(rename = "1")]
-    KEY_1 = hotkey::keys::KEY_1,
+    KEY_1 = keys::KEY_1,
     #[serde(rename = "2")]
-    KEY_2 = hotkey::keys::KEY_2,
+    KEY_2 = keys::KEY_2,
     #[serde(rename = "3")]
-    KEY_3 = hotkey::keys::KEY_3,
+    KEY_3 = keys::KEY_3,
     #[serde(rename = "4")]
-    KEY_4 = hotkey::keys::KEY_4,
+    KEY_4 = keys::KEY_4,
     #[serde(rename = "5")]
-    KEY_5 = hotkey::keys::KEY_5,
+    KEY_5 = keys::KEY_5,
     #[serde(rename = "6")]
-    KEY_6 = hotkey::keys::KEY_6,
+    KEY_6 = keys::KEY_6,
     #[serde(rename = "7")]
-    KEY_7 = hotkey::keys::KEY_7,
+    KEY_7 = keys::KEY_7,
     #[serde(rename = "8")]
-    KEY_8 = hotkey::keys::KEY_8,
+    KEY_8 = keys::KEY_8,
     #[serde(rename = "9")]
-    KEY_9 = hotkey::keys::KEY_9,
-    A = hotkey::keys::A,
-    B = hotkey::keys::B,
-    C = hotkey::keys::C,
-    D = hotkey::keys::D,
-    E = hotkey::keys::E,
-    F = hotkey::keys::F,
-    G = hotkey::keys::G,
-    H = hotkey::keys::H,
-    I = hotkey::keys::I,
-    J = hotkey::keys::J,
-    K = hotkey::keys::K,
-    L = hotkey::keys::L,
-    M = hotkey::keys::M,
-    N = hotkey::keys::N,
-    O = hotkey::keys::O,
-    P = hotkey::keys::P,
-    Q = hotkey::keys::Q,
-    R = hotkey::keys::R,
-    S = hotkey::keys::S,
-    T = hotkey::keys::T,
-    V = hotkey::keys::V,
-    X = hotkey::keys::X,
-    Y = hotkey::keys::Y,
-    Z = hotkey::keys::Z,
+    KEY_9 = keys::KEY_9,
+    A = keys::A,
+    B = keys::B,
+    C = keys::C,
+    D = keys::D,
+    E = keys::E,
+    F = keys::F,
+    G = keys::G,
+    H = keys::H,
+    I = keys::I,
+    J = keys::J,
+    K = keys::K,
+    L = keys::L,
+    M = keys::M,
+    N = keys::N,
+    O = keys::O,
+    P = keys::P,
+    Q = keys::Q,
+    R = keys::R,
+    S = keys::S,
+    T = keys::T,
+    V = keys::V,
+    X = keys::X,
+    Y = keys::Y,
+    Z = keys::Z,
 }
 
 impl fmt::Display for Key {
