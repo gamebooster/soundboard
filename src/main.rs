@@ -90,7 +90,7 @@ fn try_main() -> Result<()> {
     let arguments = config::parse_arguments();
 
     if arguments.is_present("print-possible-devices") {
-        sound::print_possible_devices(true);
+        sound::print_possible_devices_and_exit();
         return Ok(());
     }
 

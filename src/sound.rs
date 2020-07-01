@@ -29,17 +29,7 @@ static DEFAULT_BACKENDS: [miniaudio::Backend; 5] = [
     miniaudio::Backend::Alsa,
 ];
 
-use once_cell::sync::Lazy;
-pub struct GlobalContext(Context);
-
-unsafe impl Sync for GlobalContext {}
-unsafe impl Send for GlobalContext {}
-
-pub static GLOBAL_AUDIO_CONTEXT: Lazy<GlobalContext> = Lazy::new(|| {
-    GlobalContext(Context::new(&DEFAULT_BACKENDS, None).expect("failed to create context"))
-});
-
-pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
+fn print_device_info(context: &Context, device_type: DeviceType, device_id: &DeviceId) {
     // This can fail, so we have to check the result.
     let info = match context.get_device_info(device_type, device_id, ShareMode::Shared) {
         Ok(info) => info,
@@ -64,17 +54,21 @@ pub fn print_device_info(context: &Context, device_type: DeviceType, device_id: 
     info!("\t\t\tFormats: {:?}", info.formats());
 }
 
-pub fn print_possible_devices(full: bool) {
-    info!("Audio Backend: {:?}", GLOBAL_AUDIO_CONTEXT.0.backend());
+pub fn print_possible_devices_and_exit() {
+    let context = Context::new(&DEFAULT_BACKENDS, None).expect("could not create audio context");
+    print_possible_devices(&context, true);
+}
 
-    GLOBAL_AUDIO_CONTEXT
-        .0
+fn print_possible_devices(context: &Context, full: bool) {
+    info!("Audio Backend: {:?}", context.backend());
+
+    context
         .with_devices(|playback_devices, capture_devices| {
             info!("\tOutput Devices:");
             for (idx, device) in playback_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&GLOBAL_AUDIO_CONTEXT.0, DeviceType::Playback, device.id());
+                    print_device_info(&context, DeviceType::Playback, device.id());
                 }
             }
 
@@ -82,7 +76,7 @@ pub fn print_possible_devices(full: bool) {
             for (idx, device) in capture_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&GLOBAL_AUDIO_CONTEXT.0, DeviceType::Capture, device.id());
+                    print_device_info(&context, DeviceType::Capture, device.id());
                 }
             }
         })
@@ -96,15 +90,15 @@ pub fn run_sound_loop(
     output_device_identifier: Option<String>,
     loop_device_identifier: String,
 ) -> ! {
+    let context = Context::new(&DEFAULT_BACKENDS, None).expect("could not create audio context");
     let mut ms_input_device = None;
     let mut ms_output_device = None;
     let mut ms_loop_device = None;
 
     info!("Possible Devices: ");
-    print_possible_devices(false);
+    print_possible_devices(&context, false);
 
-    GLOBAL_AUDIO_CONTEXT
-        .0
+    context
         .with_devices(|playback_devices, capture_devices| {
             for (_, device) in playback_devices.iter().enumerate() {
                 if device.name() == loop_device_identifier {
@@ -151,14 +145,21 @@ pub fn run_sound_loop(
     );
 
     let ms_loop_device_clone = ms_loop_device.clone();
-    let _loop_back_device = create_duplex_device(ms_input_device, ms_loop_device_clone.unwrap())
-        .expect("create duplex device failed");
+    let _loop_back_device =
+        create_duplex_device(&context, ms_input_device, ms_loop_device_clone.unwrap())
+            .expect("create duplex device failed");
 
-    run_sound_message_loop(receiver, sender, ms_loop_device.unwrap(), ms_output_device);
+    run_sound_message_loop(
+        context,
+        receiver,
+        sender,
+        ms_loop_device.unwrap(),
+        ms_output_device,
+    );
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct SoundKey {
+struct SoundKey {
     pub name: String,
     pub path: String,
     pub hotkey: Option<String>,
@@ -226,6 +227,7 @@ pub enum Message {
 }
 
 fn insert_sink_with_config(
+    context: &Context,
     device: Option<miniaudio::DeviceIdAndName>,
     sound_config: config::SoundConfig,
     volume: f32,
@@ -256,7 +258,7 @@ fn insert_sink_with_config(
             None
         }
     };
-    let sink = Sink::new(decoder, device_id)?;
+    let sink = Sink::new(context, decoder, device_id)?;
     sink.set_volume(volume)?;
     sink.start()?;
 
@@ -274,6 +276,7 @@ fn insert_sink_with_config(
 }
 
 fn run_sound_message_loop(
+    context: Context,
     receiver: crossbeam_channel::Receiver<Message>,
     sender: crossbeam_channel::Sender<Message>,
     loop_device: miniaudio::DeviceIdAndName,
@@ -289,6 +292,7 @@ fn run_sound_message_loop(
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
                         match insert_sink_with_config(
+                            &context,
                             output_device.clone(),
                             sound_config.clone(),
                             volume,
@@ -303,6 +307,7 @@ fn run_sound_message_loop(
                     }
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
                         match insert_sink_with_config(
+                            &context,
                             Some(loop_device.clone()),
                             sound_config,
                             volume,
@@ -370,10 +375,11 @@ fn run_sound_message_loop(
 }
 
 fn create_duplex_device(
+    context: &Context,
     input_device: Option<miniaudio::DeviceIdAndName>,
     loop_device: miniaudio::DeviceIdAndName,
 ) -> Result<miniaudio::Device> {
-    let loop_info = match GLOBAL_AUDIO_CONTEXT.0.get_device_info(
+    let loop_info = match context.get_device_info(
         miniaudio::DeviceType::Playback,
         loop_device.id(),
         ShareMode::Shared,
@@ -423,7 +429,7 @@ fn create_duplex_device(
         error!("Loopback device stopped!!!");
     });
 
-    let device = miniaudio::Device::new(Some(GLOBAL_AUDIO_CONTEXT.0.clone()), &device_config)
+    let device = miniaudio::Device::new(Some(context.clone()), &device_config)
         .expect("failed to open playback device");
     device.start().expect("failed to start device");
 

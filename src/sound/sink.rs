@@ -25,7 +25,11 @@ pub struct Sink {
 impl Sink {
     /// Builds a new `Sink`
     #[inline]
-    pub fn new<S>(source: S, device_id: Option<miniaudio::DeviceId>) -> Result<Sink>
+    pub fn new<S>(
+        context: &miniaudio::Context,
+        source: S,
+        device_id: Option<miniaudio::DeviceId>,
+    ) -> Result<Sink>
     where
         S: Source + Send + Sync + 'static,
         S::Item: Sample,
@@ -64,11 +68,8 @@ impl Sink {
         device_config.set_stop_callback(move |_device| {
             stopped_clone.store(true, std::sync::atomic::Ordering::Relaxed);
         });
-        let device = miniaudio::Device::new(
-            Some(crate::sound::GLOBAL_AUDIO_CONTEXT.0.clone()),
-            &device_config,
-        )
-        .expect("could not create device");
+        let device = miniaudio::Device::new(Some(context.clone()), &device_config)
+            .expect("could not create device");
         Ok(Sink { device, stopped })
     }
 
