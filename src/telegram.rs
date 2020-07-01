@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use super::download;
 use super::{config, sound};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use crossbeam_channel::{Receiver, Sender};
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -83,16 +83,74 @@ fn send_sound_config(
 fn send_new_sound_config(
     sender: &Sender<sound::Message>,
     name: String,
+    ext: String,
     path: String,
 ) -> Result<()> {
+    let mut new_sound_path = config::get_soundboards_path()?;
+    new_sound_path.push("telegram");
+    let full_name = name.clone() + &ext;
+    new_sound_path.push(&full_name);
+
+    info!("new path for incoming sound {}", &new_sound_path.display());
+
+    let sound_config = config::SoundConfig {
+        name,
+        headers: None,
+        hotkey: None,
+        full_path: new_sound_path.to_str().unwrap().to_owned(),
+        path: full_name,
+    };
+
+    if !new_sound_path.exists() {
+        let mut telegram_sounds_dir = config::get_soundboards_path()?;
+        telegram_sounds_dir.push("telegram");
+        if !telegram_sounds_dir.exists() {
+            std::fs::create_dir(telegram_sounds_dir)?;
+        }
+        std::fs::copy(&path, &new_sound_path).with_context(|| {
+            format!(
+                "cant copy file from {} to {}",
+                &path,
+                &new_sound_path.display()
+            )
+        })?;
+
+        let maybe_result = config::MainConfig::read()
+            .soundboards
+            .iter()
+            .position(|s| s.name == "telegram");
+        if let Some(index) = maybe_result {
+            let mut soundboard = config::MainConfig::read().soundboards[index].clone();
+            soundboard.sounds = Some(soundboard.sounds.unwrap_or_default());
+            if soundboard
+                .sounds
+                .as_ref()
+                .unwrap()
+                .iter()
+                .find(|s| **s == sound_config)
+                .is_none()
+            {
+                soundboard
+                    .sounds
+                    .as_mut()
+                    .unwrap()
+                    .push(sound_config.clone());
+                config::MainConfig::change_soundboard(index, soundboard)?;
+            }
+        } else {
+            let mut sb = config::SoundboardConfig::default();
+            sb.name = "telegram".to_string();
+            let mut new_path = config::get_soundboards_path()?;
+            new_path.push("telegram.toml");
+            sb.path = new_path.to_str().unwrap().to_owned();
+            sb.sounds = Some(Vec::new());
+            sb.sounds.as_mut().unwrap().push(sound_config.clone());
+            config::MainConfig::add_soundboard(sb)?;
+        }
+    }
+
     Ok(sender.send(sound::Message::PlaySound(
-        config::SoundConfig {
-            name,
-            headers: None,
-            hotkey: None,
-            full_path: path.clone(),
-            path,
-        },
+        sound_config,
         sound::SoundDevices::Both,
     ))?)
 }
@@ -107,6 +165,14 @@ async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio)
     send_new_sound_config(
         sender,
         audio.title.clone().unwrap_or_default(),
+        ".".to_owned()
+            + audio
+                .mime_type
+                .clone()
+                .unwrap_or_default()
+                .split('/')
+                .last()
+                .unwrap_or_default(),
         path.to_str().unwrap().to_string(),
     )?;
 
@@ -127,6 +193,14 @@ async fn handle_document(
     send_new_sound_config(
         sender,
         document.file_name.clone().unwrap_or_default(),
+        ".".to_owned()
+            + document
+                .mime_type
+                .clone()
+                .unwrap_or_default()
+                .split('/')
+                .last()
+                .unwrap_or_default(),
         path.to_str().unwrap().to_string(),
     )?;
 
@@ -424,7 +498,7 @@ impl UpdateHandler for Handler {
                         Err(err) => {
                             let method = SendMessage::new(
                                 message.get_chat_id(),
-                                format!("PlaySoundError {}", err),
+                                format!("PlaySoundError {:#}", err),
                             );
                             if let Err(err) = self.api.execute(method).await {
                                 error!("telegram api error: {}", err);

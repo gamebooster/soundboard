@@ -2,14 +2,14 @@ name = 'favorites'
 position = 0
 
 [[sound]]
+hotkey = 'CTRL-P'
 name = 'Nicht so tief, Rüdiger!'
 path = 'nicht-so-tief-rudiger.mp3'
-hotkey = 'CTRL-P'
 
 [[sound]]
+hotkey = 'CTRL-0'
 name = 'wo ist der latest shit'
 path = 'wo ist der latest shit.mp3'
-hotkey = 'CTRL-0'
 
 [[sound]]
 name = 'Ich rascht aus'
@@ -28,9 +28,9 @@ name = 'Warteee EEEY'
 path = 'warteEYY.mp3'
 
 [[sound]]
+hotkey = 'CTRL-SHIFT-BACKSPACE'
 name = 'Soldier of Fortune'
 path = 'vodka/Razor1911 - Soldier Of Fortune intro.xm'
-hotkey = 'CTRL-SHIFT-BACKSPACE'
 
 [[sound]]
 name = '''It's time to duel'''

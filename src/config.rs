@@ -81,11 +81,18 @@ impl MainConfig {
         Ok(())
     }
 
-    pub fn write_soundboard(index: usize, mut soundboard: SoundboardConfig) -> Result<()> {
+    pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
+        save_soundboard_config(&mut soundboard, true)?;
+        let mut config = GLOBAL_CONFIG.write().unwrap();
+        config.soundboards.push(soundboard);
+        Ok(())
+    }
+
+    pub fn change_soundboard(index: usize, mut soundboard: SoundboardConfig) -> Result<()> {
         if MainConfig::read().soundboards.get(index).is_none() {
             return Err(anyhow!("invalid soundboard index"));
         }
-        save_soundboard_config(&mut soundboard)?;
+        save_soundboard_config(&mut soundboard, false)?;
         let mut config = GLOBAL_CONFIG.write().unwrap();
         config.soundboards[index] = soundboard;
         Ok(())
@@ -98,16 +105,17 @@ impl MainConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 pub struct SoundboardConfig {
     pub name: String,
     pub hotkey: Option<String>,
     pub position: Option<usize>,
+    pub disabled: Option<bool>,
     #[serde(rename = "sound")]
     pub sounds: Option<Vec<SoundConfig>>,
 
     #[serde(skip_serializing, skip_deserializing)]
-    path: String,
+    pub path: String,
     #[serde(skip_serializing, skip_deserializing)]
     last_hash: u64,
 }
@@ -118,6 +126,7 @@ impl PartialEq for SoundboardConfig {
             && self.hotkey == other.hotkey
             && self.position == other.position
             && self.sounds == other.sounds
+            && self.disabled == other.disabled
     }
 }
 impl Eq for SoundboardConfig {}
@@ -128,6 +137,7 @@ impl Hash for SoundboardConfig {
         self.hotkey.hash(state);
         self.position.hash(state);
         self.sounds.hash(state);
+        self.disabled.hash(state);
     }
 }
 
@@ -441,6 +451,9 @@ fn load_and_parse_config() -> Result<MainConfig> {
         if extension == "toml" {
             let sb_config = load_soundboard_config(&path)
                 .with_context(|| format!("Failed to load soundboard {}", path.display()))?;
+            if sb_config.disabled.unwrap_or_default() {
+                continue;
+            }
             toml_config.soundboards.push(sb_config);
         }
     }
@@ -467,7 +480,13 @@ fn load_and_parse_config() -> Result<MainConfig> {
 
 fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String> {
     let relative_path = Path::new(sound_path);
-    if relative_path.is_absolute() || sound_path.starts_with("http") {
+    if sound_path.starts_with("http") {
+        return Ok(sound_path.to_string());
+    }
+    if relative_path.is_absolute() {
+        if !relative_path.exists() || !relative_path.is_file() {
+            return Err(anyhow!("expected sound file at {}", sound_path));
+        }
         return Ok(sound_path.to_string());
     }
     let mut new_path = get_soundboards_path()?;
@@ -503,6 +522,9 @@ fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
     let mut sounds = soundboard_config.sounds.unwrap();
     for sound in &mut sounds {
         sound.full_path = resolve_sound_path(soundboard_path, &sound.path)?;
+        if sound.name.is_empty() {
+            return Err(anyhow!("save_soundboard: sound name empty {}", sound.path));
+        }
     }
     soundboard_config.sounds = Some(sounds);
     soundboard_config.path = soundboard_path
@@ -527,8 +549,10 @@ fn check_soundboard_config_mutated_on_disk(
     old_path: &Path,
     new_config: &SoundboardConfig,
 ) -> Result<bool> {
-    let toml_str = fs::read_to_string(&old_path)?;
-    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
+    let toml_str = fs::read_to_string(&old_path)
+        .with_context(|| format!("Failed to read_to_string {}", old_path.display()))?;
+    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)
+        .with_context(|| format!("Failed to parse {}", old_path.display()))?;
 
     let old_config_hash = utils::calculate_hash(&soundboard_config);
 
@@ -539,14 +563,28 @@ fn check_soundboard_config_mutated_on_disk(
     Ok(true)
 }
 
-fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
-    let soundboard_config_path = PathBuf::from_str(&config.path)?;
+fn save_soundboard_config(config: &mut SoundboardConfig, new: bool) -> Result<()> {
+    let soundboard_config_path = PathBuf::from_str(&config.path)
+        .with_context(|| format!("Failed to parse path {}", &config.path))?;
 
-    if config.sounds.is_none() {
-        return Err(anyhow!("save_soundboard: expected sounds",));
+    if soundboard_config_path.parent().is_none()
+        || !soundboard_config_path.parent().unwrap().exists()
+    {
+        return Err(anyhow!(
+            "save_soundboard: invalid path  {}",
+            soundboard_config_path.display()
+        ));
     }
 
-    if check_soundboard_config_mutated_on_disk(&soundboard_config_path, config)? {
+    if config.name.is_empty() {
+        return Err(anyhow!("save_soundboard: invalid name  {}", &config.name));
+    }
+
+    if config.sounds.is_none() {
+        return Err(anyhow!("save_soundboard: expected sounds"));
+    }
+
+    if !new && check_soundboard_config_mutated_on_disk(&soundboard_config_path, config)? {
         return Err(anyhow!(
             "save_soundboard: soundboard config file mutated on disk",
         ));
@@ -554,10 +592,15 @@ fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
 
     for sound in config.sounds.as_ref().unwrap() {
         resolve_sound_path(&soundboard_config_path, &sound.path)?;
+        if sound.name.is_empty() {
+            return Err(anyhow!("save_soundboard: sound name empty {}", sound.path));
+        }
     }
 
-    let pretty_string = toml::to_string_pretty(&config)?;
-    fs::write(&soundboard_config_path, pretty_string)?;
+    let pretty_string =
+        toml::to_string_pretty(&config).context("failed to serialize soundboard config")?;
+    fs::write(&soundboard_config_path, pretty_string)
+        .with_context(|| format!("Failed to write {}", &soundboard_config_path.display()))?;
     config.last_hash = utils::calculate_hash(&config);
     info!("Saved config file at {}", &config.path);
     Ok(())

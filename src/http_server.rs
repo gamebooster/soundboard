@@ -253,7 +253,7 @@ pub async fn run(
                     new_soundboard.position = soundboard_change_request.position;
                 }
 
-                if let Err(err) = config::MainConfig::write_soundboard(index, new_soundboard) {
+                if let Err(err) = config::MainConfig::change_soundboard(index, new_soundboard) {
                     return warp::reply::with_status(
                         warp::reply::json(&ResultErrors::with_error(
                             "500",
