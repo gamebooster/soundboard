@@ -38,6 +38,7 @@ pub struct MainConfig {
     pub output_device: Option<String>,
     pub loopback_device: Option<String>,
     pub stop_hotkey: Option<String>,
+    pub http_socket_addr: Option<String>,
 
     pub http_server: Option<bool>,
     pub telegram: Option<bool>,
@@ -57,6 +58,7 @@ fn load_and_merge_config() -> Result<MainConfig> {
     merge_option_with_args_and_env(&mut config.output_device, &arguments, "output-device");
     merge_option_with_args_and_env(&mut config.loopback_device, &arguments, "loopback-device");
     merge_option_with_args_and_env(&mut config.stop_hotkey, &arguments, "stop-hotkey");
+    merge_option_with_args_and_env(&mut config.http_socket_addr, &arguments, "http-socket-addr");
 
     merge_flag_with_args_and_env(&mut config.auto_loop_device, &arguments, "auto-loop-device");
     merge_flag_with_args_and_env(&mut config.http_server, &arguments, "http-server");
@@ -80,6 +82,7 @@ impl MainConfig {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
         save_soundboard_config(&mut soundboard, true)?;
         let mut config: MainConfig = (*MainConfig::read()).clone();
@@ -677,6 +680,13 @@ fn parse_arguments() -> clap::ArgMatches {
         Arg::with_name("http-server")
             .long("http-server")
             .about("Enable http server API and web app"),
+    );
+    #[cfg(feature = "http")]
+    let matches = matches.arg(
+        Arg::with_name("http-socket-addr")
+            .long("http-socket-addr")
+            .about("Specify the socket addr for http server")
+            .takes_value(true),
     );
     matches.get_matches()
 }
