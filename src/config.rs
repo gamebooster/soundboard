@@ -25,11 +25,11 @@ use super::utils;
 
 use once_cell::sync::Lazy;
 
-type GlobalConfig = Lazy<std::sync::RwLock<MainConfig>>;
+type GlobalConfig = Lazy<std::sync::RwLock<std::sync::Arc<MainConfig>>>;
 
 static GLOBAL_CONFIG: GlobalConfig = Lazy::new(|| {
     let config = load_and_merge_config().expect("failed to load and merge config");
-    std::sync::RwLock::new(config)
+    std::sync::RwLock::new(std::sync::Arc::new(config))
 });
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
@@ -71,20 +71,21 @@ fn load_and_merge_config() -> Result<MainConfig> {
 }
 
 impl MainConfig {
-    pub fn read<'ret>(
-    ) -> owning_ref::OwningRef<std::sync::RwLockReadGuard<'ret, MainConfig>, MainConfig> {
-        owning_ref::OwningRef::new(GLOBAL_CONFIG.read().unwrap())
+    pub fn read() -> std::sync::Arc<MainConfig> {
+        GLOBAL_CONFIG.read().unwrap().clone()
     }
 
     pub fn reload_from_disk() -> Result<()> {
-        *GLOBAL_CONFIG.write().unwrap() = load_and_merge_config()?;
+        *GLOBAL_CONFIG.write().unwrap() = std::sync::Arc::new(load_and_merge_config()?);
         Ok(())
     }
 
     pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
         save_soundboard_config(&mut soundboard, true)?;
-        let mut config = GLOBAL_CONFIG.write().unwrap();
+        let mut config: MainConfig = (*MainConfig::read()).clone();
+        let mut writer = GLOBAL_CONFIG.write().unwrap();
         config.soundboards.push(soundboard);
+        *writer = std::sync::Arc::new(config);
         Ok(())
     }
 
@@ -93,15 +94,11 @@ impl MainConfig {
             return Err(anyhow!("invalid soundboard index"));
         }
         save_soundboard_config(&mut soundboard, false)?;
-        let mut config = GLOBAL_CONFIG.write().unwrap();
+        let mut config: MainConfig = (*MainConfig::read()).clone();
+        let mut writer = GLOBAL_CONFIG.write().unwrap();
         config.soundboards[index] = soundboard;
+        *writer = std::sync::Arc::new(config);
         Ok(())
-    }
-
-    #[allow(dead_code)]
-    fn write_<'ret>(
-    ) -> owning_ref::OwningRefMut<std::sync::RwLockWriteGuard<'ret, MainConfig>, MainConfig> {
-        owning_ref::OwningRefMut::new(GLOBAL_CONFIG.write().unwrap())
     }
 }
 
@@ -587,6 +584,10 @@ fn save_soundboard_config(config: &mut SoundboardConfig, new: bool) -> Result<()
     if !new && check_soundboard_config_mutated_on_disk(&soundboard_config_path, config)? {
         return Err(anyhow!(
             "save_soundboard: soundboard config file mutated on disk",
+        ));
+    } else if new && soundboard_config_path.exists() {
+        return Err(anyhow!(
+            "save_soundboard: soundboard config file already exists on disk",
         ));
     }
 

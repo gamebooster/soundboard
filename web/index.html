@@ -89,10 +89,12 @@
                     </p>
                     <b-field v-else="soundboard.edit" label="Name" label-position="on-border">
                         <b-input type="text" v-model="soundboard.name"
-                            @keyup.enter.native="soundboard.edit=false; updateSoundboard(soundboard.id);"
-                            @blur="soundboard.edit=false; updateSoundboard(soundboard.id);"></b-input>
+                            @keyup.enter.native="if (soundboard.edit) {soundboard.edit=false; updateSoundboard(soundboard.id);}"
+                            @blur="if (soundboard.edit) {soundboard.edit=false; updateSoundboard(soundboard.id);}">
+                        </b-input>
                         <p class="control">
-                            <b-button @click="soundboard.edit=false; updateSoundboard(soundboard.id);"
+                            <b-button
+                                @click="if (soundboard.edit) {soundboard.edit=false; updateSoundboard(soundboard.id);}"
                                 class="button is-primary">Submit</b-button>
                         </p>
                     </b-field>

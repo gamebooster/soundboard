@@ -115,11 +115,11 @@ fn send_new_sound_config(
             )
         })?;
 
-        let maybe_result = config::MainConfig::read()
+        if let Some(index) = config::MainConfig::read()
             .soundboards
             .iter()
-            .position(|s| s.name == "telegram");
-        if let Some(index) = maybe_result {
+            .position(|s| s.name == "telegram")
+        {
             let mut soundboard = config::MainConfig::read().soundboards[index].clone();
             soundboard.sounds = Some(soundboard.sounds.unwrap_or_default());
             if soundboard
