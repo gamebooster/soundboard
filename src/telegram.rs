@@ -22,13 +22,10 @@ use tgbot::{
 use tokio::task;
 use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
 
-type ConfigLockType = std::sync::Arc<std::sync::RwLock<config::MainConfig>>;
-
 struct Handler {
     api: Api,
     sender: Sender<sound::Message>,
     receiver: Receiver<sound::Message>,
-    config: ConfigLockType,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Eq, Copy, Clone)]
@@ -139,7 +136,6 @@ async fn handle_document(
 async fn handle_stopall_command(
     _api: &Api,
     sender: &Sender<sound::Message>,
-    _config: ConfigLockType,
     _message: &Message,
     _raw_args: String,
 ) {
@@ -151,7 +147,6 @@ async fn handle_stopall_command(
 async fn handle_sound_command(
     api: &Api,
     _sender: &Sender<sound::Message>,
-    config: ConfigLockType,
     message: &Message,
     raw_args: String,
     method: MethodType,
@@ -181,7 +176,7 @@ async fn handle_sound_command(
     let matcher = SkimMatcherV2::default();
     let max_matches = 8;
 
-    for soundboard in &config.read().unwrap().soundboards {
+    for soundboard in &config::MainConfig::read().soundboards {
         for sound in soundboard.sounds.as_ref().unwrap() {
             if let Some(score) = matcher.fuzzy_match(&sound.name, &raw_args) {
                 if possible_matches.len() < max_matches {
@@ -248,8 +243,8 @@ async fn handle_sound_command(
     }
 }
 
-fn play_sound_with_name(sender: &Sender<sound::Message>, config: ConfigLockType, name: &str) {
-    for soundboard in &config.read().unwrap().soundboards {
+fn play_sound_with_name(sender: &Sender<sound::Message>, name: &str) {
+    for soundboard in &config::MainConfig::read().soundboards {
         for sound in soundboard.sounds.as_ref().unwrap() {
             if sound.name == name {
                 send_sound_config(sender, sound.clone()).expect("sound channel error");
@@ -258,14 +253,9 @@ fn play_sound_with_name(sender: &Sender<sound::Message>, config: ConfigLockType,
     }
 }
 
-async fn send_sound_with_name(
-    api: &Api,
-    config: ConfigLockType,
-    message: Message,
-    name: &str,
-) -> Result<()> {
+async fn send_sound_with_name(api: &Api, message: Message, name: &str) -> Result<()> {
     let mut maybe_sound = None;
-    for soundboard in &config.read().unwrap().soundboards {
+    for soundboard in &config::MainConfig::read().soundboards {
         for sound in soundboard.sounds.as_ref().unwrap() {
             if sound.name == name {
                 maybe_sound = Some(sound.clone());
@@ -325,7 +315,6 @@ impl UpdateHandler for Handler {
                             }
                             if let Err(err) = send_sound_with_name(
                                 &self.api,
-                                self.config.clone(),
                                 query.message.unwrap(),
                                 &data.sound_name,
                             )
@@ -341,11 +330,7 @@ impl UpdateHandler for Handler {
                             }
                         }
                         MethodType::Play => {
-                            play_sound_with_name(
-                                &self.sender,
-                                self.config.clone(),
-                                &data.sound_name.clone(),
-                            );
+                            play_sound_with_name(&self.sender, &data.sound_name.clone());
                             let method = tgbot::methods::AnswerCallbackQuery::new(query.id)
                                 .text(format!("Playing sound: {}", &data.sound_name));
                             if let Err(err) = self.api.execute(method).await {
@@ -377,7 +362,6 @@ impl UpdateHandler for Handler {
                             handle_sound_command(
                                 &self.api,
                                 &self.sender,
-                                self.config.clone(),
                                 command.get_message(),
                                 raw_args,
                                 MethodType::Play,
@@ -388,7 +372,6 @@ impl UpdateHandler for Handler {
                             handle_sound_command(
                                 &self.api,
                                 &self.sender,
-                                self.config.clone(),
                                 command.get_message(),
                                 raw_args,
                                 MethodType::Download,
@@ -399,7 +382,6 @@ impl UpdateHandler for Handler {
                             handle_stopall_command(
                                 &self.api,
                                 &self.sender,
-                                self.config.clone(),
                                 command.get_message(),
                                 raw_args,
                             )
@@ -473,16 +455,12 @@ pub async fn run(sender: Sender<sound::Message>, receiver: Receiver<sound::Messa
     .await
     .expect("SetMyCommands failed");
 
-    let config_file = config::load_and_parse_config().unwrap();
-    let config = std::sync::Arc::new(std::sync::RwLock::new(config_file));
-
     LongPoll::new(
         api.clone(),
         Handler {
             api,
             sender,
             receiver,
-            config,
         },
     )
     .options(

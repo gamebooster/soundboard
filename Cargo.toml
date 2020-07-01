@@ -1,70 +1,72 @@
 [package]
-name = "soundboard"
-version = "0.0.2"
-description = "cross-plattform soundboard: play sounds over your microphone"
 authors = ["Karl Skomski <karl@skomski.com>", "Corin Baurmann <corin.baurmann@fu-berlin.de>", "Elena Frank <elena.frank@protonmail.com>"]
 categories = ["multimedia::audio"]
-license = "Unlicense"
-repository = "https://github.com/gamebooster/soundboard"
+description = "cross-plattform soundboard: play sounds over your microphone"
 edition = "2018"
 exclude = [
-    "/soundboards",
-    "/extern"
+  "/soundboards",
+  "/extern",
 ]
+license = "Unlicense"
+name = "soundboard"
+repository = "https://github.com/gamebooster/soundboard"
+version = "0.0.2"
 
 [profile.release]
-lto = true
+codegen-units = 1
+lto = "fat"
 
 [features]
+autoloop = ["libpulse-binding", "ctrlc"]
 default = ["mp3", "flac", "vorbis", "wav", "http", "gui"]
-mp3 = ["minimp3", "mp3-duration"]
 flac = ["claxon"]
+gui = ["iced", "iced_native"]
+http = ["warp", "futures"]
+mp3 = ["minimp3", "mp3-duration"]
+telegram = ["tgbot", "fuzzy-matcher"]
 vorbis = ["lewton", "ogg_metadata"]
 wav = ["hound"]
 xm = ["libxm-soundboard"]
-http = ["warp", "futures"]
-gui = ["iced", "iced_native"]
-autoloop = ["libpulse-binding", "ctrlc"]
-telegram = ["tgbot", "fuzzy-matcher"]
 
 [dependencies]
-miniaudio = "0.6"
-hotkey-soundboard = { path = "extern/hotkey-rs", version = "0.0.1" }
-clap = "3.0.0-beta.1"
-toml = "0.5"
-serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0"
-log = "0.4"
+clap = "3.0.0-beta.1"
+crossbeam-channel = "0.4"
+dirs = "3"
 env_logger = "0.7"
-reqwest = { version = "0.10", features = ["blocking"] }
+hotkey-soundboard = {path = "extern/hotkey-rs", version = "0.0.1"}
+log = "0.4"
+miniaudio = "0.6"
+once_cell = "1.4"
+owning_ref = "0.4.1"
 regex = "1"
+reqwest = {version = "0.10", features = ["blocking"]}
+serde = {version = "1.0", features = ["derive"]}
 strum = "0.18"
 strum_macros = "0.18"
-crossbeam-channel = "0.4"
-tokio = { version = "0.2", features = ["macros", "full"] }
-once_cell = "1.4"
+tokio = {version = "0.2", features = ["macros", "full"]}
+toml = "0.5"
 winit = "0.22"
-dirs = "3"
 
-tgbot = { version = "0.10", optional = true }
 fuzzy-matcher = {version = "0.3", optional = true}
+tgbot = {version = "0.10", optional = true}
 
-ctrlc = { version = "3.1.4", features = ["termination"], optional = true}
-libpulse-binding = { version = "2.0", features = ["pa_latest_common"], optional = true }
+ctrlc = {version = "3.1.4", features = ["termination"], optional = true}
+libpulse-binding = {version = "2.0", features = ["pa_latest_common"], optional = true}
 
-iced = { version = "0.1", optional = true, features = ["tokio"] }
-iced_native = {version = "0.2", optional = true }
+iced = {version = "0.1", optional = true, features = ["tokio"]}
+iced_native = {version = "0.2", optional = true}
 
-warp = {version = "0.2", optional = true }
-futures = {version = "0.3", optional = true }
+futures = {version = "0.3", optional = true}
+warp = {version = "0.2", optional = true}
 
-mp3-duration = {version = "0.1.10", optional = true }
-ogg_metadata = {version = "0.4", optional = true }
-minimp3 = {version = "0.3", optional = true }
-hound = {version = "3", optional = true }
-lewton = {version = "0.10", optional = true }
-claxon = {version = "0.4", optional = true }
-libxm-soundboard = {version = "0.0.1", path = "extern/libxm-rs", optional = true }
+claxon = {version = "0.4", optional = true}
+hound = {version = "3", optional = true}
+lewton = {version = "0.10", optional = true}
+libxm-soundboard = {version = "0.0.1", path = "extern/libxm-rs", optional = true}
+minimp3 = {version = "0.3", optional = true}
+mp3-duration = {version = "0.1.10", optional = true}
+ogg_metadata = {version = "0.4", optional = true}
 
 [build-dependencies]
 fs_extra = "1"

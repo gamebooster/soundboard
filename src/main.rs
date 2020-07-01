@@ -86,15 +86,14 @@ fn try_main() -> Result<()> {
         .filter_module("soundboard", log::LevelFilter::Trace)
         .filter_module("warp", log::LevelFilter::Info)
         .init();
-    info!("Parsing arguments");
-    let arguments = config::parse_arguments();
 
-    if arguments.is_present("print-possible-devices") {
+    if config::MainConfig::read()
+        .print_possible_devices
+        .unwrap_or_default()
+    {
         sound::print_possible_devices_and_exit();
         return Ok(());
     }
-
-    let config_file = config::load_and_parse_config()?;
 
     let (sound_sender, gui_receiver): (
         crossbeam_channel::Sender<sound::Message>,
@@ -106,24 +105,18 @@ fn try_main() -> Result<()> {
         crossbeam_channel::Receiver<sound::Message>,
     ) = crossbeam_channel::unbounded();
 
-    #[cfg(not(feature = "autoloop"))]
-    let (input_device_id, output_device_id, loop_device_id) =
-        config::parse_devices(&config_file, &arguments)?;
-
-    #[cfg(feature = "autoloop")]
-    let (input_device_id, output_device_id, mut loop_device_id) =
-        config::parse_devices(&config_file, &arguments)?;
-
     #[cfg(feature = "autoloop")]
     let mut loop_module_id: Option<u32> = None;
 
     #[cfg(feature = "autoloop")]
+    let mut loop_device_id = config::MainConfig::read().loopback_device.clone();
+
+    #[cfg(feature = "autoloop")]
     {
-        if config::is_flag_set(
-            &arguments,
-            &config_file.auto_loop_device,
-            "auto-loop-device",
-        ) {
+        if config::MainConfig::read()
+            .auto_loop_device
+            .unwrap_or_default()
+        {
             match pulseauto::load_virt_sink() {
                 Ok((name, module_id)) => {
                     loop_device_id = Some(name);
@@ -133,7 +126,8 @@ fn try_main() -> Result<()> {
             };
         }
     }
-
+    #[cfg(not(feature = "autoloop"))]
+    let loop_device_id = config::MainConfig::read().loopback_device.clone();
     let loop_device_id = loop_device_id.ok_or_else(|| {
         anyhow!(
             r"No loopback device specified in config file with loopback_device or
@@ -144,12 +138,14 @@ fn try_main() -> Result<()> {
 
     let sound_receiver_clone = sound_receiver;
     let sound_sender_clone = sound_sender;
+    let input_device_id_clone = config::MainConfig::read().input_device.clone();
+    let output_device_id_clone = config::MainConfig::read().output_device.clone();
     let _sound_thread_handle = std::thread::spawn(move || {
         sound::run_sound_loop(
             sound_receiver_clone,
             sound_sender_clone,
-            input_device_id,
-            output_device_id,
+            input_device_id_clone,
+            output_device_id_clone,
             loop_device_id,
         );
     });
@@ -164,7 +160,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if config::is_flag_set(&arguments, &config_file.http_server, "http-server") {
+        if config::MainConfig::read().http_server.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -175,7 +171,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "telegram")]
     {
-        if config::is_flag_set(&arguments, &config_file.telegram, "telegram") {
+        if config::MainConfig::read().telegram.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -196,8 +192,8 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "gui")]
     {
-        if config::is_flag_set(&arguments, &config_file.no_gui, "no-gui") {
-            no_gui_routine(config_file, gui_sender)?;
+        if config::MainConfig::read().no_gui.unwrap_or_default() {
+            no_gui_routine(gui_sender)?;
             std::thread::park();
             return Ok(());
         }
@@ -207,16 +203,12 @@ fn try_main() -> Result<()> {
     }
     #[cfg(not(feature = "gui"))]
     {
-        let config_file_clone = config_file.clone();
-        no_gui_routine(config_file_clone, gui_sender)?;
+        no_gui_routine(gui_sender)?;
     }
     Ok(())
 }
 
-fn no_gui_routine(
-    config_file: config::MainConfig,
-    gui_sender: crossbeam_channel::Sender<sound::Message>,
-) -> Result<()> {
+fn no_gui_routine(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
     use winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -231,8 +223,8 @@ fn no_gui_routine(
     let mut hotkey_manager = hotkey::HotkeyManager::new();
 
     let stop_hotkey = {
-        if config_file.stop_hotkey.is_some() {
-            config::parse_hotkey(&config_file.stop_hotkey.as_ref().unwrap())?
+        if let Some(key) = config::MainConfig::read().stop_hotkey.as_ref() {
+            config::parse_hotkey(&key)?
         } else {
             config::Hotkey {
                 modifier: vec![config::Modifier::CTRL],
@@ -249,7 +241,7 @@ fn no_gui_routine(
 
     let gui_sender_clone = gui_sender;
     // only register hotkeys for first soundboard in no-gui-mode
-    for sound in config_file.soundboards[0]
+    for sound in config::MainConfig::read().soundboards[0]
         .sounds
         .clone()
         .unwrap_or_default()

@@ -23,18 +23,79 @@ use std::str::FromStr;
 use super::sound;
 use super::utils;
 
+use once_cell::sync::Lazy;
+
+type GlobalConfig = Lazy<std::sync::RwLock<MainConfig>>;
+
+static GLOBAL_CONFIG: GlobalConfig = Lazy::new(|| {
+    let config = load_and_merge_config().expect("failed to load and merge config");
+    std::sync::RwLock::new(config)
+});
+
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct MainConfig {
     pub input_device: Option<String>,
     pub output_device: Option<String>,
     pub loopback_device: Option<String>,
     pub stop_hotkey: Option<String>,
+
     pub http_server: Option<bool>,
     pub telegram: Option<bool>,
     pub no_gui: Option<bool>,
     pub auto_loop_device: Option<bool>,
+    pub print_possible_devices: Option<bool>,
+
     #[serde(skip_serializing, skip_deserializing)]
     pub soundboards: Vec<SoundboardConfig>,
+}
+
+fn load_and_merge_config() -> Result<MainConfig> {
+    let mut config = load_and_parse_config()?;
+    let arguments = parse_arguments();
+
+    merge_option_with_args_and_env(&mut config.input_device, &arguments, "input-device");
+    merge_option_with_args_and_env(&mut config.output_device, &arguments, "output-device");
+    merge_option_with_args_and_env(&mut config.loopback_device, &arguments, "loopback-device");
+    merge_option_with_args_and_env(&mut config.stop_hotkey, &arguments, "stop-hotkey");
+
+    merge_flag_with_args_and_env(&mut config.auto_loop_device, &arguments, "auto-loop-device");
+    merge_flag_with_args_and_env(&mut config.http_server, &arguments, "http-server");
+    merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
+    merge_flag_with_args_and_env(&mut config.no_gui, &arguments, "no-gui");
+    merge_flag_with_args_and_env(
+        &mut config.print_possible_devices,
+        &arguments,
+        "print-possible-devices",
+    );
+    Ok(config)
+}
+
+impl MainConfig {
+    pub fn read<'ret>(
+    ) -> owning_ref::OwningRef<std::sync::RwLockReadGuard<'ret, MainConfig>, MainConfig> {
+        owning_ref::OwningRef::new(GLOBAL_CONFIG.read().unwrap())
+    }
+
+    pub fn reload_from_disk() -> Result<()> {
+        *GLOBAL_CONFIG.write().unwrap() = load_and_merge_config()?;
+        Ok(())
+    }
+
+    pub fn write_soundboard(index: usize, mut soundboard: SoundboardConfig) -> Result<()> {
+        if MainConfig::read().soundboards.get(index).is_none() {
+            return Err(anyhow!("invalid soundboard index"));
+        }
+        save_soundboard_config(&mut soundboard)?;
+        let mut config = GLOBAL_CONFIG.write().unwrap();
+        config.soundboards[index] = soundboard;
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    fn write_<'ret>(
+    ) -> owning_ref::OwningRefMut<std::sync::RwLockWriteGuard<'ret, MainConfig>, MainConfig> {
+        owning_ref::OwningRefMut::new(GLOBAL_CONFIG.write().unwrap())
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
@@ -46,9 +107,9 @@ pub struct SoundboardConfig {
     pub sounds: Option<Vec<SoundConfig>>,
 
     #[serde(skip_serializing, skip_deserializing)]
-    pub path: String,
+    path: String,
     #[serde(skip_serializing, skip_deserializing)]
-    pub last_hash: u64,
+    last_hash: u64,
 }
 
 impl PartialEq for SoundboardConfig {
@@ -213,17 +274,13 @@ impl fmt::Display for Key {
 
 impl fmt::Display for Hotkey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let modifier_string = self
-            .modifier
-            .clone()
-            .into_iter()
-            .fold(String::new(), |all, one| {
-                if !all.is_empty() {
-                    format!("{}-{}", all, one)
-                } else {
-                    one.to_string()
-                }
-            });
+        let modifier_string: String = self.modifier.iter().fold(String::new(), |all, one| {
+            if !all.is_empty() {
+                format!("{}-{}", all, one)
+            } else {
+                one.to_string()
+            }
+        });
         let hotkey_string = {
             if !modifier_string.is_empty() {
                 format!("{}-{}", modifier_string, self.key.to_string())
@@ -235,7 +292,6 @@ impl fmt::Display for Hotkey {
     }
 }
 
-use once_cell::sync::Lazy;
 static REGEX_HOTKEY_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
     regex::Regex::new(
         r"^(?i)(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(\w+)$",
@@ -355,13 +411,15 @@ pub fn get_soundboards_path() -> Result<PathBuf> {
     ))
 }
 
-pub fn load_and_parse_config() -> Result<MainConfig> {
-    let config_path = get_config_file_path()?;
+fn load_and_parse_config() -> Result<MainConfig> {
+    let config_path = get_config_file_path().context("Failed to get config file path")?;
 
     let mut toml_config: MainConfig = {
         if let Some(config_path) = config_path.as_ref() {
-            let toml_str = fs::read_to_string(&config_path)?;
-            toml::from_str(&toml_str)?
+            let toml_str = fs::read_to_string(&config_path)
+                .with_context(|| format!("Failed to read_to_string {}", config_path.display()))?;
+            toml::from_str(&toml_str)
+                .with_context(|| format!("Failed to parse {}", config_path.display()))?
         } else {
             MainConfig::default()
         }
@@ -381,7 +439,8 @@ pub fn load_and_parse_config() -> Result<MainConfig> {
             .unwrap_or_default();
 
         if extension == "toml" {
-            let sb_config = load_soundboard_config(&path)?;
+            let sb_config = load_soundboard_config(&path)
+                .with_context(|| format!("Failed to load soundboard {}", path.display()))?;
             toml_config.soundboards.push(sb_config);
         }
     }
@@ -430,7 +489,7 @@ fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String
     Ok(new_path.to_str().unwrap().to_string())
 }
 
-pub fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
+fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
     let toml_str = fs::read_to_string(&soundboard_path)?;
     let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
     if soundboard_config.sounds.is_none() {
@@ -455,7 +514,7 @@ pub fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig
 }
 
 #[allow(dead_code)]
-pub fn save_config(config: &MainConfig, name: &str) -> Result<()> {
+fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     let config_path = PathBuf::from_str(name)?;
 
     let pretty_string = toml::to_string_pretty(&config)?;
@@ -480,7 +539,7 @@ fn check_soundboard_config_mutated_on_disk(
     Ok(true)
 }
 
-pub fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
+fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
     let soundboard_config_path = PathBuf::from_str(&config.path)?;
 
     if config.sounds.is_none() {
@@ -504,18 +563,33 @@ pub fn save_soundboard_config(config: &mut SoundboardConfig) -> Result<()> {
     Ok(())
 }
 
-pub fn is_flag_set(args: &clap::ArgMatches, config_option: &Option<bool>, name: &str) -> bool {
-    if args.is_present(name)
-        || config_option.unwrap_or_default()
-        || std::env::var("SB_".to_owned() + &name.to_ascii_uppercase().replace("-", "_")).is_ok()
-    {
-        return true;
-    }
-
-    false
+fn get_env_name_from_cli_name(name: &str) -> String {
+    "SB_".to_owned() + &name.to_ascii_uppercase().replace("-", "_")
 }
 
-pub fn parse_arguments() -> clap::ArgMatches {
+fn merge_option_with_args_and_env<T: From<String>>(
+    config_option: &mut Option<T>,
+    args: &clap::ArgMatches,
+    name: &str,
+) {
+    if args.is_present(name) {
+        *config_option = Some(args.value_of(name).unwrap().to_owned().into())
+    } else if let Ok(value) = std::env::var(get_env_name_from_cli_name(name)) {
+        *config_option = Some(value.into());
+    }
+}
+
+fn merge_flag_with_args_and_env(
+    config_option: &mut Option<bool>,
+    args: &clap::ArgMatches,
+    name: &str,
+) {
+    if args.is_present(name) || std::env::var(get_env_name_from_cli_name(name)).is_ok() {
+        *config_option = Some(true);
+    }
+}
+
+fn parse_arguments() -> clap::ArgMatches {
     let matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
@@ -542,12 +616,6 @@ pub fn parse_arguments() -> clap::ArgMatches {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("verbose")
-                .long("verbose")
-                .takes_value(true)
-                .about("Sets the level of verbosity"),
-        )
-        .arg(
             Arg::with_name("print-possible-devices")
                 .long("print-possible-devices")
                 .about("Print possible devices"),
@@ -567,50 +635,6 @@ pub fn parse_arguments() -> clap::ArgMatches {
             .about("Enable http server API and web app"),
     );
     matches.get_matches()
-}
-
-pub fn parse_devices(
-    config: &MainConfig,
-    arguments: &clap::ArgMatches,
-) -> Result<(Option<String>, Option<String>, Option<String>)> {
-    let input_device_id: Option<String> = {
-        if arguments.is_present("input-device") {
-            Some(arguments.value_of("input-device").unwrap().to_string())
-        } else if std::env::var("SB_INPUT_DEVICE").is_ok() {
-            std::env::var("SB_INPUT_DEVICE").ok()
-        } else if config.input_device.is_some() {
-            config.input_device.clone()
-        } else {
-            None
-        }
-    };
-    let output_device_id: Option<String> = {
-        if arguments.is_present("output-device") {
-            Some(arguments.value_of("output-device").unwrap().to_string())
-        } else if std::env::var("SB_OUTPUT_DEVICE").is_ok() {
-            std::env::var("SB_OUTPUT_DEVICE").ok()
-        } else if config.output_device.is_some() {
-            config.output_device.clone()
-        } else {
-            None
-        }
-    };
-
-    let loop_device_id: Option<String> = {
-        if arguments.is_present("loopback-device") {
-            Some(arguments.value_of("loopback-device").unwrap().to_string())
-        } else if std::env::var("SB_LOOPBACK_DEVICE").is_ok() {
-            std::env::var("SB_LOOPBACK_DEVICE").ok()
-        } else if config.loopback_device.is_some() {
-            config.loopback_device.clone()
-        } else {
-            None //return Err(anyhow!(
-                 //"No loopback device specified in config loopbackdevice or in env SB_LOOPBACK_DEVICE var on on command line --loopback-device"
-                 //));
-        }
-    };
-
-    Ok((input_device_id, output_device_id, loop_device_id))
 }
 
 #[cfg(test)]

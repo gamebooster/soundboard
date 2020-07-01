@@ -49,9 +49,9 @@ pub struct Soundboard {
     current_volume: f32,
     current_style: LayoutStyle,
     soundboard_button_states: Vec<SoundboardButton>,
-    config: config::MainConfig,
     hotkey_manager: hotkey::HotkeyManager,
     current_state: SoundboardState,
+    current_sounds: Vec<config::SoundConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -64,17 +64,14 @@ pub enum SoundboardMessage {
     HandleListViewMessage(list_view::ListViewMessage),
     ToggleLayout,
     ShowSoundboard(String),
-    LoadedData(Result<config::MainConfig, String>),
+    LoadedData(Result<(), String>),
     ReloadData,
     Tick,
 }
 
-async fn load_config() -> Result<config::MainConfig, String> {
-    let result = config::load_and_parse_config();
-    if let Err(err) = result {
-        return Err(format!("{:?}", err));
-    }
-    Ok(result.unwrap())
+async fn load_config() -> Result<(), String> {
+    config::MainConfig::reload_from_disk().map_err(|e| format!("reload from disk error: {}", e))?;
+    Ok(())
 }
 
 impl Application for Soundboard {
@@ -89,7 +86,6 @@ impl Application for Soundboard {
         let soundboard = Soundboard {
             sound_sender: flags.0,
             sound_receiver: flags.1,
-            config: config::MainConfig::default(),
             soundboard_button_states: Vec::new(),
             stop_button_state: button::State::new(),
             reload_button_state: button::State::new(),
@@ -101,6 +97,7 @@ impl Application for Soundboard {
             current_style: LayoutStyle::PanelView,
             hotkey_manager: hotkey::HotkeyManager::new(),
             current_state: SoundboardState::Loading,
+            current_sounds: Vec::new(),
         };
         (
             soundboard,
@@ -170,23 +167,22 @@ impl Application for Soundboard {
                 return Command::perform(load_config(), SoundboardMessage::LoadedData);
             }
             SoundboardMessage::LoadedData(result) => match result {
-                Ok(config_file) => {
-                    self.config = config_file;
-                    let mut soundboard_buttons = self.config.soundboards.iter().fold(
-                        Vec::<SoundboardButton>::new(),
-                        |mut buttons, soundboard| {
+                Ok(()) => {
+                    let mut soundboard_buttons = config::MainConfig::read()
+                        .soundboards
+                        .iter()
+                        .fold(Vec::<SoundboardButton>::new(), |mut buttons, soundboard| {
                             buttons.push(SoundboardButton {
                                 state: button::State::new(),
                                 name: soundboard.name.clone(),
                                 selected: false,
                             });
                             buttons
-                        },
-                    );
+                        });
                     soundboard_buttons[0].selected = true;
                     self.soundboard_button_states = soundboard_buttons;
                     self.update(SoundboardMessage::ShowSoundboard(
-                        self.config.soundboards[0].name.clone(),
+                        config::MainConfig::read().soundboards[0].name.clone(),
                     ));
                     self.current_state = SoundboardState::Loaded;
                 }
@@ -205,8 +201,8 @@ impl Application for Soundboard {
                 }
 
                 let stop_hotkey = {
-                    if self.config.stop_hotkey.is_some() {
-                        config::parse_hotkey(&self.config.stop_hotkey.as_ref().unwrap()).unwrap()
+                    if let Some(stop_key) = config::MainConfig::read().stop_hotkey.as_ref() {
+                        config::parse_hotkey(stop_key).unwrap()
                     } else {
                         config::Hotkey {
                             modifier: vec![config::Modifier::ALT],
@@ -221,22 +217,23 @@ impl Application for Soundboard {
                     error!("register hotkey failed {}", err);
                 }
                 let tx_clone = self.sound_sender.clone();
-                let sounds = self
-                    .config
+                self.current_sounds = config::MainConfig::read()
                     .soundboards
                     .iter()
                     .find(|s| s.name == name)
                     .unwrap()
                     .sounds
-                    .clone()
-                    .unwrap();
+                    .as_ref()
+                    .unwrap()
+                    .clone();
 
-                for sound in sounds.clone() {
+                for sound in &self.current_sounds {
                     if sound.hotkey.is_none() {
                         continue;
                     }
                     let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap();
                     let tx_clone = tx_clone.clone();
+                    let sound = sound.clone();
                     let _result = self.hotkey_manager.register(hotkey, move || {
                         if let Err(err) = tx_clone.send(sound::Message::PlaySound(
                             sound.clone(),
@@ -247,8 +244,8 @@ impl Application for Soundboard {
                     });
                 }
 
-                self.panel_view = panel_view::PanelView::new(&sounds);
-                self.list_view = list_view::ListView::new(&sounds);
+                self.panel_view = panel_view::PanelView::new(&self.current_sounds);
+                self.list_view = list_view::ListView::new(&self.current_sounds);
             }
             SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
                 if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
