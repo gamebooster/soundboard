@@ -455,6 +455,14 @@ pub async fn run(
     .or(warp::get().and(warp::fs::dir(web_path)))
     .recover(handle_rejection);
 
-    warp::serve(routes).run(([0, 0, 0, 0], 3030)).await;
+    let socket_addr: std::net::SocketAddr = {
+        if let Some(socket_addr) = &config::MainConfig::read().http_socket_addr {
+            socket_addr.parse().expect("Unable to parse socket address")
+        } else {
+            ([0, 0, 0, 0], 3030).into()
+        }
+    };
+
+    warp::serve(routes).run(socket_addr).await;
     unreachable!();
 }
