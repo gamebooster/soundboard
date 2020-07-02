@@ -145,7 +145,7 @@ pub fn run_sound_loop(
     );
 
     let ms_loop_device_clone = ms_loop_device.clone();
-    let _loop_back_device =
+    let loop_back_device =
         create_duplex_device(&context, ms_input_device, ms_loop_device_clone.unwrap())
             .expect("create duplex device failed");
 
@@ -155,6 +155,7 @@ pub fn run_sound_loop(
         sender,
         ms_loop_device.unwrap(),
         ms_output_device,
+        loop_back_device,
     );
 }
 
@@ -281,6 +282,7 @@ fn run_sound_message_loop(
     sender: crossbeam_channel::Sender<Message>,
     loop_device: miniaudio::DeviceIdAndName,
     output_device: Option<miniaudio::DeviceIdAndName>,
+    loopback_device: miniaudio::Device,
 ) -> ! {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
@@ -371,6 +373,11 @@ fn run_sound_message_loop(
         };
 
         sinks.retain(|_, (local_sinks, _, _)| local_sinks.iter().any(|s| !s.stopped()));
+        if !loopback_device.is_started() {
+            loopback_device
+                .start()
+                .expect("failed to start loopback device again");
+        }
     }
 }
 

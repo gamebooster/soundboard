@@ -80,6 +80,7 @@ impl MainConfig {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
         save_soundboard_config(&mut soundboard, true)?;
         let mut config: MainConfig = (*MainConfig::read()).clone();
