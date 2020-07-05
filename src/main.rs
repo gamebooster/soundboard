@@ -19,6 +19,9 @@ use iced::Settings;
 #[cfg(feature = "gui")]
 mod gui;
 
+#[cfg(feature = "terminal-ui")]
+mod tui;
+
 use std::process;
 
 #[cfg(feature = "http")]
@@ -190,6 +193,12 @@ fn try_main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
+
+    #[cfg(feature = "terminal-ui")]
+    {
+        tui::draw_terminal().ok();
+    }
+
     #[cfg(feature = "gui")]
     {
         if config::MainConfig::read().no_gui.unwrap_or_default() {
@@ -201,7 +210,8 @@ fn try_main() -> Result<()> {
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }
-    #[cfg(not(feature = "gui"))]
+
+    #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
     {
         no_gui_routine(gui_sender)?;
     }
