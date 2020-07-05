@@ -161,6 +161,34 @@ var app = new Vue({
                     this.reloadData();
                 });
         },
+        deleteSound: function (soundboard_id, sound_id) {
+            let soundboard = this.soundboards[soundboard_id];
+            let sound = soundboard.sounds[sound_id];
+
+            this.$buefy.dialog.confirm({
+                message: 'Remove sound <b>' + sound.name + "</b> from soundboard <b>" + soundboard.name + "</b>?",
+                type: 'is-danger',
+                onConfirm: () => {
+                    axios
+                        .delete('/api/soundboards/' + soundboard.id + '/sounds/' + sound_id)
+                        .then(response => {
+                            this.$buefy.toast.open({
+                                message: "deleteSound: " + soundboard.sounds[sound_id].name + " from " + soundboard.name,
+                                type: "is-success",
+                            });
+                            this.soundboards[soundboard_id].sounds.splice(sound_id, 1);
+                        }).catch(error => {
+                            this.$buefy.toast.open({
+                                duration: 5000,
+                                message: `Failed to delete sound from soundboard: ` + JSON.stringify(error.response.data.errors),
+                                position: 'is-top',
+                                type: 'is-danger'
+                            });
+                            this.reloadData();
+                        });
+                }
+            })
+        },
         updateSoundboard: function (soundboard_id) {
             let soundboard = this.soundboards[soundboard_id];
             axios

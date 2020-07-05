@@ -163,18 +163,22 @@ fn check_soundboard_index(
         })
 }
 
-fn check_sound_index(
-) -> impl Filter<Extract = ((config::SoundConfig, usize),), Error = Rejection> + Clone {
+fn check_sound_index() -> impl Filter<
+    Extract = ((config::SoundboardConfig, usize, config::SoundConfig, usize),),
+    Error = Rejection,
+> + Clone {
     check_soundboard_index()
         .and(warp::path("sounds"))
         .and(warp::path::param::<usize>())
         .and_then(
-            move |soundboard: (config::SoundboardConfig, _), index: usize| {
-                let maybe_sound = soundboard.0.sounds.as_ref().unwrap().get(index);
+            move |(soundboard, soundboard_index): (config::SoundboardConfig, usize),
+                  sound_index: usize| {
+                let maybe_sound = &soundboard.sounds.as_ref().unwrap().get(sound_index);
                 if let Some(sound) = maybe_sound {
-                    futures::future::ok((sound.clone(), index))
+                    let sound = (*sound).clone();
+                    futures::future::ok((soundboard, soundboard_index, sound, sound_index))
                 } else {
-                    futures::future::err(reject::custom(UnknownSoundError(index)))
+                    futures::future::err(reject::custom(UnknownSoundError(sound_index)))
                 }
             },
         )
@@ -349,16 +353,59 @@ pub async fn run(
     let soundboards_sounds_sound_route = check_sound_index()
         .and(warp::path::end())
         .and(warp::get())
-        .map(move |(sound, index): (config::SoundConfig, usize)| {
-            warp::reply::with_status(
-                warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
-                    name: sound.name.clone(),
-                    hotkey: sound.hotkey,
-                    id: index,
-                })),
-                warp::http::StatusCode::OK,
-            )
-        });
+        .map(
+            move |(_soundboard, _soundboard_index, sound, index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            )| {
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name.clone(),
+                        hotkey: sound.hotkey,
+                        id: index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
+    let soundboards_sounds_delete_sound_route = check_sound_index()
+        .and(warp::path::end())
+        .and(warp::delete())
+        .map(
+            move |(mut soundboard, soundboard_index, sound, sound_index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            )| {
+                soundboard.sounds.as_mut().unwrap().remove(sound_index);
+
+                if let Err(err) =
+                    config::MainConfig::change_soundboard(soundboard_index, soundboard)
+                {
+                    return warp::reply::with_status(
+                        warp::reply::json(&ResultErrors::with_error(
+                            "500",
+                            &"Internal Server Error",
+                            &format!("{}", err),
+                        )),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    );
+                }
+
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name,
+                        hotkey: sound.hotkey,
+                        id: sound_index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
 
     let gui_sender_clone = gui_sender.clone();
     let sounds_play_route = check_sound_index()
@@ -366,7 +413,13 @@ pub async fn run(
         .and(warp::post())
         .and(warp::body::json())
         .map(
-            move |(sound, _): (config::SoundConfig, usize), request: SoundPlayRequest| {
+            move |(_soundboard, _soundboard_index, sound, _): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            ),
+                  request: SoundPlayRequest| {
                 gui_sender_clone
                     .send(sound::Message::PlaySound(sound.clone(), request.devices))
                     .unwrap();
@@ -384,18 +437,25 @@ pub async fn run(
     let sounds_stop_route = check_sound_index()
         .and(warp::path!("stop"))
         .and(warp::post())
-        .map(move |(sound, _): (config::SoundConfig, usize)| {
-            gui_sender_clone
-                .send(sound::Message::StopSound(sound.clone()))
-                .unwrap();
-            warp::reply::with_status(
-                warp::reply::json(&ResultData::with_data(format!(
-                    "StopSound {:?}",
-                    &sound.path
-                ))),
-                warp::http::StatusCode::OK,
-            )
-        });
+        .map(
+            move |(_soundboard, _soundboard_index, sound, _sound_index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            )| {
+                gui_sender_clone
+                    .send(sound::Message::StopSound(sound.clone()))
+                    .unwrap();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(format!(
+                        "StopSound {:?}",
+                        &sound.path
+                    ))),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
 
     let gui_sender_clone = gui_sender.clone();
     let sounds_set_volume = warp::path!("sounds" / "volume")
@@ -486,7 +546,8 @@ pub async fn run(
 
     let soundboard_sound_routes = soundboards_sounds_route
         .or(soundboards_sounds_sound_route)
-        .or(soundboards_soundboard_add_sound_route);
+        .or(soundboards_soundboard_add_sound_route)
+        .or(soundboards_sounds_delete_sound_route);
 
     let sound_thread_routes = sounds_play_route
         .or(sounds_stop_route)
