@@ -1,0 +1,1 @@
+DROP TABLE soundboard_sound

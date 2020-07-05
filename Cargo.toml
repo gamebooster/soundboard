@@ -47,6 +47,10 @@ tokio = {version = "0.2", features = ["macros", "full"]}
 toml = "0.5"
 winit = "0.22"
 
+diesel = {version = "1.4", features = ["sqlite"]}
+diesel_migrations = {version = "1.4", features = ["sqlite"]}
+libsqlite3-sys = {version = ">=0.8.0, <0.19.0", features = ["bundled", "min_sqlite_version_3_7_16"]}
+
 fuzzy-matcher = {version = "0.3", optional = true}
 tgbot = {version = "0.10", optional = true}
 

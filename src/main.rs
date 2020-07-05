@@ -6,6 +6,13 @@ extern crate log;
 extern crate strum;
 extern crate strum_macros;
 
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
+
+diesel_migrations::embed_migrations!();
+
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 use std::panic;

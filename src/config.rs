@@ -23,6 +23,9 @@ use std::str::FromStr;
 use super::sound;
 use super::utils;
 
+mod schema;
+mod sqlite;
+
 use once_cell::sync::Lazy;
 
 type GlobalConfig = Lazy<std::sync::RwLock<std::sync::Arc<MainConfig>>>;
@@ -69,6 +72,9 @@ fn load_and_merge_config() -> Result<MainConfig> {
         &arguments,
         "print-possible-devices",
     );
+
+    sqlite::import_config(&config).context("failed to import config to sqlite")?;
+
     Ok(config)
 }
 
