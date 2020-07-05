@@ -6,6 +6,7 @@ use log::{error, info, trace, warn};
 use serde::Deserialize;
 use serde::Serialize;
 use std::convert::Infallible;
+use std::str::FromStr;
 use std::sync::Arc;
 use warp::http::StatusCode;
 use warp::{reject, Filter, Rejection, Reply};
@@ -540,6 +541,10 @@ pub async fn run(
     web_path.pop();
     web_path.push("web");
 
+    if std::env::var("SB_WEB_DEV").is_ok() {
+        web_path = std::path::PathBuf::from_str("web").unwrap();
+    }
+
     let soundboard_routes = soundboards_route
         .or(soundboards_soundboard_change_route)
         .or(soundboards_soundboard_route);
@@ -561,7 +566,7 @@ pub async fn run(
             .or(sound_thread_routes)
             .or(help_api),
     ))
-    .or(warp::get().and(warp::fs::dir("web")))
+    .or(warp::get().and(warp::fs::dir(web_path)))
     .recover(handle_rejection);
 
     let socket_addr: std::net::SocketAddr = {
