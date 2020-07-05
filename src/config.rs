@@ -478,6 +478,17 @@ fn load_and_parse_config() -> Result<MainConfig> {
     Ok(toml_config)
 }
 
+pub fn get_soundboard_sound_directory(soundboard_path: &Path) -> Result<PathBuf> {
+    let mut new_path = get_soundboards_path()?;
+    let stem: &str = soundboard_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default();
+    new_path.push(stem);
+    Ok(new_path)
+}
+
 fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String> {
     let relative_path = Path::new(sound_path);
     if sound_path.starts_with("http") {
@@ -489,13 +500,7 @@ fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String
         }
         return Ok(sound_path.to_string());
     }
-    let mut new_path = get_soundboards_path()?;
-    let stem: &str = soundboard_path
-        .file_stem()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default();
-    new_path.push(stem);
+    let mut new_path = get_soundboard_sound_directory(soundboard_path)?;
     new_path.push(relative_path);
 
     if !new_path.exists() || !new_path.is_file() {

@@ -10,6 +10,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use warp::http::StatusCode;
 use warp::{reject, Filter, Rejection, Reply};
+extern crate futures;
+use bytes::BufMut;
+use futures::{Future, Stream, TryFutureExt, TryStreamExt};
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct SoundPlayRequest {
@@ -305,6 +308,97 @@ pub async fn run(
             )
         });
 
+    type AddSoundMultipartResult = ((config::SoundboardConfig, usize), Vec<(String, Vec<u8>)>);
+
+    let soundboards_soundboard_add_sound_upload_route = check_soundboard_index()
+        .and(warp::path!("sounds"))
+        .and(warp::post())
+        .and(warp::multipart::form().max_length(1024 * 1024 * 30))
+        .and_then(
+            move |(soundboard, index), form: warp::multipart::FormData| async move {
+                // Collect the fields into (name, value): (String, Vec<u8>)
+                let part: Result<Vec<(String, Vec<u8>)>, warp::Rejection> = form
+                    .and_then(|part| {
+                        let name = part.name().to_string();
+                        let value = part.stream().try_fold(Vec::new(), |mut vec, data| {
+                            vec.put(data);
+                            async move { Ok(vec) }
+                        });
+                        value.map_ok(move |vec| (name, vec))
+                    })
+                    .try_collect()
+                    .await
+                    .map_err(|_| reject::reject());
+                let final_result: Result<AddSoundMultipartResult, warp::Rejection> = {
+                    if let Ok(part) = part {
+                        Ok(((soundboard, index), part))
+                    } else {
+                        Err(part.unwrap_err())
+                    }
+                };
+                final_result
+            },
+        )
+        .map(
+            move |((mut soundboard, index), uploads): AddSoundMultipartResult| {
+                let mut added_sounds = Vec::new();
+                for upload in uploads {
+                    info!("Received {} with size {}", upload.0, upload.1.len());
+
+                    let mut sound_path = config::get_soundboard_sound_directory(
+                        std::path::PathBuf::from_str(&soundboard.path)
+                            .unwrap()
+                            .as_path(),
+                    )
+                    .unwrap();
+                    if !&sound_path.exists() {
+                        std::fs::create_dir(&sound_path).expect("failed to create dir");
+                    }
+                    sound_path.push(upload.0.clone());
+
+                    info!("file_path {}", sound_path.display());
+
+                    if sound_path.exists() {
+                        continue;
+                    }
+
+                    std::fs::write(&sound_path, upload.1).expect("failed to write file");
+
+                    let sound_config = config::SoundConfig {
+                        name: upload.0,
+                        path: sound_path.to_str().unwrap().to_owned(),
+                        hotkey: None,
+                        headers: None,
+                        full_path: sound_path.to_str().unwrap().to_owned(),
+                    };
+
+                    added_sounds.push(StrippedSoundInfo {
+                        name: sound_config.name.clone(),
+                        hotkey: sound_config.hotkey.clone(),
+                        id: soundboard.sounds.as_ref().unwrap().len(),
+                    });
+
+                    soundboard.sounds.as_mut().unwrap().push(sound_config);
+                }
+
+                if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
+                    return warp::reply::with_status(
+                        warp::reply::json(&ResultErrors::with_error(
+                            "500",
+                            &"Internal Server Error",
+                            &format!("{}", err),
+                        )),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    );
+                }
+
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(added_sounds)),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
     let soundboards_soundboard_add_sound_route = check_soundboard_index()
         .and(warp::path!("sounds"))
         .and(warp::post())
@@ -551,6 +645,7 @@ pub async fn run(
 
     let soundboard_sound_routes = soundboards_sounds_route
         .or(soundboards_sounds_sound_route)
+        .or(soundboards_soundboard_add_sound_upload_route)
         .or(soundboards_soundboard_add_sound_route)
         .or(soundboards_sounds_delete_sound_route);
 

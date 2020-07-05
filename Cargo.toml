@@ -30,6 +30,7 @@ xm = ["libxm-soundboard"]
 
 [dependencies]
 anyhow = "1.0"
+bytes = "0.5"
 clap = "3.0.0-beta.1"
 crossbeam-channel = "0.4"
 dirs = "3"

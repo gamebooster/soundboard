@@ -104,6 +104,8 @@ var app = new Vue({
                     trapFocus: true,
                     onConfirm: (value) => { this.addSound(soundboard_id, value, text) }
                 });
+            } else if (event.clipboardData.files.length > 0) {
+                this.addSoundFromFiles(soundboard_id, event.clipboardData.files);
             } else {
                 this.$buefy.toast.open({
                     message: "addSoundFromPaste failed: unsupported data",
@@ -125,6 +127,8 @@ var app = new Vue({
                     trapFocus: true,
                     onConfirm: (value) => { this.addSound(soundboard_id, value, text) }
                 });
+            } else if (event.dataTransfer.files.length > 0) {
+                this.addSoundFromFiles(soundboard_id, event.dataTransfer.files);
             } else {
                 this.$buefy.toast.open({
                     message: "addSoundFromDrop failed: unsupported data",
@@ -132,6 +136,41 @@ var app = new Vue({
                 });
             }
             // console.debug(event.dataTransfer);
+        },
+        addSoundFromFiles: function (soundboard_id, files) {
+            let soundboard = this.soundboards[soundboard_id];
+            let data = new FormData();
+
+            for (var i = 0; i < files.length; i++) {
+                let file = files.item(i);
+                data.append(file.name, file, file.name);
+            }
+
+            const config = {
+                headers: { 'content-type': 'multipart/form-data' }
+            }
+
+            return axios.post('/api/soundboards/' + soundboard.id + '/sounds', data, config).then(response => {
+                response.data.data.forEach(element => {
+                    this.$buefy.toast.open({
+                        message: "addSound: " + element.name + " to " + soundboard.name,
+                        type: "is-success",
+                    });
+                    this.soundboards[soundboard_id].sounds.push({
+                        name: element.name,
+                        hotkey: element.hotkey,
+                        id: element.id
+                    });
+                });
+            }).catch(error => {
+                this.$buefy.toast.open({
+                    duration: 5000,
+                    message: `Failed to add sound to soundboard: ` + JSON.stringify(error.response.data.errors),
+                    position: 'is-top',
+                    type: 'is-danger'
+                });
+                this.reloadData();
+            });
         },
         addSound: function (soundboard_id, name, path) {
             let soundboard = this.soundboards[soundboard_id];
