@@ -136,14 +136,14 @@ fn try_main() -> Result<()> {
         )
     })?;
 
-    let sound_receiver_clone = sound_receiver;
-    let sound_sender_clone = sound_sender;
+    let gui_sender_clone = gui_sender.clone();
     let input_device_id_clone = config::MainConfig::read().input_device.clone();
     let output_device_id_clone = config::MainConfig::read().output_device.clone();
     let _sound_thread_handle = std::thread::spawn(move || {
         sound::run_sound_loop(
-            sound_receiver_clone,
-            sound_sender_clone,
+            sound_receiver,
+            sound_sender,
+            gui_sender_clone,
             input_device_id_clone,
             output_device_id_clone,
             loop_device_id,

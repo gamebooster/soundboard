@@ -65,8 +65,9 @@ struct PlayStatusResponse {
     sounds: Vec<StrippedSoundActiveInfo>,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 struct StrippedSoundActiveInfo {
+    status: sound::SoundStatus,
     name: String,
     hotkey: Option<String>,
     total_duration: f32,
@@ -581,11 +582,12 @@ pub async fn run(
                     let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
                     for sound in sounds {
                         sound_info.push(StrippedSoundActiveInfo {
-                            name: sound.0.name,
-                            hotkey: sound.0.hotkey,
-                            play_duration: sound.1.as_secs_f32(),
+                            status: sound.0,
+                            name: sound.1.name,
+                            hotkey: sound.1.hotkey,
+                            play_duration: sound.2.as_secs_f32(),
                             total_duration: sound
-                                .2
+                                .3
                                 .unwrap_or_else(|| std::time::Duration::from_secs(0))
                                 .as_secs_f32(),
                         })

@@ -5,6 +5,7 @@ use iced::{
 };
 
 use super::config;
+use super::sound;
 use super::style;
 use log::{error, info, trace, warn};
 
@@ -18,6 +19,7 @@ pub struct ListView {
     scroll_state: scrollable::State,
     buttons: Vec<SoundButton>,
     pub active_sounds: Vec<(
+        sound::SoundStatus,
         config::SoundConfig,
         std::time::Duration,
         Option<std::time::Duration>,
