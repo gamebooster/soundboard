@@ -91,6 +91,76 @@ var app = new Vue({
                 .post('/api/sounds/stopall')
                 .then(response => (this.lastRequestAnswer = response.data.data))
         },
+        addSoundFromPaste: function (soundboard_id, event) {
+            event.preventDefault();
+
+            let text = event.clipboardData.getData('text/plain');
+            if (isValidHttpUrl(text)) {
+                this.$buefy.dialog.prompt({
+                    message: `Please specify a name`,
+                    inputAttrs: {
+                        placeholder: 'e.g. Alarm sound'
+                    },
+                    trapFocus: true,
+                    onConfirm: (value) => { this.addSound(soundboard_id, value, text) }
+                });
+            } else {
+                this.$buefy.toast.open({
+                    message: "addSoundFromPaste failed: unsupported data",
+                    type: "is-danger",
+                });
+            }
+            // console.debug(event.clipboardData);
+        },
+        addSoundFromDrop: function (soundboard_id, event) {
+            event.preventDefault();
+
+            let text = event.dataTransfer.getData('text/plain');
+            if (isValidHttpUrl(text)) {
+                this.$buefy.dialog.prompt({
+                    message: `Please specify a name`,
+                    inputAttrs: {
+                        placeholder: 'e.g. Alarm sound'
+                    },
+                    trapFocus: true,
+                    onConfirm: (value) => { this.addSound(soundboard_id, value, text) }
+                });
+            } else {
+                this.$buefy.toast.open({
+                    message: "addSoundFromDrop failed: unsupported data",
+                    type: "is-danger",
+                });
+            }
+            // console.debug(event.dataTransfer);
+        },
+        addSound: function (soundboard_id, name, path) {
+            let soundboard = this.soundboards[soundboard_id];
+            axios
+                .post('/api/soundboards/' + soundboard.id + '/sounds', {
+                    name: name,
+                    hotkey: null,
+                    path: path
+                })
+                .then(response => {
+                    this.$buefy.toast.open({
+                        message: "addSound: " + response.data.data.name + " to " + soundboard.name,
+                        type: "is-success",
+                    });
+                    this.soundboards[soundboard_id].sounds.push({
+                        name: response.data.data.name,
+                        hotkey: response.data.data.hotkey,
+                        id: response.data.data.id
+                    });
+                }).catch(error => {
+                    this.$buefy.toast.open({
+                        duration: 5000,
+                        message: `Failed to add sound to soundboard: ` + JSON.stringify(error.response.data.errors),
+                        position: 'is-top',
+                        type: 'is-danger'
+                    });
+                    this.reloadData();
+                });
+        },
         updateSoundboard: function (soundboard_id) {
             let soundboard = this.soundboards[soundboard_id];
             axios
@@ -117,7 +187,14 @@ var app = new Vue({
     }
 });
 
-window.onkeydown = function (e) {
-    if (e.keyCode == 8 && e.target == document.body)
-        e.preventDefault();
+function isValidHttpUrl(string) {
+    let url;
+
+    try {
+        url = new URL(string);
+    } catch (_) {
+        return false;
+    }
+
+    return url.protocol === "http:" || url.protocol === "https:";
 }

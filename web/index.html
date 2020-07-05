@@ -83,7 +83,8 @@
             </div>
         </section>
         <div class="tile is-ancestor is-vertical">
-            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id">
+            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id" @dragover.prevent
+                @drop="addSoundFromDrop(soundboard.id, $event)" @paste="addSoundFromPaste(soundboard.id, $event)">
                 <div class="tile is-child box">
                     <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
                     </p>

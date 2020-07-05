@@ -300,6 +300,52 @@ pub async fn run(
             )
         });
 
+    let soundboards_soundboard_add_sound_route = check_soundboard_index()
+        .and(warp::path!("sounds"))
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(
+            move |(old_soundboard, index): (config::SoundboardConfig, usize),
+                  sound_add_request: SoundAddRequest| {
+                let mut new_soundboard = old_soundboard;
+
+                new_soundboard
+                    .sounds
+                    .as_mut()
+                    .unwrap()
+                    .push(config::SoundConfig {
+                        name: sound_add_request.name,
+                        path: sound_add_request.path.clone(),
+                        hotkey: sound_add_request.hotkey,
+                        headers: None,
+                        full_path: sound_add_request.path,
+                    });
+
+                if let Err(err) = config::MainConfig::change_soundboard(index, new_soundboard) {
+                    return warp::reply::with_status(
+                        warp::reply::json(&ResultErrors::with_error(
+                            "500",
+                            &"Internal Server Error",
+                            &format!("{}", err),
+                        )),
+                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    );
+                }
+                let main_config = config::MainConfig::read();
+                let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
+                let sound_index = sounds.len() - 1;
+                let sound = sounds[sound_index].clone();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name,
+                        hotkey: sound.hotkey,
+                        id: sound_index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
     let soundboards_sounds_sound_route = check_sound_index()
         .and(warp::path::end())
         .and(warp::get())
@@ -438,7 +484,9 @@ pub async fn run(
         .or(soundboards_soundboard_change_route)
         .or(soundboards_soundboard_route);
 
-    let soundboard_sound_routes = soundboards_sounds_route.or(soundboards_sounds_sound_route);
+    let soundboard_sound_routes = soundboards_sounds_route
+        .or(soundboards_sounds_sound_route)
+        .or(soundboards_soundboard_add_sound_route);
 
     let sound_thread_routes = sounds_play_route
         .or(sounds_stop_route)
@@ -452,7 +500,7 @@ pub async fn run(
             .or(sound_thread_routes)
             .or(help_api),
     ))
-    .or(warp::get().and(warp::fs::dir(web_path)))
+    .or(warp::get().and(warp::fs::dir("web")))
     .recover(handle_rejection);
 
     let socket_addr: std::net::SocketAddr = {
