@@ -5,7 +5,6 @@ use hotkey_soundboard::Listener;
 use hotkey_soundboard::ListenerID;
 use log::{error, info, trace, warn};
 use std::collections::HashMap;
-use std::sync::Mutex;
 
 pub struct HotkeyManager {
     listener: Listener,

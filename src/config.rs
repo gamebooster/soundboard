@@ -25,11 +25,11 @@ use super::utils;
 
 use once_cell::sync::Lazy;
 
-type GlobalConfig = Lazy<std::sync::RwLock<std::sync::Arc<MainConfig>>>;
+type GlobalConfig = Lazy<parking_lot::RwLock<std::sync::Arc<MainConfig>>>;
 
 static GLOBAL_CONFIG: GlobalConfig = Lazy::new(|| {
     let config = load_and_merge_config().expect("failed to load and merge config");
-    std::sync::RwLock::new(std::sync::Arc::new(config))
+    parking_lot::RwLock::new(std::sync::Arc::new(config))
 });
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
@@ -74,11 +74,11 @@ fn load_and_merge_config() -> Result<MainConfig> {
 
 impl MainConfig {
     pub fn read() -> std::sync::Arc<MainConfig> {
-        GLOBAL_CONFIG.read().unwrap().clone()
+        GLOBAL_CONFIG.read().clone()
     }
 
     pub fn reload_from_disk() -> Result<()> {
-        *GLOBAL_CONFIG.write().unwrap() = std::sync::Arc::new(load_and_merge_config()?);
+        *GLOBAL_CONFIG.write() = std::sync::Arc::new(load_and_merge_config()?);
         Ok(())
     }
 
@@ -86,7 +86,7 @@ impl MainConfig {
     pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
         save_soundboard_config(&mut soundboard, true)?;
         let mut config: MainConfig = (*MainConfig::read()).clone();
-        let mut writer = GLOBAL_CONFIG.write().unwrap();
+        let mut writer = GLOBAL_CONFIG.write();
         config.soundboards.push(soundboard);
         *writer = std::sync::Arc::new(config);
         Ok(())
@@ -98,7 +98,7 @@ impl MainConfig {
         }
         save_soundboard_config(&mut soundboard, false)?;
         let mut config: MainConfig = (*MainConfig::read()).clone();
-        let mut writer = GLOBAL_CONFIG.write().unwrap();
+        let mut writer = GLOBAL_CONFIG.write();
         config.soundboards[index] = soundboard;
         *writer = std::sync::Arc::new(config);
         Ok(())

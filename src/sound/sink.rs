@@ -7,7 +7,6 @@ use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use super::sample::Sample;
@@ -24,8 +23,9 @@ struct ConverterWrapper(pub miniaudio::DataConverter);
 unsafe impl Sync for ConverterWrapper {}
 unsafe impl Send for ConverterWrapper {}
 
-type SourcesType<T, S> =
-    std::sync::Arc<std::sync::Mutex<HashMap<T, Vec<(S, VecDeque<i16>, Option<ConverterWrapper>)>>>>;
+type SourcesType<T, S> = std::sync::Arc<
+    parking_lot::Mutex<HashMap<T, Vec<(S, VecDeque<i16>, Option<ConverterWrapper>)>>>,
+>;
 
 pub struct Sink<T, S>
 where
@@ -68,7 +68,7 @@ where
 
         device_config.set_data_callback(move |device, output, _input| {
             let mut remove_keys = Vec::new();
-            let mut unlocked = hash_map_clone.lock().unwrap();
+            let mut unlocked = hash_map_clone.lock();
 
             for (key, sources) in unlocked.iter_mut() {
                 for (source, buffer, resampler) in sources {
@@ -174,7 +174,7 @@ where
     }
 
     pub fn play(&mut self, key: T, source: S) {
-        let mut unlocked = self.sources.lock().unwrap();
+        let mut unlocked = self.sources.lock();
         match unlocked.entry(key) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 let entry = entry.get_mut();
@@ -187,12 +187,12 @@ where
     }
 
     pub fn remove(&mut self, key: &T) {
-        let mut unlocked = self.sources.lock().unwrap();
+        let mut unlocked = self.sources.lock();
         unlocked.remove(key);
     }
 
     pub fn is_playing(&mut self, key: &T) -> bool {
-        let unlocked = self.sources.lock().unwrap();
+        let unlocked = self.sources.lock();
         unlocked.contains_key(&key)
     }
 
