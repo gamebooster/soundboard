@@ -103,13 +103,12 @@ where
                 return Some(real_val as i16);
             }
 
-            // Load the next block.
-            self.current_block_off = 0;
             let buffer = mem::replace(&mut self.current_block, Vec::new());
             match self.reader.blocks().read_next_or_eof(buffer) {
                 Ok(Some(block)) => {
                     self.current_block_channel_len = (block.len() / block.channels()) as usize;
                     self.current_block = block.into_buffer();
+                    self.current_block_off = 0;
                 }
                 _ => return None,
             }

@@ -10,7 +10,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use super::sample::CpalSample;
 use super::sample::Sample;
 use super::source::Source;
 use std::collections::HashMap;
