@@ -81,6 +81,8 @@ soundboard encountered an fatal error:
         error!(FATAL_ERROR_MESSAGE!(), err, "No location");
         std::process::exit(1);
     }
+
+    tui::quit_terminal_ui().ok();
     info!("Auf Wiedersehen!");
 }
 
