@@ -90,6 +90,7 @@ where
                             ));
                         }
                         let mut old_samples: Vec<i16> = Vec::with_capacity(output.sample_count());
+                        let mut filled_count = 0;
                         for _ in 0..output.sample_count() {
                             if let Some(item) = buffer.pop_front() {
                                 old_samples.push(item);
@@ -99,7 +100,7 @@ where
                             if let Some(next) = next {
                                 old_samples.push(next.to_i16());
                             } else {
-                                remove_keys.push(key.clone());
+                                filled_count = output.sample_count() - old_samples.len();
                                 old_samples.resize(output.sample_count() as usize, 0);
                                 break;
                             }
@@ -133,8 +134,12 @@ where
                         for item in old_samples
                             .iter()
                             .skip((input_frame_count * source.channels() as u64) as usize)
+                            .skip(filled_count)
                         {
                             buffer.push_back(*item);
+                        }
+                        if filled_count > 0 && buffer.is_empty() {
+                            remove_keys.push(key.clone());
                         }
                     } else {
                         for item in output.as_samples_mut::<i16>() {
