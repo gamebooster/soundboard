@@ -63,7 +63,10 @@
                                     {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }} /
                                     {{ new Date(sound.total_duration * 1000).toISOString().substr(14, 5)  }}
                                 </b-progress>
-                                <b-progress v-else>
+                                <b-progress v-else-if="sound.status === 'Downloading'" size="is-medium" show-value>
+                                    Downloading
+                                </b-progress>
+                                <b-progress v-else show-value>
                                     {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }}</b-progress>
                             </div>
                         </div>

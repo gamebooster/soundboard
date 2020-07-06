@@ -65,8 +65,9 @@ struct PlayStatusResponse {
     sounds: Vec<StrippedSoundActiveInfo>,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 struct StrippedSoundActiveInfo {
+    status: sound::SoundStatus,
     name: String,
     hotkey: Option<String>,
     total_duration: f32,
@@ -108,6 +109,17 @@ impl ResultErrors {
     }
 }
 
+fn format_json_error<T: std::fmt::Display>(err: T) -> warp::reply::WithStatus<warp::reply::Json> {
+    warp::reply::with_status(
+        warp::reply::json(&ResultErrors::with_error(
+            "500",
+            &"Internal Server Error",
+            &format!("{:#}", err),
+        )),
+        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
+    )
+}
+
 #[derive(Debug)]
 struct UnknownSoundboardError(usize);
 impl reject::Reject for UnknownSoundboardError {}
@@ -115,6 +127,10 @@ impl reject::Reject for UnknownSoundboardError {}
 #[derive(Debug)]
 struct UnknownSoundError(usize);
 impl reject::Reject for UnknownSoundError {}
+
+#[derive(Debug)]
+struct UnknownServerError(String);
+impl reject::Reject for UnknownServerError {}
 
 // This function receives a `Rejection` and tries to return a custom
 // value, otherwise simply passes the rejection along.
@@ -134,6 +150,10 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
         code = StatusCode::NOT_FOUND;
         title = "UnknownSoundError";
         detail = format!("no sound at index {}", unknown_sound_error.0);
+    } else if let Some(unknown_sound_error) = err.find::<UnknownServerError>() {
+        code = StatusCode::INTERNAL_SERVER_ERROR;
+        title = "UnknownServerError";
+        detail = unknown_sound_error.0.clone();
     } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         title = "MethodNotAllowed";
@@ -141,6 +161,7 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Infallible> {
         eprintln!("unhandled rejection: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
         title = "InternalServerError";
+        detail = format!("{:#?}", err);
     }
 
     let json = warp::reply::json(&ResultErrors::with_error(
@@ -198,14 +219,7 @@ pub async fn run(
 
         if let Err(err) = config::MainConfig::reload_from_disk() {
             error!("{:#}", err);
-            return warp::reply::with_status(
-                warp::reply::json(&ResultErrors::with_error(
-                    "500",
-                    &"Internal Server Error",
-                    &format!("{:#}", err),
-                )),
-                warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-            );
+            return format_json_error(err);
         }
 
         for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
@@ -262,14 +276,7 @@ pub async fn run(
                 }
 
                 if let Err(err) = config::MainConfig::change_soundboard(index, new_soundboard) {
-                    return warp::reply::with_status(
-                        warp::reply::json(&ResultErrors::with_error(
-                            "500",
-                            &"Internal Server Error",
-                            &format!("{}", err),
-                        )),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    );
+                    return format_json_error(err);
                 }
                 let soundboard = &config::MainConfig::read().soundboards[index];
                 warp::reply::with_status(
@@ -313,7 +320,7 @@ pub async fn run(
     let soundboards_soundboard_add_sound_upload_route = check_soundboard_index()
         .and(warp::path!("sounds"))
         .and(warp::post())
-        .and(warp::multipart::form().max_length(1024 * 1024 * 30))
+        .and(warp::multipart::form().max_length(1024 * 1024 * 100))
         .and_then(
             move |(soundboard, index), form: warp::multipart::FormData| async move {
                 // Collect the fields into (name, value): (String, Vec<u8>)
@@ -328,7 +335,9 @@ pub async fn run(
                     })
                     .try_collect()
                     .await
-                    .map_err(|_| reject::reject());
+                    .map_err(|e| {
+                        reject::custom(UnknownServerError(format!("unknown multipart err {}", e)))
+                    });
                 let final_result: Result<AddSoundMultipartResult, warp::Rejection> = {
                     if let Ok(part) = part {
                         Ok(((soundboard, index), part))
@@ -342,8 +351,8 @@ pub async fn run(
         .map(
             move |((mut soundboard, index), uploads): AddSoundMultipartResult| {
                 let mut added_sounds = Vec::new();
-                for upload in uploads {
-                    info!("Received {} with size {}", upload.0, upload.1.len());
+                for (upload_name, upload_data) in uploads {
+                    trace!("Received {} with size {}", upload_name, upload_data.len());
 
                     let mut sound_path = config::get_soundboard_sound_directory(
                         std::path::PathBuf::from_str(&soundboard.path)
@@ -352,21 +361,25 @@ pub async fn run(
                     )
                     .unwrap();
                     if !&sound_path.exists() {
-                        std::fs::create_dir(&sound_path).expect("failed to create dir");
+                        if let Err(err) = std::fs::create_dir(&sound_path) {
+                            return format_json_error(err);
+                        }
                     }
-                    sound_path.push(upload.0.clone());
+                    sound_path.push(upload_name.clone());
 
-                    info!("file_path {}", sound_path.display());
+                    trace!("file_path {}", sound_path.display());
 
                     if sound_path.exists() {
                         continue;
                     }
 
-                    std::fs::write(&sound_path, upload.1).expect("failed to write file");
+                    if let Err(err) = std::fs::write(&sound_path, upload_data) {
+                        return format_json_error(err);
+                    }
 
                     let sound_config = config::SoundConfig {
-                        name: upload.0,
-                        path: sound_path.to_str().unwrap().to_owned(),
+                        name: upload_name.clone(),
+                        path: upload_name,
                         hotkey: None,
                         headers: None,
                         full_path: sound_path.to_str().unwrap().to_owned(),
@@ -382,14 +395,7 @@ pub async fn run(
                 }
 
                 if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
-                    return warp::reply::with_status(
-                        warp::reply::json(&ResultErrors::with_error(
-                            "500",
-                            &"Internal Server Error",
-                            &format!("{}", err),
-                        )),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    );
+                    return format_json_error(err);
                 }
 
                 warp::reply::with_status(
@@ -421,14 +427,7 @@ pub async fn run(
                     });
 
                 if let Err(err) = config::MainConfig::change_soundboard(index, new_soundboard) {
-                    return warp::reply::with_status(
-                        warp::reply::json(&ResultErrors::with_error(
-                            "500",
-                            &"Internal Server Error",
-                            &format!("{}", err),
-                        )),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    );
+                    return format_json_error(err);
                 }
                 let main_config = config::MainConfig::read();
                 let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
@@ -481,14 +480,7 @@ pub async fn run(
                 if let Err(err) =
                     config::MainConfig::change_soundboard(soundboard_index, soundboard)
                 {
-                    return warp::reply::with_status(
-                        warp::reply::json(&ResultErrors::with_error(
-                            "500",
-                            &"Internal Server Error",
-                            &format!("{}", err),
-                        )),
-                        warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                    );
+                    return format_json_error(err);
                 }
 
                 warp::reply::with_status(
@@ -590,11 +582,12 @@ pub async fn run(
                     let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
                     for sound in sounds {
                         sound_info.push(StrippedSoundActiveInfo {
-                            name: sound.0.name,
-                            hotkey: sound.0.hotkey,
-                            play_duration: sound.1.as_secs_f32(),
+                            status: sound.0,
+                            name: sound.1.name,
+                            hotkey: sound.1.hotkey,
+                            play_duration: sound.2.as_secs_f32(),
                             total_duration: sound
-                                .2
+                                .3
                                 .unwrap_or_else(|| std::time::Duration::from_secs(0))
                                 .as_secs_f32(),
                         })
@@ -608,22 +601,8 @@ pub async fn run(
                         warp::http::StatusCode::OK,
                     )
                 }
-                Err(err) => warp::reply::with_status(
-                    warp::reply::json(&ResultErrors::with_error(
-                        "500",
-                        &"Internal Server Error",
-                        &format!("{}", err),
-                    )),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                ),
-                _ => warp::reply::with_status(
-                    warp::reply::json(&ResultErrors::with_error(
-                        "500",
-                        &"Internal Server Error",
-                        &"",
-                    )),
-                    warp::http::StatusCode::INTERNAL_SERVER_ERROR,
-                ),
+                Err(err) => format_json_error(err),
+                _ => format_json_error("unknown error"),
             }
         });
 

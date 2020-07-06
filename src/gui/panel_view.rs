@@ -5,12 +5,14 @@ use iced::{
 };
 
 use super::config;
+use super::sound;
 use super::style;
 use log::{error, info, trace, warn};
 
 pub struct PanelView {
     panes: pane_grid::State<PanelButtonView>,
     pub active_sounds: Vec<(
+        sound::SoundStatus,
         config::SoundConfig,
         std::time::Duration,
         Option<std::time::Duration>,
@@ -82,11 +84,12 @@ impl PanelView {
         self.panes.iter_mut().for_each(|(_, state)| {
             if let Some(sound) = sounds
                 .iter()
-                .find(|(s, _, _)| s.path == state.sound_button.config.path)
+                .find(|(_, s, _, _)| s.path == state.sound_button.config.path)
             {
                 state.playing = true;
-                state.play_duration = sound.1;
-                state.total_duration = sound.2.unwrap_or_else(|| std::time::Duration::from_secs(0));
+                state.status = sound.0;
+                state.play_duration = sound.2;
+                state.total_duration = sound.3.unwrap_or_else(|| std::time::Duration::from_secs(0));
             } else {
                 state.playing = false;
             }
@@ -115,6 +118,7 @@ struct PanelButtonView {
     stop_button_state: button::State,
     background_color: iced::Color,
     pub playing: bool,
+    pub status: sound::SoundStatus,
     pub play_duration: std::time::Duration,
     pub total_duration: std::time::Duration,
 }
@@ -130,6 +134,7 @@ impl PanelButtonView {
             stop_button_state: button::State::new(),
             background_color: iced::Color::from_rgb(0.2, 0.8, 0.2),
             playing: false, //iced::Color::from_rgb((random_color[0] as f32) / 255.0, (random_color[1] as f32) / 255.0, (random_color[2] as f32) / 255.0)
+            status: sound::SoundStatus::Downloading,
         }
     }
     fn view(
@@ -189,13 +194,21 @@ impl PanelButtonView {
             .width(Length::Fill)
             .height(Length::FillPortion(3));
 
-            Column::new()
+            let mut column = Column::new()
                 .spacing(0)
                 .align_items(Align::Center)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .push(button_play)
-                .push(progress_bar)
+                .push(button_play);
+            if self.status == sound::SoundStatus::Playing {
+                column = column.push(progress_bar);
+            } else {
+                column = column.push(
+                    Text::new("Downloading")
+                        .horizontal_alignment(iced::HorizontalAlignment::Center),
+                );
+            }
+            column
                 .push(
                     Button::new(
                         &mut self.stop_button_state,
