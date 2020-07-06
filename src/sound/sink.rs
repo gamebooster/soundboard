@@ -1,7 +1,8 @@
 // Initial version from Rodio APACHE LICENSE 2.0
 
-use anyhow::{anyhow, Result};
-use miniaudio::{Device, DeviceConfig, DeviceId, DeviceType};
+use anyhow::{anyhow, Context, Result};
+use log::{error, info, trace, warn};
+use miniaudio::{Device, DeviceConfig, DeviceId, DeviceType, Frames, FramesMut};
 use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::mpsc::Receiver;
@@ -12,55 +13,146 @@ use std::time::Duration;
 use super::sample::CpalSample;
 use super::sample::Sample;
 use super::source::Source;
+use std::collections::HashMap;
+use std::collections::VecDeque;
 
 /// Handle to an device that outputs sounds.
 ///
 /// Dropping the `Sink` stops all sounds.
 
-pub struct Sink {
+struct ConverterWrapper(pub miniaudio::DataConverter);
+
+unsafe impl Sync for ConverterWrapper {}
+unsafe impl Send for ConverterWrapper {}
+
+type SourcesType<T, S> =
+    std::sync::Arc<std::sync::Mutex<HashMap<T, Vec<(S, VecDeque<i16>, Option<ConverterWrapper>)>>>>;
+
+pub struct Sink<T, S>
+where
+    S: Source + Send + Sync + 'static,
+    S::Item: Sample,
+    S::Item: Send,
+    T: std::cmp::Eq,
+    T: std::hash::Hash,
+{
     device: miniaudio::Device,
     stopped: Arc<AtomicBool>,
+    sources: SourcesType<T, S>,
 }
 
-impl Sink {
+impl<T, S> Sink<T, S>
+where
+    S: Source + Send + Sync + 'static,
+    S::Item: Sample,
+    S::Item: Send,
+    T: std::cmp::Eq,
+    T: std::hash::Hash,
+    T: Clone + Send + 'static,
+    T: std::fmt::Debug,
+{
     /// Builds a new `Sink`
     #[inline]
-    pub fn new<S>(
+    pub fn new(
         context: &miniaudio::Context,
-        source: S,
         device_id: Option<miniaudio::DeviceId>,
-    ) -> Result<Sink>
-    where
-        S: Source + Send + Sync + 'static,
-        S::Item: Sample,
-        S::Item: Send,
-    {
+    ) -> Result<Self> {
         let mut device_config = miniaudio::DeviceConfig::new(DeviceType::Playback);
         device_config.playback_mut().set_device_id(device_id);
-        device_config.set_sample_rate(source.sample_rate());
-        device_config
-            .playback_mut()
-            .set_channels(source.channels() as u32);
         device_config
             .playback_mut()
             .set_format(miniaudio::Format::S16);
 
-        let stopped = Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let stopped_clone = Arc::clone(&stopped);
-        let source_arc = Arc::new(std::sync::Mutex::new(source));
-        device_config.set_data_callback(move |_device, output, _input| {
-            let stopped = stopped_clone.load(std::sync::atomic::Ordering::Relaxed);
-            if stopped {
-                return;
+        let hash_map = SourcesType::<T, S>::default();
+        let hash_map_clone = hash_map.clone();
+        let stopped = Arc::new(AtomicBool::new(false));
+
+        device_config.set_data_callback(move |device, output, _input| {
+            let mut remove_keys = Vec::new();
+            let mut unlocked = hash_map_clone.lock().unwrap();
+
+            for (key, sources) in unlocked.iter_mut() {
+                for (source, buffer, resampler) in sources {
+                    if source.sample_rate() != device.sample_rate()
+                        || source.channels() != output.channels() as u16
+                    {
+                        if resampler.is_none() {
+                            let config = miniaudio::DataConverterConfig::new(
+                                miniaudio::Format::S16,
+                                miniaudio::Format::S16,
+                                source.channels() as u32,
+                                output.channels(),
+                                source.sample_rate(),
+                                device.sample_rate(),
+                            );
+                            *resampler = Some(ConverterWrapper(
+                                miniaudio::DataConverter::new(&config).unwrap(),
+                            ));
+                        }
+                        let mut old_samples: Vec<i16> = Vec::with_capacity(output.sample_count());
+                        for _ in 0..output.sample_count() {
+                            if let Some(item) = buffer.pop_front() {
+                                old_samples.push(item);
+                                continue;
+                            }
+                            let next = source.next();
+                            if let Some(next) = next {
+                                old_samples.push(next.to_i16());
+                            } else {
+                                remove_keys.push(key.clone());
+                                old_samples.resize(output.sample_count() as usize, 0);
+                                break;
+                            }
+                        }
+                        let mut new_samples_mut: Vec<i16> = vec![0; output.sample_count()];
+                        let (_output_frame_count, input_frame_count) = resampler
+                            .as_mut()
+                            .unwrap()
+                            .0
+                            .process_pcm_frames(
+                                &mut FramesMut::wrap(
+                                    &mut new_samples_mut,
+                                    output.format(),
+                                    output.channels() as u32,
+                                ),
+                                &Frames::wrap(
+                                    &old_samples,
+                                    miniaudio::Format::S16,
+                                    source.channels() as u32,
+                                ),
+                            )
+                            .expect("resampling failed");
+                        let mut iterator = new_samples_mut.iter();
+                        for item in output.as_samples_mut::<i16>() {
+                            if let Some(value) = iterator.next() {
+                                *item = item.saturating_add(*value);
+                            } else {
+                                break;
+                            }
+                        }
+                        for item in old_samples
+                            .iter()
+                            .skip((input_frame_count * source.channels() as u64) as usize)
+                        {
+                            buffer.push_back(*item);
+                        }
+                    } else {
+                        for item in output.as_samples_mut::<i16>() {
+                            if let Some(value) = source.next() {
+                                *item = item.saturating_add(value.to_i16());
+                            } else {
+                                remove_keys.push(key.clone());
+                                break;
+                            }
+                        }
+                    }
+                }
             }
-            let mut unlocked_source = source_arc.lock().unwrap();
-            for sample in output.as_samples_mut() {
-                let next = unlocked_source.next();
-                if let Some(next) = next {
-                    *sample = next.to_i16();
-                } else {
-                    stopped_clone.store(true, std::sync::atomic::Ordering::Relaxed);
-                    break;
+            for key in &remove_keys {
+                let entry: &mut Vec<_> = unlocked.get_mut(key).unwrap();
+                entry.remove(0);
+                if entry.is_empty() {
+                    unlocked.remove(key);
                 }
             }
         });
@@ -69,8 +161,35 @@ impl Sink {
             stopped_clone.store(true, std::sync::atomic::Ordering::Relaxed);
         });
         let device = miniaudio::Device::new(Some(context.clone()), &device_config)
-            .expect("could not create device");
-        Ok(Sink { device, stopped })
+            .expect("failed to create miniaudio device");
+        Ok(Sink {
+            device,
+            stopped,
+            sources: hash_map,
+        })
+    }
+
+    pub fn play(&mut self, key: T, source: S) {
+        let mut unlocked = self.sources.lock().unwrap();
+        match unlocked.entry(key) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                let entry = entry.get_mut();
+                entry.push((source, VecDeque::new(), None));
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(vec![(source, VecDeque::new(), None)]);
+            }
+        }
+    }
+
+    pub fn remove(&mut self, key: &T) {
+        let mut unlocked = self.sources.lock().unwrap();
+        unlocked.remove(key);
+    }
+
+    pub fn is_playing(&mut self, key: &T) -> bool {
+        let unlocked = self.sources.lock().unwrap();
+        unlocked.contains_key(&key)
     }
 
     /// Gets the volume of the sound.
@@ -109,6 +228,7 @@ impl Sink {
 
     /// Stops the sink
     #[inline]
+    #[allow(dead_code)]
     pub fn stop(&self) -> Result<()> {
         self.stopped
             .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -123,10 +243,6 @@ impl Sink {
     /// Is the sink stopped
     #[inline]
     pub fn stopped(&self) -> bool {
-        let stopped = self.stopped.load(std::sync::atomic::Ordering::Relaxed);
-        if stopped {
-            self.stop().expect("could not stop device");
-        }
-        stopped
+        self.stopped.load(std::sync::atomic::Ordering::Relaxed)
     }
 }

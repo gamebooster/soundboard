@@ -195,7 +195,7 @@ impl std::hash::Hash for SoundKey {
 }
 
 type StartedTime = std::time::Instant;
-type SoundMap = HashMap<SoundKey, (SoundStatus, Vec<Sink>, StartedTime, Option<TotalDuration>)>;
+type SoundMap = HashMap<SoundKey, (SoundStatus, StartedTime, Option<TotalDuration>)>;
 
 #[derive(
     Debug,
@@ -217,7 +217,7 @@ pub enum SoundDevices {
 type PlayDuration = std::time::Duration;
 type TotalDuration = std::time::Duration;
 
-#[derive(Debug, PartialEq, serde::Deserialize, Copy, Clone, serde::Serialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, Copy, Clone, serde::Serialize)]
 pub enum SoundStatus {
     Downloading,
     Playing,
@@ -242,11 +242,10 @@ pub enum Message {
 }
 
 fn insert_sink_with_config(
-    context: &Context,
     resolved_local_path: &std::path::Path,
     device: Option<miniaudio::DeviceIdAndName>,
+    sink: &mut SinkDecoder,
     sound_config: config::SoundConfig,
-    volume: f32,
     sinks: &mut SoundMap,
 ) -> Result<()> {
     let device_name = {
@@ -265,29 +264,19 @@ fn insert_sink_with_config(
     let mut decoder = Decoder::new(file)?;
     let mut file = std::fs::File::open(&resolved_local_path)?;
     let total_duration = decoder.total_duration_mut(&mut file);
-    let device_id = {
-        if let Some(device) = device {
-            Some(device.id().clone())
-        } else {
-            None
-        }
-    };
-    let sink = Sink::new(context, decoder, device_id)?;
-    sink.set_volume(volume)?;
-    sink.start()?;
+
+    sink.play(sound_config.clone().into(), decoder);
 
     match sinks.entry(sound_config.into()) {
         std::collections::hash_map::Entry::Occupied(mut entry) => {
             let entry = entry.get_mut();
             entry.0 = SoundStatus::Playing;
-            entry.1.push(sink);
-            entry.2 = std::time::Instant::now();
-            entry.3 = total_duration;
+            entry.1 = std::time::Instant::now();
+            entry.2 = total_duration;
         }
         std::collections::hash_map::Entry::Vacant(entry) => {
             entry.insert((
                 SoundStatus::Playing,
-                vec![sink],
                 std::time::Instant::now(),
                 total_duration,
             ));
@@ -295,6 +284,8 @@ fn insert_sink_with_config(
     }
     Ok(())
 }
+
+type SinkDecoder = Sink<SoundKey, Decoder<std::fs::File>>;
 
 fn run_sound_message_loop(
     context: Context,
@@ -307,6 +298,24 @@ fn run_sound_message_loop(
 ) -> ! {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
+
+    let output_device_id = {
+        if let Some(device) = output_device.clone() {
+            Some(device.id().clone())
+        } else {
+            None
+        }
+    };
+
+    let mut output_sink =
+        SinkDecoder::new(&context, output_device_id).expect("failed to create output sink");
+    output_sink.start().expect("failed to start output_sink");
+
+    let mut loopback_sink = SinkDecoder::new(&context, Some(loop_device.id().clone()))
+        .expect("failed to create output sink");
+    loopback_sink
+        .start()
+        .expect("failed to start loopback_sink");
 
     loop {
         match sound_receiver.recv() {
@@ -330,7 +339,6 @@ fn run_sound_message_loop(
                             std::collections::hash_map::Entry::Vacant(entry) => {
                                 entry.insert((
                                     SoundStatus::Downloading,
-                                    vec![],
                                     std::time::Instant::now(),
                                     None,
                                 ));
@@ -361,11 +369,10 @@ fn run_sound_message_loop(
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
                         match insert_sink_with_config(
-                            &context,
                             &local_path,
                             output_device.clone(),
+                            &mut output_sink,
                             sound_config.clone(),
-                            volume,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -377,11 +384,10 @@ fn run_sound_message_loop(
                     }
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
                         match insert_sink_with_config(
-                            &context,
                             &local_path,
                             Some(loop_device.clone()),
+                            &mut loopback_sink,
                             sound_config,
-                            volume,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -393,32 +399,29 @@ fn run_sound_message_loop(
                     }
                 }
                 Message::StopSound(sound_handle) => {
-                    if let Some((_, vec, _, _)) = sinks.remove(&sound_handle.into()) {
-                        for sink in vec {
-                            drop(sink);
-                        }
+                    if let Some((_, _, _)) = sinks.remove(&sound_handle.clone().into()) {
+                        output_sink.remove(&sound_handle.clone().into());
+                        loopback_sink.remove(&sound_handle.into());
                     };
                 }
                 Message::StopAll => {
-                    for (_, tuple) in sinks.drain() {
-                        for sink in tuple.1 {
-                            drop(sink);
-                        }
+                    for (key, _) in sinks.drain() {
+                        output_sink.remove(&key);
+                        loopback_sink.remove(&key);
                     }
                 }
                 Message::SetVolume(volume_new) => {
                     volume = volume_new;
-                    for (_, tuple) in sinks.iter_mut() {
-                        for sink in &mut tuple.1 {
-                            if let Err(err) = sink.set_volume(volume) {
-                                error!("could not set master volume {}", err);
-                            }
-                        }
-                    }
+                    output_sink
+                        .set_volume(volume)
+                        .expect("failed to set volume");
+                    loopback_sink
+                        .set_volume(volume)
+                        .expect("failed to set volume");
                 }
                 Message::PlayStatus(_, _) => {
                     let mut sounds = Vec::new();
-                    for (id, (status, _, instant, total_duration)) in sinks.iter() {
+                    for (id, (status, instant, total_duration)) in sinks.iter() {
                         sounds.push((
                             *status,
                             config::SoundConfig {
@@ -441,10 +444,21 @@ fn run_sound_message_loop(
                 error!("message receive error {}", err);
             }
         };
-
-        sinks.retain(|_, (status, local_sinks, _, _)| {
-            *status == SoundStatus::Downloading || local_sinks.iter().any(|s| !s.stopped())
+        sinks.retain(|key, (status, _, _)| {
+            *status == SoundStatus::Downloading
+                || output_sink.is_playing(&key)
+                || loopback_sink.is_playing(&key)
         });
+        if loopback_sink.stopped() {
+            loopback_sink
+                .start()
+                .expect("failed to start loopback_sink again");
+        }
+        if output_sink.stopped() {
+            output_sink
+                .start()
+                .expect("failed to start output_sink again");
+        }
         if !loopback_device.is_started() {
             loopback_device
                 .start()
