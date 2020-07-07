@@ -108,12 +108,12 @@
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                     :key="sound.id"
-                                    @contextmenu.prevent="deleteSound(soundboard.id, sound.id)">{{ sound.name }}</button>
+                                    @contextmenu.prevent="deleteSound(soundboard.id, sound.id)" draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)">{{ sound.name }}</button>
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                             :key="sound.id"
-                                            @contextmenu.prevent="deleteSound(soundboard.id, sound.id)">{{ sound.name }}</button>
+                                            @contextmenu.prevent="deleteSound(soundboard.id, sound.id)" draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)">{{ sound.name }}</button>
                                         <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
                                             <span class="icon is-small">
                                                 ■

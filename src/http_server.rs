@@ -45,6 +45,12 @@ struct SoundAddRequest {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct SoundCopyRequest {
+    source_soundboard_id: usize,
+    source_sound_id: usize,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundboardInfo {
     name: String,
     hotkey: Option<String>,
@@ -405,9 +411,82 @@ pub async fn run(
             },
         );
 
+    let soundboards_soundboard_copy_sound_route = check_soundboard_index()
+        .and(warp::path!("sounds"))
+        .and(warp::post())
+        .and(warp::header::exact("x-method", "copy"))
+        .and(warp::body::json())
+        .map(
+            move |(mut soundboard, index): (config::SoundboardConfig, usize),
+                  sound_copy_request: SoundCopyRequest| {
+                let main_config = config::MainConfig::read();
+                let source_soundboard = main_config
+                    .soundboards
+                    .get(sound_copy_request.source_soundboard_id);
+
+                if source_soundboard.is_none() {
+                    return format_json_error("invalid source soundboard");
+                }
+
+                let source_sound = source_soundboard
+                    .as_ref()
+                    .unwrap()
+                    .sounds
+                    .as_ref()
+                    .unwrap()
+                    .get(sound_copy_request.source_sound_id);
+
+                if source_sound.is_none() {
+                    return format_json_error("invalid source sound");
+                }
+
+                let source_sound = source_sound.unwrap();
+
+                if !source_sound.path.starts_with("http") {
+                    let source_sound_path =
+                        std::path::PathBuf::from_str(&source_sound.path).unwrap();
+                    if source_sound_path.is_relative() {
+                        let mut new_sound_path = config::get_soundboard_sound_directory(
+                            std::path::PathBuf::from_str(&soundboard.path)
+                                .unwrap()
+                                .as_path(),
+                        )
+                        .unwrap();
+                        new_sound_path.push(&source_sound.path);
+                        if let Err(err) = std::fs::copy(&source_sound.full_path, &new_sound_path) {
+                            return format_json_error(err);
+                        }
+                    }
+                }
+
+                soundboard
+                    .sounds
+                    .as_mut()
+                    .unwrap()
+                    .push(source_sound.clone());
+
+                if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
+                    return format_json_error(err);
+                }
+                let main_config = config::MainConfig::read();
+                let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
+                let sound_index = sounds.len() - 1;
+                let sound = sounds[sound_index].clone();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name,
+                        hotkey: sound.hotkey,
+                        id: sound_index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
     let soundboards_soundboard_add_sound_route = check_soundboard_index()
         .and(warp::path!("sounds"))
         .and(warp::post())
+        .and(warp::header::exact("x-method", "create"))
         .and(warp::body::json())
         .map(
             move |(old_soundboard, index): (config::SoundboardConfig, usize),
@@ -626,6 +705,7 @@ pub async fn run(
         .or(soundboards_sounds_sound_route)
         .or(soundboards_soundboard_add_sound_upload_route)
         .or(soundboards_soundboard_add_sound_route)
+        .or(soundboards_soundboard_copy_sound_route)
         .or(soundboards_sounds_delete_sound_route);
 
     let sound_thread_routes = sounds_play_route
