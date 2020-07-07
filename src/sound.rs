@@ -130,6 +130,20 @@ pub fn run_sound_loop(
         );
     }
 
+    if input_device_identifier.is_some() && ms_input_device.is_none() {
+        panic!(
+            "Could not find input device identifier \"{}\"",
+            input_device_identifier.unwrap()
+        );
+    }
+
+    if output_device_identifier.is_some() && ms_output_device.is_none() {
+        panic!(
+            "Could not find output device identifier \"{}\"",
+            output_device_identifier.unwrap()
+        );
+    }
+
     if let Some(input_device) = ms_input_device.as_ref() {
         info!("Input device: \"{}\"", input_device.name());
     } else {
