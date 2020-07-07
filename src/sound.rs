@@ -91,7 +91,9 @@ pub fn run_sound_loop(
     output_device_identifier: Option<String>,
     loop_device_identifier: String,
 ) -> ! {
-    let context = Context::new(&DEFAULT_BACKENDS, None).expect("could not create audio context");
+    let mut context_config = miniaudio::ContextConfig::default();
+    context_config.pulse_mut().set_application_name("soundboard").expect("failed to set pulse app name");
+    let context = Context::new(&DEFAULT_BACKENDS, Some(&context_config)).expect("could not create audio context");
     let mut ms_input_device = None;
     let mut ms_output_device = None;
     let mut ms_loop_device = None;

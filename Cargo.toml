@@ -37,7 +37,7 @@ dirs = "3"
 env_logger = "0.7"
 hotkey-soundboard = {path = "extern/hotkey-rs", version = "0.0.1"}
 log = "0.4"
-miniaudio = "0.6"
+miniaudio = "0.7"
 once_cell = "1.4"
 parking_lot = "0.11"
 regex = "1"
@@ -53,7 +53,7 @@ fuzzy-matcher = {version = "0.3", optional = true}
 tgbot = {version = "0.10", optional = true}
 
 ctrlc = {version = "3.1.4", features = ["termination"], optional = true}
-libpulse-binding = {version = "2.0", features = ["pa_latest_common"], optional = true}
+libpulse-binding = {version = "2.16", features = ["pa_latest_common"], optional = true}
 
 iced = {version = "0.1", optional = true, features = ["tokio"]}
 iced_native = {version = "0.2", optional = true}
