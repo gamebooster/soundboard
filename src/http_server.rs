@@ -442,6 +442,23 @@ pub async fn run(
 
                 let source_sound = source_sound.unwrap();
 
+                if !source_sound.path.starts_with("http") {
+                    let source_sound_path =
+                        std::path::PathBuf::from_str(&source_sound.path).unwrap();
+                    if source_sound_path.is_relative() {
+                        let mut new_sound_path = config::get_soundboard_sound_directory(
+                            std::path::PathBuf::from_str(&soundboard.path)
+                                .unwrap()
+                                .as_path(),
+                        )
+                        .unwrap();
+                        new_sound_path.push(&source_sound.path);
+                        if let Err(err) = std::fs::copy(&source_sound.full_path, &new_sound_path) {
+                            return format_json_error(err);
+                        }
+                    }
+                }
+
                 soundboard
                     .sounds
                     .as_mut()
