@@ -6,7 +6,12 @@
     <script src="ext/vue_2_6_11.min.js" defer></script>
     <script src="ext/axios_0_19_2.min.js" defer></script>
     <script src="ext/buefy_0_8_20.min.js" defer></script>
+    <script src="https://rawgit.com/farzher/fuzzysort/master/fuzzysort.js" defer></script>
+    <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/index.min.js" defer></script>
+    <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js" defer></script>
     <script src="js/index.js" defer></script>
+    <link rel="stylesheet" href="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <link rel="stylesheet" href="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/icons.css">
     <link rel="stylesheet" href="ext/bulma_0_9_0.min.css">
     <link rel="stylesheet" href="ext/buefy_0_8_20.min.css">
     <link rel="stylesheet" href="css/index.css">
@@ -86,9 +91,12 @@
             </div>
         </section>
         <div class="tile is-ancestor is-vertical">
-            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id" @dragover.prevent
-                @drop="addSoundFromDrop(soundboard.id, $event)" @paste="addSoundFromPaste(soundboard.id, $event)">
-                <div class="tile is-child box">
+            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id"
+                @drop="addSoundFromDrop(soundboard.id, $event)" @paste="addSoundFromPaste(soundboard.id, $event)"
+                @dragover="soundboardDragOver(soundboard.id, $event)"
+                @dragenter="soundboardDragEnter(soundboard.id, $event)"
+                @dragleave="soundboardDragLeave(soundboard.id, $event)">
+                <div class=" tile is-child box" :id="'soundboard' + soundboard.id">
                     <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
                     </p>
                     <b-field v-else="soundboard.edit" label="Name" label-position="on-border">
@@ -104,16 +112,18 @@
                     </b-field>
                     <div class="buttons">
                         <template v-for="sound in soundboard.sounds">
-                            <template v-if="filterRegex.test(sound.name)">
+                            <template v-if="!filter.length || matchedSoundNames.has(sound.name)">
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                    :key="sound.id"
-                                    @contextmenu.prevent="deleteSound(soundboard.id, sound.id)" draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)">{{ sound.name }}</button>
+                                    :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
+                                    draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
+                                        v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span></button>
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                            :key="sound.id"
-                                            @contextmenu.prevent="deleteSound(soundboard.id, sound.id)" draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)">{{ sound.name }}</button>
+                                            :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
+                                            draggable="true"
+                                            @dragstart="soundDragStart(soundboard.id, sound.id,$event)">{{ sound.name }}</button>
                                         <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
                                             <span class="icon is-small">
                                                 ■

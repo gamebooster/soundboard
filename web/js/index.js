@@ -1,3 +1,8 @@
+MobileDragDrop.polyfill({
+    // use this to make use of the scroll behaviour
+    dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+});
+
 var app = new Vue({
     el: "#app",
     data: {
@@ -6,6 +11,8 @@ var app = new Vue({
         volume: 1.0,
         filter: "",
         filterRegex: new RegExp("", "i"),
+        soundNames: [],
+        matchedSoundNames: [],
         showBottomMenu: true,
         selectedDevice: "Both",
         showStatusModal: false,
@@ -19,7 +26,8 @@ var app = new Vue({
     },
     watch: {
         filter: function (val, oldVal) {
-            this.filterRegex = new RegExp(val, "i");
+            this.matchedSoundNames = new Map();
+            fuzzysort.go(val, this.soundNames, { allowTypo: true, threshold: -25000 }).forEach(s => this.matchedSoundNames.set(s.target, s));
         },
         volume: function (val, oldVal) {
             axios.post("/api/sounds/volume", { volume: val }).catch(function (error) {
@@ -60,11 +68,13 @@ var app = new Vue({
                 .get("/api/soundboards")
                 .then((response) => {
                     self.soundboards = response.data.data;
+                    self.soundNames = [];
                     for (let i = 0; i < self.soundboards.length; i++) {
                         axios
                             .get("/api/soundboards/" + i + "/sounds")
                             .then((response) => {
                                 self.soundboards[i].sounds = response.data.data;
+                                self.soundNames = self.soundNames.concat(self.soundboards[i].sounds.map(s => s.name));
                             })
                             .catch((error) => {
                                 self.showStatusModal = true;
@@ -134,6 +144,22 @@ var app = new Vue({
                     sound_id: sound_id,
                 })
             );
+        },
+        soundboardDragOver: function (soundboard_id, event) {
+            let move_data = event.dataTransfer.getData("application/soundboard");
+            if (move_data !== "") {
+                let data = JSON.parse(move_data);
+                if (soundboard_id === data.soundboard_id) return;
+            }
+            event.target.closest("#soundboard" + soundboard_id).style.background = "#F8F8FF";
+            event.preventDefault();
+        },
+        soundboardDragEnter: function (soundboard_id, event) {
+            event.preventDefault();
+        },
+        soundboardDragLeave: function (soundboard_id, event) {
+            event.target.closest("#soundboard" + soundboard_id).style.background = "";
+            event.preventDefault();
         },
         addSoundFromDrop: function (soundboard_id, event) {
             event.preventDefault();
