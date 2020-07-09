@@ -16,6 +16,8 @@ var app = new Vue({
         showBottomMenu: true,
         selectedDevice: "Both",
         showStatusModal: false,
+        hotkeyEventStream: null,
+        registeredHotkeys: new Map()
     },
     created: function () {
         const self = this;
@@ -75,6 +77,11 @@ var app = new Vue({
                             .then((response) => {
                                 self.soundboards[i].sounds = response.data.data;
                                 self.soundNames = self.soundNames.concat(self.soundboards[i].sounds.map(s => s.name));
+
+                                for (const sound of self.soundboards[i].sounds) {
+                                    if (!sound.hotkey) continue;
+                                    this.registerHotkey(sound.hotkey, { soundboard_id: i, sound_id: sound.id });
+                                }
                             })
                             .catch((error) => {
                                 self.showStatusModal = true;
@@ -84,9 +91,46 @@ var app = new Vue({
                 .catch((error) => {
                     self.showStatusModal = true;
                 });
+
+            this.hotkeyEvents = new EventSource("/api/hotkeys/events");
+            this.hotkeyEvents.onmessage = (event) => {
+                let sound_data = this.registeredHotkeys.get(event.data);
+                if (sound_data.special === "STOPALL") return this.stopAllSound();
+                this.playSound(sound_data.soundboard_id, sound_data.sound_id);
+            };
+
+            this.registerHotkey("CTRL-ALT-E", { special: "STOPALL" });
         },
         hideKeyboard() {
             document.activeElement.blur();
+        },
+        registerHotkey: function (hotkey, eventObject) {
+            axios.post("/api/hotkeys", {
+                hotkey: hotkey,
+            }).then((response) => {
+                this.registeredHotkeys.set(hotkey, eventObject);
+            }).catch((error) => {
+                this.$buefy.toast.open({
+                    message: "registerHotkey failed " + response.data.data.hotkey + " " + JSON.stringify(error.response.data.errors),
+                    type: "is-danger",
+                });
+            });
+        },
+        deregisterHotkey: function (hotkey, eventObject) {
+            axios.delete("/api/hotkeys", {
+                hotkey: sound.hotkey,
+            }).then((response) => {
+                this.$buefy.toast.open({
+                    message: "deregisterHotkey: " + response.data.data.hotkey,
+                    type: "is-success",
+                });
+                this.registeredHotkeys.set(hotkey, eventObject);
+            }).catch((error) => {
+                this.$buefy.toast.open({
+                    message: "deregisterHotkey failed " + response.data.data.hotkey + " " + error,
+                    type: "is-danger",
+                });
+            });
         },
         playSound: function (soundboard_id, sound_id) {
             axios

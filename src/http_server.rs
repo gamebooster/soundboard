@@ -9,10 +9,22 @@ use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::http::StatusCode;
-use warp::{reject, Filter, Rejection, Reply};
+use warp::{reject, sse::ServerSentEvent, Filter, Rejection, Reply};
 extern crate futures;
+use super::hotkey;
 use bytes::BufMut;
-use futures::{Future, Stream, TryFutureExt, TryStreamExt};
+use futures::{Future, Stream, StreamExt, TryFutureExt, TryStreamExt};
+use tokio::sync::mpsc;
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct HotkeyRegisterRequest {
+    hotkey: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct HotkeyFireEvent {
+    hotkey: String,
+}
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct SoundPlayRequest {
@@ -127,6 +139,11 @@ fn format_json_error<T: std::fmt::Display>(err: T) -> warp::reply::WithStatus<wa
 }
 
 #[derive(Debug)]
+enum HotkeyMessage {
+    Pressed(String),
+}
+
+#[derive(Debug)]
 struct UnknownSoundboardError(usize);
 impl reject::Reject for UnknownSoundboardError {}
 
@@ -223,10 +240,10 @@ pub async fn run(
     let soundboards_route = warp::path!("soundboards").map(move || {
         let mut soundboards = Vec::new();
 
-        if let Err(err) = config::MainConfig::reload_from_disk() {
-            error!("{:#}", err);
-            return format_json_error(err);
-        }
+        // if let Err(err) = config::MainConfig::reload_from_disk() {
+        //     error!("{:#}", err);
+        //     return format_json_error(err);
+        // }
 
         for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
             soundboards.push(StrippedSoundboardInfo {
@@ -685,6 +702,59 @@ pub async fn run(
             }
         });
 
+    fn sse_event(id: String) -> Result<impl ServerSentEvent, Infallible> {
+        Ok(warp::sse::data(id))
+    }
+
+    let senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>> =
+        Arc::new(std::sync::Mutex::new(Vec::new()));
+    let senders_filter = warp::any().map(move || senders.clone());
+
+    let hotkey_events_route = warp::path!("hotkeys" / "events")
+        .and(warp::get())
+        .and(senders_filter.clone())
+        .map(
+            move |senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>>| {
+                let event_stream = || {
+                    let (tx, rx) = mpsc::unbounded_channel::<HotkeyMessage>();
+                    senders.lock().unwrap().push(tx);
+                    rx.map(|msg| match msg {
+                        HotkeyMessage::Pressed(id) => sse_event(id),
+                    })
+                };
+                warp::sse::reply(warp::sse::keep_alive().stream(event_stream()))
+            },
+        );
+
+    let hotkey_manager = std::sync::Arc::new(std::sync::Mutex::new(hotkey::HotkeyManager::new()));
+    let hotkey_manager_clone = hotkey_manager.clone();
+
+    let hotkey_register_route = warp::path!("hotkeys")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(senders_filter)
+        .map(move |hotkey_request: HotkeyRegisterRequest, senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>>| {
+            let hotkey = match config::parse_hotkey(&hotkey_request.hotkey) {
+                Ok(key) => key,
+                Err(err) => return format_json_error(err),
+            };
+
+            let hotkey_request_clone = hotkey_request.clone();
+            if let Err(err) = hotkey_manager_clone.lock().unwrap().register(hotkey, move || {
+                for sender in senders.lock().unwrap().iter() {
+                    if let Err(err) = sender.send(HotkeyMessage::Pressed(hotkey_request_clone.hotkey.clone())) {
+                        warn!("failed to send hotkey server message {}", err);
+                    }
+                }
+            }) {
+                return format_json_error(err);
+            };
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(hotkey_request)),
+                warp::http::StatusCode::OK,
+            )
+        });
+
     let help_api = warp::path::end()
         .and(warp::get())
         .map(|| "This is the Soundboard API. Try calling /api/soundboards or /api/sounds/active");
@@ -714,10 +784,13 @@ pub async fn run(
         .or(sounds_active_route)
         .or(sounds_set_volume);
 
+    let hotkey_routes = hotkey_events_route.or(hotkey_register_route);
+
     let routes = (warp::path("api").and(
         soundboard_routes
             .or(soundboard_sound_routes)
             .or(sound_thread_routes)
+            .or(hotkey_routes)
             .or(help_api),
     ))
     .or(warp::get().and(warp::fs::dir(web_path)))

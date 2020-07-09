@@ -117,14 +117,20 @@
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                     :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
                                     draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
-                                        v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span></button>
+                                        v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
+                                    &nbsp;
+                                    <span v-html="sound.hotkey ? ' (' + sound.hotkey + ')' : '' "></span>
+                                </button>
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                             :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
                                             draggable="true"
                                             @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
-                                                v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span></button>
+                                                v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
+                                            &nbsp;
+                                            <span v-html="sound.hotkey ? ' (' + sound.hotkey + ')' : '' "></span>
+                                        </button>
                                         <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
                                             <span class="icon is-small">
                                                 ■
