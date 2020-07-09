@@ -132,6 +132,31 @@ where
     }
 }
 
+#[derive(Debug)]
+pub enum HotkeyMessage {
+    RegisterHotkey(ListenerID, u32, u32),
+    ReceivedHotkeyMessage(ListenerID),
+    UnregisterHotkey(ListenerID),
+    DropThread,
+}
+
+pub struct CarbonRef(pub *mut c_void);
+impl CarbonRef {
+    pub fn new(start: *mut c_void) -> Self {
+        CarbonRef(start)
+    }
+}
+unsafe impl Sync for CarbonRef {}
+unsafe impl Send for CarbonRef {}
+
+pub(crate) type ListenerMap = Arc<Mutex<HashMap<ListenerID, (Box<ListenerCallback>, CarbonRef)>>>;
+
+pub struct Listener {
+    last_id: ListenerID,
+    handlers: ListenerMap,
+    sender: SyncSender<HotkeyMessage>,
+}
+
 impl HotkeyListener<ListenerID> for Listener {
     fn new() -> Listener {
         let hotkeys = ListenerMap::default();

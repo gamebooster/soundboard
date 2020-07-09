@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use std::mem;
 use std::ptr;
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
 use x11_dl::xlib;
@@ -65,11 +67,29 @@ pub mod keys {
     pub const R: u32 = 'R' as u32;
     pub const S: u32 = 'S' as u32;
     pub const T: u32 = 'T' as u32;
+    pub const U: u32 = 'U' as u32;
     pub const V: u32 = 'V' as u32;
-    pub const X: u32 = 'X' as u32;
+    pub const W: u32 = 'W' as u32;
+    pub const T: u32 = 'T' as u32;
     pub const Y: u32 = 'Y' as u32;
     pub const Z: u32 = 'Z' as u32;
 }
+
+pub enum HotkeyMessage {
+    RegisterHotkey(ListenerID, u32, u32),
+    RegisterHotKeyResult(Result<ListenerID, usize>),
+    UnregisterHotkey(ListenerID),
+    UnregisterHotkeyResult(Result<(), usize>),
+    DropThread,
+}
+
+pub struct Listener {
+    handlers: ListenerMap,
+    sender: Sender<HotkeyMessage>,
+    receiver: Receiver<HotkeyMessage>,
+}
+
+pub(crate) type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
 
 impl HotkeyListener<ListenerID> for Listener {
     fn new() -> Listener {
@@ -78,11 +98,11 @@ impl HotkeyListener<ListenerID> for Listener {
         ));
 
         let hotkey_map = hotkeys.clone();
-        let (tx, rx) = mpsc::channel();
+        let (method_sender, thread_receiver) = mpsc::channel();
+        let (thread_sender, method_receiver) = mpsc::channel();
 
         std::thread::spawn(move || {
             let xlib = xlib::Xlib::open().unwrap();
-            unsafe { (xlib.XInitThreads)() };
             unsafe {
                 let display = (xlib.XOpenDisplay)(ptr::null());
                 let root = (xlib.XDefaultRootWindow)(display);
@@ -106,12 +126,12 @@ impl HotkeyListener<ListenerID> for Listener {
                             }
                         }
                     }
-                    match rx.try_recv() {
-                        Ok(HotkeyMessage::RegisterHotkey(
-                            (keycode, modifiers),
-                            _modifier,
-                            _key,
-                        )) => {
+                    match thread_receiver.try_recv() {
+                        Ok(HotkeyMessage::RegisterHotkey(_, modifiers, key)) => {
+                            let keycode: i32;
+                            unsafe {
+                                keycode = (xlib.XKeysymToKeycode)(display, key as u64) as i32;
+                            }
                             let result = (xlib.XGrabKey)(
                                 display,
                                 keycode,
@@ -122,21 +142,39 @@ impl HotkeyListener<ListenerID> for Listener {
                                 xlib::GrabModeAsync,
                             );
                             if result == 0 {
-                                eprintln!("{}", "Failed to register hotkey".to_string());
+                                if let Err(err) =
+                                    thread_sender.send(HotkeyMessage::RegisterHotkeyResult(Err(0)))
+                                {
+                                    eprintln!("hotkey: thread_sender.send error {}", err);
+                                }
+                            } else if let Err(err) = thread_sender.send(
+                                HotkeyMessage::RegisterHotkeyResult(Ok((keycode, modifiers))),
+                            ) {
+                                eprintln!("hotkey: thread_sender.send error {}", err);
                             }
                         }
                         Ok(HotkeyMessage::UnregisterHotkey(id)) => {
                             let result = (xlib.XUngrabKey)(display, id.0, id.1, root);
                             if result == 0 {
-                                eprintln!("{}", "Failed to unregister hotkey".to_string());
+                                if let Err(err) = thread_sender
+                                    .send(HotkeyMessage::UnregisterHotkeyResult(Err(0)))
+                                {
+                                    eprintln!("hotkey: thread_sender.send error {}", err);
+                                }
+                            } else if let Err(err) =
+                                thread_sender.send(HotkeyMessage::UnregisterHotkeyResult(Ok(())))
+                            {
+                                eprintln!("hotkey: thread_sender.send error {}", err);
                             }
                         }
                         Ok(HotkeyMessage::DropThread) => {
                             (xlib.XCloseDisplay)(display);
-                            break;
+                            return;
                         }
-                        Err(_) => {
-                            // eprintln!("hotkey channel error {}", err);
+                        Err(err) => {
+                            if let std::sync::mpsc::TryRecvError::Disconnected = err {
+                                eprintln!("hotkey: try_recv error {}", err);
+                            }
                         }
                     };
 
@@ -145,16 +183,10 @@ impl HotkeyListener<ListenerID> for Listener {
             }
         });
 
-        unsafe {
-            let xlib = xlib::Xlib::open().unwrap();
-            let display = (xlib.XOpenDisplay)(ptr::null());
-
-            Listener {
-                display,
-                xlib,
-                handlers: hotkeys,
-                sender: tx,
-            }
+        Listener {
+            handlers: hotkeys,
+            sender: method_sender,
+            receiver: method_receiver,
         }
     }
 
@@ -164,22 +196,35 @@ impl HotkeyListener<ListenerID> for Listener {
         key: u32,
         handler: CB,
     ) -> Result<ListenerID, HotkeyError> {
-        let keycode: i32;
-        unsafe {
-            keycode = (self.xlib.XKeysymToKeycode)(self.display, key as u64) as i32;
-        }
-        let id = (keycode, modifiers);
         self.sender
-            .send(HotkeyMessage::RegisterHotkey(id, modifiers, key))
+            .send(HotkeyMessage::RegisterHotkey((0, 0), modifiers, key))
             .unwrap();
-        self.handlers.lock().unwrap().insert(id, Box::new(handler));
-        Ok(id)
+        match self.receiver.recv() {
+            Ok(HotkeyMessage::RegisterHotKeyResult(Ok(_))) => {
+                self.handlers.lock().unwrap().insert(id, Box::new(handler));
+                Ok(id)
+            }
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(error_code))) => {
+                Err(HotkeyError::BackendApiError(error_code))
+            }
+            Err(_) => Err(HotkeyError::ChannelError()),
+            _ => Err(HotkeyError::Unknown),
+        }
     }
 
     fn unregister_hotkey(&mut self, id: ListenerID) -> Result<(), HotkeyError> {
-        self.sender.send(HotkeyMessage::UnregisterHotkey(id))?;
+        self.sender
+            .send(HotkeyMessage::UnregisterHotkey(id))
+            .map_err(|_| HotkeyError::ChannelError())?;
         self.handlers.lock().unwrap().remove(&id);
-        Ok(())
+        match self.receiver.recv() {
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Ok(_))) => Ok(()),
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(error_code))) => {
+                Err(HotkeyError::BackendApiError(error_code))
+            }
+            Err(_) => Err(HotkeyError::ChannelError()),
+            _ => Err(HotkeyError::Unknown),
+        }
     }
 }
 
@@ -187,9 +232,6 @@ impl Drop for Listener {
     fn drop(&mut self) {
         if let Err(err) = self.sender.send(HotkeyMessage::DropThread) {
             eprintln!("cant send close thread message {}", err);
-        }
-        unsafe {
-            (self.xlib.XCloseDisplay)(self.display);
         }
     }
 }

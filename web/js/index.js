@@ -72,15 +72,16 @@ var app = new Vue({
                     self.soundboards = response.data.data;
                     self.soundNames = [];
                     for (let i = 0; i < self.soundboards.length; i++) {
+                        const soundboard_id = i;
                         axios
-                            .get("/api/soundboards/" + i + "/sounds")
+                            .get("/api/soundboards/" + soundboard_id + "/sounds")
                             .then((response) => {
-                                self.soundboards[i].sounds = response.data.data;
-                                self.soundNames = self.soundNames.concat(self.soundboards[i].sounds.map(s => s.name));
+                                self.soundboards[soundboard_id].sounds = response.data.data;
+                                self.soundNames = self.soundNames.concat(self.soundboards[soundboard_id].sounds.map(s => s.name));
 
-                                for (const sound of self.soundboards[i].sounds) {
+                                for (const sound of self.soundboards[soundboard_id].sounds) {
                                     if (!sound.hotkey) continue;
-                                    this.registerHotkey(sound.hotkey, { soundboard_id: i, sound_id: sound.id });
+                                    this.registerHotkey(sound.hotkey, { soundboard_id: soundboard_id, sound_id: sound.id });
                                 }
                             })
                             .catch((error) => {

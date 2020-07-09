@@ -741,11 +741,13 @@ pub async fn run(
 
             let hotkey_request_clone = hotkey_request.clone();
             if let Err(err) = hotkey_manager_clone.lock().unwrap().register(hotkey, move || {
-                for sender in senders.lock().unwrap().iter() {
-                    if let Err(err) = sender.send(HotkeyMessage::Pressed(hotkey_request_clone.hotkey.clone())) {
-                        warn!("failed to send hotkey server message {}", err);
+                let mut senders = senders.lock().unwrap();
+                senders.retain(|s| {
+                    if s.send(HotkeyMessage::Pressed(hotkey_request_clone.hotkey.clone())).is_err() {
+                        return false;
                     }
-                }
+                    true
+                });
             }) {
                 return format_json_error(err);
             };

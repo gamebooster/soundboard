@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::mem;
 use std::sync::mpsc;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -66,10 +68,29 @@ pub mod keys {
     pub const R: u32 = 'R' as u32;
     pub const S: u32 = 'S' as u32;
     pub const T: u32 = 'T' as u32;
+    pub const U: u32 = 'U' as u32;
     pub const V: u32 = 'V' as u32;
+    pub const W: u32 = 'W' as u32;
     pub const X: u32 = 'X' as u32;
     pub const Y: u32 = 'Y' as u32;
     pub const Z: u32 = 'Z' as u32;
+}
+
+pub enum HotkeyMessage {
+    RegisterHotkey(ListenerID, u32, u32),
+    RegisterHotKeyResult(Result<(), usize>),
+    UnregisterHotkey(ListenerID),
+    UnregisterHotkeyResult(Result<(), usize>),
+    DropThread,
+}
+
+pub(crate) type ListenerMap = Arc<Mutex<HashMap<ListenerID, Box<ListenerCallback>>>>;
+
+pub struct Listener {
+    last_id: ListenerID,
+    handlers: ListenerMap,
+    sender: Sender<HotkeyMessage>,
+    receiver: Receiver<HotkeyMessage>,
 }
 
 impl HotkeyListener<ListenerID> for Listener {
@@ -79,7 +100,8 @@ impl HotkeyListener<ListenerID> for Listener {
         ));
 
         let hotkey_map = hotkeys.clone();
-        let (tx, rx) = mpsc::channel();
+        let (method_sender, thread_receiver) = mpsc::channel();
+        let (thread_sender, method_receiver) = mpsc::channel();
 
         thread::spawn(move || unsafe {
             loop {
@@ -93,17 +115,48 @@ impl HotkeyListener<ListenerID> for Listener {
                         }
                     }
                 }
-                match rx.try_recv() {
+                match thread_receiver.try_recv() {
                     Ok(HotkeyMessage::RegisterHotkey(id, modifiers, key)) => {
-                        let _result = winuser::RegisterHotKey(0 as HWND, id, modifiers, key);
+                        let result = winuser::RegisterHotKey(0 as HWND, id, modifiers, key);
+                        if result == 0 {
+                            if let Err(err) =
+                                thread_sender.send(HotkeyMessage::RegisterHotKeyResult(Err(
+                                    winapi::um::errhandlingapi::GetLastError() as usize,
+                                )))
+                            {
+                                eprintln!("hotkey: thread_sender.send error {}", err);
+                            }
+                        } else if let Err(err) =
+                            thread_sender.send(HotkeyMessage::RegisterHotKeyResult(Ok(())))
+                        {
+                            eprintln!("hotkey: thread_sender.send error {}", err);
+                        }
                     }
                     Ok(HotkeyMessage::UnregisterHotkey(id)) => {
-                        let _result = winuser::UnregisterHotKey(0 as HWND, id);
+                        let result = winuser::UnregisterHotKey(0 as HWND, id);
+                        if result == 0 {
+                            if let Err(err) =
+                                thread_sender.send(HotkeyMessage::UnregisterHotkeyResult(Err(
+                                    winapi::um::errhandlingapi::GetLastError() as usize,
+                                )))
+                            {
+                                eprintln!("hotkey: thread_sender.send error {}", err);
+                            }
+                        } else if let Err(err) =
+                            thread_sender.send(HotkeyMessage::UnregisterHotkeyResult(Ok(())))
+                        {
+                            eprintln!("hotkey: thread_sender.send error {}", err);
+                        }
                     }
                     Ok(HotkeyMessage::DropThread) => {
-                        break;
+                        return;
                     }
-                    Err(_) => {}
+                    Err(err) => {
+                        if let std::sync::mpsc::TryRecvError::Disconnected = err {
+                            eprintln!("hotkey: try_recv error {}", err);
+                        }
+                    }
+                    _ => unreachable!(),
                 }
 
                 std::thread::sleep(std::time::Duration::from_millis(50));
@@ -111,38 +164,60 @@ impl HotkeyListener<ListenerID> for Listener {
         });
 
         Listener {
-            sender: tx,
+            sender: method_sender,
+            receiver: method_receiver,
             last_id: 0,
             handlers: hotkeys,
         }
     }
 
-    fn register_hotkey<CB: 'static + FnMut() + Send>(
+    fn register_hotkey<F>(
         &mut self,
         modifiers: u32,
         key: u32,
-        handler: CB,
-    ) -> Result<ListenerID, HotkeyError> {
+        handler: F,
+    ) -> Result<ListenerID, HotkeyError>
+    where
+        F: 'static + FnMut() + Send,
+    {
         self.last_id += 1;
         let id = self.last_id;
         self.sender
             .send(HotkeyMessage::RegisterHotkey(id, modifiers, key))
             .unwrap();
-        self.handlers.lock().unwrap().insert(id, Box::new(handler));
-        Ok(id)
+        match self.receiver.recv() {
+            Ok(HotkeyMessage::RegisterHotKeyResult(Ok(_))) => {
+                self.handlers.lock().unwrap().insert(id, Box::new(handler));
+                Ok(id)
+            }
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(error_code))) => {
+                Err(HotkeyError::BackendApiError(error_code))
+            }
+            Err(_) => Err(HotkeyError::ChannelError()),
+            _ => Err(HotkeyError::Unknown),
+        }
     }
 
     fn unregister_hotkey(&mut self, id: i32) -> Result<(), HotkeyError> {
-        self.sender.send(HotkeyMessage::UnregisterHotkey(id))?;
+        self.sender
+            .send(HotkeyMessage::UnregisterHotkey(id))
+            .map_err(|_| HotkeyError::ChannelError())?;
         self.handlers.lock().unwrap().remove(&id);
-        Ok(())
+        match self.receiver.recv() {
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Ok(_))) => Ok(()),
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(error_code))) => {
+                Err(HotkeyError::BackendApiError(error_code))
+            }
+            Err(_) => Err(HotkeyError::ChannelError()),
+            _ => Err(HotkeyError::Unknown),
+        }
     }
 }
 
 impl Drop for Listener {
     fn drop(&mut self) {
         if let Err(err) = self.sender.send(HotkeyMessage::DropThread) {
-            eprintln!("cant send close thread message {}", err);
+            eprintln!("hotkey: cant send close thread message {}", err);
         }
     }
 }
