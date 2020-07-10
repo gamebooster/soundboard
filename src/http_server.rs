@@ -237,30 +237,35 @@ pub async fn run(
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     gui_receiver: crossbeam_channel::Receiver<sound::Message>,
 ) {
-    let soundboards_route = warp::path!("soundboards").and(warp::filters::query::raw()
-    .or(warp::any().map(|| String::default())).unify(),).map(move |query: String| {
-        let mut soundboards = Vec::new();
-
-        if query.contains("reload") {
-          if let Err(err) = config::MainConfig::reload_from_disk() {
-            error!("{:#}", err);
-            return format_json_error(err);
-          }
-        }
-
-        for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
-            soundboards.push(StrippedSoundboardInfo {
-                name: soundboard.name.clone(),
-                hotkey: soundboard.hotkey.clone(),
-                position: soundboard.position,
-                id,
-            });
-        }
-        warp::reply::with_status(
-            warp::reply::json(&ResultData::with_data(soundboards)),
-            warp::http::StatusCode::OK,
+    let soundboards_route = warp::path!("soundboards")
+        .and(
+            warp::filters::query::raw()
+                .or(warp::any().map(String::default))
+                .unify(),
         )
-    });
+        .map(move |query: String| {
+            let mut soundboards = Vec::new();
+
+            if query.contains("reload") {
+                if let Err(err) = config::MainConfig::reload_from_disk() {
+                    error!("{:#}", err);
+                    return format_json_error(err);
+                }
+            }
+
+            for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
+                soundboards.push(StrippedSoundboardInfo {
+                    name: soundboard.name.clone(),
+                    hotkey: soundboard.hotkey.clone(),
+                    position: soundboard.position,
+                    id,
+                });
+            }
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(soundboards)),
+                warp::http::StatusCode::OK,
+            )
+        });
 
     let soundboards_soundboard_route = check_soundboard_index()
         .and(warp::path::end())
