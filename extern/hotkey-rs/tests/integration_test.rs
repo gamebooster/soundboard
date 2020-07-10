@@ -18,11 +18,19 @@ fn register_unregister_hotkey_test() {
     assert_eq!(listener.registered_hotkeys()[0], hotkey2);
     assert_eq!(listener.unregister_hotkey(hotkey2), Ok(()));
     assert_eq!(listener.registered_hotkeys().len(), 0);
-    let hotkey3 = ListenerHotkey::new(modifiers::CONTROL | modifiers::SUPER, keys::C);
+    let hotkey3 = ListenerHotkey::new(
+        modifiers::CONTROL | modifiers::SUPER | modifiers::ALT,
+        keys::P,
+    );
     assert_eq!(listener.register_hotkey(hotkey3, || {}), Ok(()));
     assert_eq!(listener.registered_hotkeys()[0], hotkey3);
     assert_eq!(listener.registered_hotkeys().len(), 1);
     assert_eq!(listener.unregister_hotkey(hotkey3), Ok(()));
+    assert_eq!(listener.registered_hotkeys().len(), 0);
+    assert_eq!(listener.register_hotkey(hotkey1, || {}), Ok(()));
+    assert_eq!(listener.registered_hotkeys()[0], hotkey1);
+    assert_eq!(listener.registered_hotkeys().len(), 1);
+    assert_eq!(listener.unregister_hotkey(hotkey1), Ok(()));
     assert_eq!(listener.registered_hotkeys().len(), 0);
 }
 
@@ -42,7 +50,7 @@ fn unregister_invalid_hotkey_test() {
 fn reregister_hotkey_test() {
     let mut listener = Listener::new();
     assert_eq!(listener.registered_hotkeys().len(), 0);
-    let hotkey = ListenerHotkey::new(modifiers::ALT, keys::A);
+    let hotkey = ListenerHotkey::new(modifiers::ALT, keys::B);
     assert_eq!(listener.register_hotkey(hotkey, || {}), Ok(()));
     assert_eq!(listener.registered_hotkeys()[0], hotkey);
     assert_eq!(listener.registered_hotkeys().len(), 1);

@@ -76,29 +76,26 @@ pub mod keys {
     pub const Z: u32 = 'Z' as u32;
 }
 
+type ListenerId = i32;
 enum HotkeyMessage {
-    RegisterHotkey(ListenerID, u32, u32),
+    RegisterHotkey(ListenerId, ListenerHotkey),
     RegisterHotkeyResult(Result<(), HotkeyError>),
-    UnregisterHotkey(ListenerID),
+    UnregisterHotkey(ListenerId),
     UnregisterHotkeyResult(Result<(), HotkeyError>),
     DropThread,
 }
-
-type ListenerMap = Arc<Mutex<HashMap<ListenerID, (ListenerHotkey, Box<ListenerCallback>)>>>;
-type ListenerId = i32;
+type ListenerMap = Arc<Mutex<HashMap<ListenerId, (ListenerHotkey, Box<ListenerCallback>)>>>;
 
 pub struct Listener {
-    last_id: ListenerID,
+    last_id: ListenerId,
     handlers: ListenerMap,
     sender: Sender<HotkeyMessage>,
     receiver: Receiver<HotkeyMessage>,
 }
 
-impl HotkeyListener<ListenerID> for Listener {
+impl HotkeyListener for Listener {
     fn new() -> Listener {
-        let hotkeys = Arc::new(Mutex::new(
-            HashMap::<ListenerID, Box<ListenerCallback>>::new(),
-        ));
+        let hotkeys = ListenerMap::default();
 
         let hotkey_map = hotkeys.clone();
         let (method_sender, thread_receiver) = mpsc::channel();
@@ -109,7 +106,7 @@ impl HotkeyListener<ListenerID> for Listener {
                 let mut msg = mem::MaybeUninit::uninit().assume_init();
                 while winuser::PeekMessageW(&mut msg, 0 as HWND, 0, 0, 1) > 0 {
                     if msg.wParam != 0 {
-                        if let Some(_, handler) =
+                        if let Some((_, handler)) =
                             hotkey_map.lock().unwrap().get_mut(&(msg.wParam as i32))
                         {
                             handler();
@@ -117,8 +114,9 @@ impl HotkeyListener<ListenerID> for Listener {
                     }
                 }
                 match thread_receiver.try_recv() {
-                    Ok(HotkeyMessage::RegisterHotkey(id, modifiers, key)) => {
-                        let result = winuser::RegisterHotKey(0 as HWND, id, modifiers, key);
+                    Ok(HotkeyMessage::RegisterHotkey(id, hotkey)) => {
+                        let result =
+                            winuser::RegisterHotKey(0 as HWND, id, hotkey.modifiers, hotkey.key);
                         if result == 0 {
                             if let Err(err) =
                                 thread_sender.send(HotkeyMessage::RegisterHotkeyResult(Err(
@@ -188,16 +186,15 @@ impl HotkeyListener<ListenerID> for Listener {
         self.last_id += 1;
         let id = self.last_id;
         self.sender
-            .send(HotkeyMessage::RegisterHotkey(
-                id,
-                hotkey.modifiers,
-                hotkey.key,
-            ))
+            .send(HotkeyMessage::RegisterHotkey(id, hotkey))
             .map_err(|_| HotkeyError::ChannelError())?;
         match self.receiver.recv() {
             Ok(HotkeyMessage::RegisterHotkeyResult(Ok(_))) => {
-                self.handlers.lock().unwrap().insert(id, Box::new(handler));
-                Ok(id)
+                self.handlers
+                    .lock()
+                    .unwrap()
+                    .insert(id, (hotkey, Box::new(handler)));
+                Ok(())
             }
             Ok(HotkeyMessage::RegisterHotkeyResult(Err(err))) => Err(err),
             Err(_) => Err(HotkeyError::ChannelError()),
@@ -224,7 +221,7 @@ impl HotkeyListener<ListenerID> for Listener {
         };
         match self.receiver.recv() {
             Ok(HotkeyMessage::UnregisterHotkeyResult(Ok(_))) => Ok(()),
-            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(err))) => err,
+            Ok(HotkeyMessage::UnregisterHotkeyResult(Err(err))) => Err(err),
             Err(_) => Err(HotkeyError::ChannelError()),
             _ => Err(HotkeyError::Unknown),
         }
