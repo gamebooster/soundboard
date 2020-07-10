@@ -53,6 +53,9 @@ var app = new Vue({
                     this.reloadData();
                 }
                 this.showStatusModal = false;
+                if (getComputedStyle(document.querySelector("#bottom_menu"), null).display === "none") {
+                    this.showBottomMenu = true;
+                }
             };
             this.soundEvents.onerror = (err) => {
                 this.showStatusModal = true;
@@ -71,25 +74,6 @@ var app = new Vue({
                 this.hotkeyEvents.close();
                 this.showStatusModal = true;
             };
-        },
-        updatePlayStatus() {
-            if (
-                getComputedStyle(document.querySelector("#bottom_menu"), null)
-                    .display === "none"
-            ) {
-                this.showBottomMenu = true;
-            }
-            axios
-                .get("/api/sounds/active")
-                .then((response) => {
-                    this.showStatusModal = false;
-                    this.activeSounds = response.data.data.sounds;
-                    this.volume = response.data.data.volume;
-                })
-                .catch((error) => {
-                    console.error(error);
-                    this.showStatusModal = true;
-                });
         },
         reloadData() {
             const self = this;
@@ -199,26 +183,24 @@ var app = new Vue({
                     type: "is-danger",
                 });
             }
-            // console.debug(event.clipboardData);
         },
         soundDragStart: function (soundboard_id, sound_id, event) {
+            var data = {
+                soundboard_id: soundboard_id,
+                sound_id: sound_id,
+            };
+            this.dragData = data;
             event.dataTransfer.setData(
                 "application/soundboard",
-                JSON.stringify({
-                    method: "copySound",
-                    soundboard_id: soundboard_id,
-                    sound_id: sound_id,
-                })
+                JSON.stringify(data)
             );
+
         },
         soundboardDragOver: function (soundboard_id, event) {
-            let move_data = event.dataTransfer.getData("application/soundboard");
-            if (move_data !== "") {
-                let data = JSON.parse(move_data);
-                if (soundboard_id === data.soundboard_id) return;
-            }
-            event.target.closest("#soundboard" + soundboard_id).style.background = "#F8F8FF";
+            if (this.dragData && soundboard_id === this.dragData.soundboard_id) return;
+
             event.preventDefault();
+            event.target.closest("#soundboard" + soundboard_id).style.background = "#F8F8FF";
         },
         soundboardDragEnter: function (soundboard_id, event) {
             event.preventDefault();
@@ -229,6 +211,7 @@ var app = new Vue({
         },
         addSoundFromDrop: function (soundboard_id, event) {
             event.preventDefault();
+            this.dragData = null;
 
             let text = event.dataTransfer.getData("text/plain");
             let move_data = event.dataTransfer.getData("application/soundboard");
@@ -258,7 +241,6 @@ var app = new Vue({
                     type: "is-danger",
                 });
             }
-            // console.debug(event.dataTransfer);
         },
         addSoundFromFiles: function (soundboard_id, files) {
             let soundboard = this.soundboards[soundboard_id];
@@ -458,3 +440,5 @@ function isValidHttpUrl(string) {
 
     return url.protocol === "http:" || url.protocol === "https:";
 }
+
+window.addEventListener('touchmove', function () { });
