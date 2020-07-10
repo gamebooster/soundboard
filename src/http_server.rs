@@ -237,13 +237,16 @@ pub async fn run(
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     gui_receiver: crossbeam_channel::Receiver<sound::Message>,
 ) {
-    let soundboards_route = warp::path!("soundboards").map(move || {
+    let soundboards_route = warp::path!("soundboards").and(warp::filters::query::raw()
+    .or(warp::any().map(|| String::default())).unify(),).map(move |query: String| {
         let mut soundboards = Vec::new();
 
-        // if let Err(err) = config::MainConfig::reload_from_disk() {
-        //     error!("{:#}", err);
-        //     return format_json_error(err);
-        // }
+        if query.contains("reload") {
+          if let Err(err) = config::MainConfig::reload_from_disk() {
+            error!("{:#}", err);
+            return format_json_error(err);
+          }
+        }
 
         for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
             soundboards.push(StrippedSoundboardInfo {
