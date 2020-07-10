@@ -2,6 +2,7 @@ name = 'deutsche memes'
 position = 1
 
 [[sound]]
+hotkey = 'CTRL-U'
 name = 'Allesklar'
 path = 'Allesklar.mp3'
 

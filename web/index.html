@@ -6,7 +6,7 @@
     <script src="ext/vue_2_6_11.min.js" defer></script>
     <script src="ext/axios_0_19_2.min.js" defer></script>
     <script src="ext/buefy_0_8_20.min.js" defer></script>
-    <script src="https://rawgit.com/farzher/fuzzysort/master/fuzzysort.js" defer></script>
+    <script src="https://unpkg.com/fuzzysort@1.1.4/fuzzysort.js" defer></script>
     <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/index.min.js" defer></script>
     <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js" defer></script>
     <script src="js/index.js" defer></script>
@@ -22,10 +22,16 @@
 
 <body class="has-navbar-fixed-bottom">
     <div id="app">
-        <div class="modal is-active" v-if="showStatusModal" id="status_modal">
+        <div class="modal is-active" v-show="showStatusModal" style="display:none;" id="status_modal">
             <div class="modal-background"></div>
             <div class="notification is-danger">
                 <p class="title is-5 center">Lost connection to soundboard server</p>
+            </div>
+        </div>
+        <div class="modal is-active" v-show="showLoadingModal" style="display:none;" id="loading_modal">
+            <div class="modal-background"></div>
+            <div class="notification">
+                <p class="title is-5 center">Loading data...</p>
             </div>
         </div>
         <nav class="navbar is-fixed-bottom is-white padding-1">
@@ -117,14 +123,20 @@
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                     :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
                                     draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
-                                        v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span></button>
+                                        v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
+                                    &nbsp;
+                                    <span v-html="sound.hotkey ? ' (' + sound.hotkey + ')' : '' "></span>
+                                </button>
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                             :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
                                             draggable="true"
                                             @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
-                                                v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span></button>
+                                                v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
+                                            &nbsp;
+                                            <span v-html="sound.hotkey ? ' (' + sound.hotkey + ')' : '' "></span>
+                                        </button>
                                         <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
                                             <span class="icon is-small">
                                                 ■

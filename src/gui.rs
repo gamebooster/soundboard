@@ -198,7 +198,7 @@ impl Application for Soundboard {
                 }
 
                 if let Err(err) = self.hotkey_manager.unregister_all() {
-                    error!("Unregister all hotkeys failed {}", err);
+                    error!("Unregister all hotkeys failed {:#}", err);
                 }
 
                 let stop_hotkey = {
@@ -215,7 +215,7 @@ impl Application for Soundboard {
                 if let Err(err) = self.hotkey_manager.register(stop_hotkey, move || {
                     let _result = tx_clone.send(sound::Message::StopAll);
                 }) {
-                    error!("register hotkey failed {}", err);
+                    error!("register hotkey failed {:#}", err);
                 }
                 let tx_clone = self.sound_sender.clone();
                 self.current_sounds = config::MainConfig::read()
