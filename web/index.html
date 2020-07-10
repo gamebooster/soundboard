@@ -6,7 +6,7 @@
     <script src="ext/vue_2_6_11.min.js" defer></script>
     <script src="ext/axios_0_19_2.min.js" defer></script>
     <script src="ext/buefy_0_8_20.min.js" defer></script>
-    <script src="https://rawgit.com/farzher/fuzzysort/master/fuzzysort.js" defer></script>
+    <script src="https://unpkg.com/fuzzysort@1.1.4/fuzzysort.js" defer></script>
     <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/index.min.js" defer></script>
     <script src="https://unpkg.com/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js" defer></script>
     <script src="js/index.js" defer></script>
@@ -22,7 +22,7 @@
 
 <body class="has-navbar-fixed-bottom">
     <div id="app">
-        <div class="modal is-active" v-if="showStatusModal" id="status_modal">
+        <div class="modal is-active" v-show="showStatusModal" style="display:none;" id="status_modal">
             <div class="modal-background"></div>
             <div class="notification is-danger">
                 <p class="title is-5 center">Lost connection to soundboard server</p>

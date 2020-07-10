@@ -666,6 +666,48 @@ pub async fn run(
                 )
             });
 
+    fn sse_json(id: PlayStatusResponse) -> Result<impl ServerSentEvent, Infallible> {
+        Ok(warp::sse::json(id))
+    }
+
+    let gui_sender_clone = gui_sender.clone();
+    let gui_receiver_clone = gui_receiver.clone();
+    let sounds_events_route = warp::path!("sounds" / "events")
+        .and(warp::get())
+        .map(move || {
+            let gui_sender_clone = gui_sender_clone.clone();
+            let gui_receiver_clone = gui_receiver_clone.clone();
+            let event_stream =
+                tokio::time::interval(tokio::time::Duration::from_millis(111)).map(move |_| loop {
+                    gui_sender_clone
+                        .send(sound::Message::PlayStatus(Vec::new(), 0.0))
+                        .unwrap();
+                    if let Ok(sound::Message::PlayStatus(sounds, volume)) =
+                        gui_receiver_clone.recv()
+                    {
+                        let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
+                        for sound in sounds {
+                            sound_info.push(StrippedSoundActiveInfo {
+                                status: sound.0,
+                                name: sound.1.name,
+                                hotkey: sound.1.hotkey,
+                                play_duration: sound.2.as_secs_f32(),
+                                total_duration: sound
+                                    .3
+                                    .unwrap_or_else(|| std::time::Duration::from_secs(0))
+                                    .as_secs_f32(),
+                            });
+                        }
+                        let play_status_response = PlayStatusResponse {
+                            sounds: sound_info,
+                            volume,
+                        };
+                        return sse_json(play_status_response);
+                    }
+                });
+            warp::sse::reply(warp::sse::keep_alive().stream(event_stream))
+        });
+
     let gui_sender_clone = gui_sender.clone();
     let sounds_active_route = warp::path!("sounds" / "active")
         .and(warp::get())
@@ -702,13 +744,13 @@ pub async fn run(
             }
         });
 
-    fn sse_event(id: String) -> Result<impl ServerSentEvent, Infallible> {
-        Ok(warp::sse::data(id))
-    }
-
     let senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>> =
         Arc::new(std::sync::Mutex::new(Vec::new()));
     let senders_filter = warp::any().map(move || senders.clone());
+
+    fn sse_event(id: String) -> Result<impl ServerSentEvent, Infallible> {
+        Ok(warp::sse::data(id))
+    }
 
     let hotkey_events_route = warp::path!("hotkeys" / "events")
         .and(warp::get())
@@ -784,7 +826,8 @@ pub async fn run(
         .or(sounds_stop_route)
         .or(sounds_stop_all_route)
         .or(sounds_active_route)
-        .or(sounds_set_volume);
+        .or(sounds_set_volume)
+        .or(sounds_events_route);
 
     let hotkey_routes = hotkey_events_route.or(hotkey_register_route);
 

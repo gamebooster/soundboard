@@ -20,11 +20,8 @@ var app = new Vue({
         registeredHotkeys: new Map()
     },
     created: function () {
-        const self = this;
-        self.reloadData();
-        setInterval(function () {
-            self.updatePlayStatus();
-        }, 500);
+        this.reloadData();
+        this.createEventSources();
     },
     watch: {
         filter: function (val, oldVal) {
@@ -45,6 +42,36 @@ var app = new Vue({
         },
     },
     methods: {
+        createEventSources() {
+            this.soundEvents = new EventSource("/api/sounds/events");
+            this.soundEvents.onmessage = (event) => {
+                let play_data = JSON.parse(event.data)
+                this.activeSounds = play_data.sounds;
+                this.volume = play_data.volume;
+                if (this.showStatusModal) {
+                    this.registeredHotkeys.clear();
+                    this.reloadData();
+                }
+                this.showStatusModal = false;
+            };
+            this.soundEvents.onerror = (err) => {
+                this.showStatusModal = true;
+                this.soundEvents.close();
+                setTimeout(() => { this.createEventSources(); }, 1000);
+            };
+
+            this.hotkeyEvents = new EventSource("/api/hotkeys/events");
+            this.hotkeyEvents.onmessage = (event) => {
+                let sound_data = this.registeredHotkeys.get(event.data);
+                if (sound_data.special === "STOPALL") return this.stopAllSound();
+                this.playSound(sound_data.soundboard_id, sound_data.sound_id);
+            };
+
+            this.hotkeyEvents.onerror = (err) => {
+                this.hotkeyEvents.close();
+                this.showStatusModal = true;
+            };
+        },
         updatePlayStatus() {
             if (
                 getComputedStyle(document.querySelector("#bottom_menu"), null)
@@ -81,31 +108,25 @@ var app = new Vue({
 
                                 for (const sound of self.soundboards[soundboard_id].sounds) {
                                     if (!sound.hotkey) continue;
-                                    this.registerHotkey(sound.hotkey, { soundboard_id: soundboard_id, sound_id: sound.id });
+                                    self.registerHotkey(sound.hotkey, { soundboard_id: soundboard_id, sound_id: sound.id });
                                 }
                             })
                             .catch((error) => {
                                 self.showStatusModal = true;
                             });
                     }
+                    this.registerHotkey("CTRL-ALT-E", { special: "STOPALL" });
                 })
                 .catch((error) => {
                     self.showStatusModal = true;
                 });
-
-            this.hotkeyEvents = new EventSource("/api/hotkeys/events");
-            this.hotkeyEvents.onmessage = (event) => {
-                let sound_data = this.registeredHotkeys.get(event.data);
-                if (sound_data.special === "STOPALL") return this.stopAllSound();
-                this.playSound(sound_data.soundboard_id, sound_data.sound_id);
-            };
-
-            this.registerHotkey("CTRL-ALT-E", { special: "STOPALL" });
         },
         hideKeyboard() {
             document.activeElement.blur();
         },
         registerHotkey: function (hotkey, eventObject) {
+            if (this.registeredHotkeys.has(hotkey)) { return; }
+
             axios.post("/api/hotkeys", {
                 hotkey: hotkey,
             }).then((response) => {
