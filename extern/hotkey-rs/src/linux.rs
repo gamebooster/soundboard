@@ -70,22 +70,22 @@ pub mod keys {
     pub const U: u32 = 'U' as u32;
     pub const V: u32 = 'V' as u32;
     pub const W: u32 = 'W' as u32;
-    pub const T: u32 = 'T' as u32;
+    pub const X: u32 = 'X' as u32;
     pub const Y: u32 = 'Y' as u32;
     pub const Z: u32 = 'Z' as u32;
 }
 
 enum HotkeyMessage {
     RegisterHotkey(ListenerId, u32, u32),
-    RegisterHotkeyResult(Result<ListenerId, usize>),
+    RegisterHotkeyResult(Result<ListenerId, HotkeyError>),
     UnregisterHotkey(ListenerId),
-    UnregisterHotkeyResult(Result<(), usize>),
+    UnregisterHotkeyResult(Result<(), HotkeyError>),
     DropThread,
 }
 
 type ListenerId = (i32, u32);
 
-struct Listener {
+pub struct Listener {
     handlers: ListenerMap,
     sender: Sender<HotkeyMessage>,
     receiver: Receiver<HotkeyMessage>,
@@ -117,7 +117,7 @@ impl HotkeyListener for Listener {
                     if (xlib.XPending)(display) > 0 {
                         (xlib.XNextEvent)(display, &mut event);
                         if let xlib::KeyRelease = event.get_type() {
-                            if let Some(handler) = hotkey_map
+                            if let Some((_, handler)) = hotkey_map
                                 .lock()
                                 .unwrap()
                                 .get_mut(&(event.key.keycode as i32, event.key.state))
@@ -128,10 +128,8 @@ impl HotkeyListener for Listener {
                     }
                     match thread_receiver.try_recv() {
                         Ok(HotkeyMessage::RegisterHotkey(_, modifiers, key)) => {
-                            let keycode: i32;
-                            unsafe {
-                                keycode = (xlib.XKeysymToKeycode)(display, key as u64) as i32;
-                            }
+                            let keycode = (xlib.XKeysymToKeycode)(display, key as u64) as i32;
+
                             let result = (xlib.XGrabKey)(
                                 display,
                                 keycode,
@@ -195,7 +193,7 @@ impl HotkeyListener for Listener {
         }
     }
 
-    fn register_hotkey<F>(&mut self, hotkey: ListenerHotkey, callback: F) -> Result<(), HotkeyError>
+    fn register_hotkey<F>(&mut self, hotkey: ListenerHotkey, handler: F) -> Result<(), HotkeyError>
     where
         F: 'static + FnMut() + Send,
     {
@@ -205,12 +203,19 @@ impl HotkeyListener for Listener {
             }
         }
         self.sender
-            .send(HotkeyMessage::RegisterHotkey((0, 0), modifiers, key))
+            .send(HotkeyMessage::RegisterHotkey(
+                (0, 0),
+                hotkey.modifiers,
+                hotkey.key,
+            ))
             .map_err(|_| HotkeyError::ChannelError())?;
         match self.receiver.recv() {
             Ok(HotkeyMessage::RegisterHotkeyResult(Ok(id))) => {
-                self.handlers.lock().unwrap().insert(id, Box::new(handler));
-                Ok(id)
+                self.handlers
+                    .lock()
+                    .unwrap()
+                    .insert(id, (hotkey, Box::new(handler)));
+                Ok(())
             }
             Ok(HotkeyMessage::RegisterHotkeyResult(Err(err))) => Err(err),
             Err(_) => Err(HotkeyError::ChannelError()),
@@ -220,7 +225,7 @@ impl HotkeyListener for Listener {
 
     fn unregister_hotkey(&mut self, hotkey: ListenerHotkey) -> Result<(), HotkeyError> {
         let mut found_id = (-1, 0);
-        for (id, (key, _, _)) in self.handlers.lock().unwrap().iter() {
+        for (id, (key, _)) in self.handlers.lock().unwrap().iter() {
             if *key == hotkey {
                 found_id = *id;
                 break;
@@ -230,7 +235,7 @@ impl HotkeyListener for Listener {
             return Err(HotkeyError::HotkeyNotRegistered(hotkey));
         }
         self.sender
-            .send(HotkeyMessage::UnregisterHotkey(id))
+            .send(HotkeyMessage::UnregisterHotkey(found_id))
             .map_err(|_| HotkeyError::ChannelError())?;
         if self.handlers.lock().unwrap().remove(&found_id).is_none() {
             panic!("hotkey should never be none")
