@@ -6,8 +6,9 @@ mod macos;
 mod windows;
 
 mod traits;
+pub use traits::HotkeyError;
 pub use traits::HotkeyListener;
-pub use traits::ListenerID;
+pub use traits::ListenerHotkey;
 
 #[cfg(target_os = "linux")]
 pub use linux::keys;

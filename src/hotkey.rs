@@ -2,7 +2,7 @@ use super::config;
 use anyhow::{anyhow, Context, Result};
 use hotkey_soundboard::HotkeyListener;
 use hotkey_soundboard::Listener;
-use hotkey_soundboard::ListenerID;
+use hotkey_soundboard::ListenerHotkey;
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
@@ -11,17 +11,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 type GlobalListener = Lazy<Arc<Mutex<Listener>>>;
-type GlobalHotkeyMap = Arc<
-    Mutex<
-        HashMap<
-            config::Hotkey,
-            (
-                ListenerID,
-                HashMap<usize, Box<dyn 'static + FnMut() + Send>>,
-            ),
-        >,
-    >,
->;
+type GlobalHotkeyMap =
+    Arc<Mutex<HashMap<config::Hotkey, HashMap<usize, Box<dyn 'static + FnMut() + Send>>>>>;
 
 static GLOBAL_LISTENER: GlobalListener = Lazy::new(|| Arc::new(Mutex::new(Listener::new())));
 static GLOBAL_HOTKEY_MAP: Lazy<GlobalHotkeyMap> = Lazy::new(GlobalHotkeyMap::default);
@@ -47,23 +38,26 @@ impl HotkeyManager {
         match GLOBAL_HOTKEY_MAP.lock().entry(hotkey.clone()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 let entry = entry.get_mut();
-                entry.1.insert(self.id, Box::new(callback));
+                entry.insert(self.id, Box::new(callback));
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
-                let result = GLOBAL_LISTENER.lock().register_hotkey(
-                    hotkey.modifier_as_flag(),
-                    hotkey.key as u32,
-                    move || {
-                        if let Some(entry) = GLOBAL_HOTKEY_MAP.lock().get_mut(&hotkey) {
-                            for (_, cb) in entry.1.iter_mut() {
-                                cb();
+                let hotkey_clone = hotkey.clone();
+                GLOBAL_LISTENER
+                    .lock()
+                    .register_hotkey(
+                        ListenerHotkey::new(hotkey.modifier_as_flag(), hotkey.key as u32),
+                        move || {
+                            if let Some(entry) = GLOBAL_HOTKEY_MAP.lock().get_mut(&hotkey) {
+                                for (_, cb) in entry.iter_mut() {
+                                    cb();
+                                }
                             }
-                        }
-                    },
-                )?;
+                        },
+                    )
+                    .with_context(|| format!("Failed to register hotkey {}", hotkey_clone))?;
                 let mut new_map: HashMap<usize, Box<dyn 'static + FnMut() + Send>> = HashMap::new();
                 new_map.insert(self.id, Box::new(callback));
-                entry.insert((result, new_map));
+                entry.insert(new_map);
             }
         }
         info!("register hotkey {}", &hotkey_clone);
@@ -81,12 +75,18 @@ impl HotkeyManager {
         match GLOBAL_HOTKEY_MAP.lock().entry(hotkey.clone()) {
             std::collections::hash_map::Entry::Occupied(mut occ_entry) => {
                 let entry = occ_entry.get_mut();
-                if entry.1.remove(&self.id).is_none() {
+                if entry.remove(&self.id).is_none() {
                     panic!("should never be vacant");
                 }
-                if entry.1.is_empty() {
-                    GLOBAL_LISTENER.lock().unregister_hotkey(entry.0)?;
+                if entry.is_empty() {
                     occ_entry.remove_entry();
+                    GLOBAL_LISTENER
+                        .lock()
+                        .unregister_hotkey(ListenerHotkey::new(
+                            hotkey.modifier_as_flag(),
+                            hotkey.key as u32,
+                        ))
+                        .with_context(|| format!("Failed to unregister hotkey {}", hotkey))?;
                 }
             }
             std::collections::hash_map::Entry::Vacant(_) => {
