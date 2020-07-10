@@ -1,11 +1,9 @@
-extern crate log;
-
 use anyhow::{anyhow, Result};
 use libpulse_binding as pulse;
 use log::{error, info, trace, warn};
 use pulse::context::State;
 
-pub fn load_virt_sink() -> Result<(String, u32)> {
+pub fn load_module(module_name: &str, args: &str) -> Result<u32> {
     let (mut mainloop, pulse_context) = connect_pulse()?;
 
     let (sender, receiver): (
@@ -20,27 +18,21 @@ pub fn load_virt_sink() -> Result<(String, u32)> {
     mainloop.lock();
 
     let mut introspector = pulse_context.introspect();
-    introspector.load_module(
-        &"module-null-sink",
-        &"sink_name=soundBoardVirtualSink sink_properties=device.description=SoundboardLoopbackDevice",
-        callback,
-    );
-
-    let index;
+    introspector.load_module(module_name, args, callback);
 
     mainloop.unlock();
 
-    match receiver.recv() {
-        Err(err) => return Err(anyhow!("Failed to recv from pulse module callback {}", err)),
-        Ok(Err(err)) => return Err(anyhow!("Failed to load pulse module {}", err)),
-        Ok(Ok(module_index)) => index = module_index,
+    let result = match receiver.recv() {
+        Err(err) => Err(anyhow!("Failed to recv from pulse module callback {}", err)),
+        Ok(Err(err)) => Err(anyhow!("Failed to load pulse module {}", err)),
+        Ok(Ok(module_index)) => Ok(module_index),
     };
 
     mainloop.stop();
-    Ok(("SoundboardLoopbackDevice".to_string(), index))
+    result
 }
 
-pub fn destroy_virt_sink(loop_module_id: u32) -> Result<()> {
+pub fn unload_module(loop_module_id: u32) -> Result<()> {
     let (mut mainloop, pulse_context) = connect_pulse()?;
 
     let (sender, receiver): (
@@ -59,15 +51,15 @@ pub fn destroy_virt_sink(loop_module_id: u32) -> Result<()> {
 
     mainloop.unlock();
 
-    match receiver.recv() {
-        Err(err) => return Err(anyhow!("Failed to unload pulse module {}", err)),
-        Ok(false) => return Err(anyhow!("Failed to unload pulse module {}")),
-        Ok(true) => info!("Unloaded Pulse Null Sink Module"),
+    let result = match receiver.recv() {
+        Err(err) => Err(anyhow!("Failed to unload pulse module {}", err)),
+        Ok(false) => Err(anyhow!("Failed to unload pulse module {}")),
+        Ok(true) => Ok(()),
     };
 
     mainloop.stop();
 
-    Ok(())
+    result
 }
 
 fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::context::Context)> {
@@ -93,22 +85,24 @@ fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::contex
     loop {
         match pulse_context.get_state() {
             State::Ready => {
-                info!("Connection Ready");
+                trace!("connection: ready");
                 break;
             }
             State::Failed => {
-                return Err(anyhow!("Failed to connect to Pulse Server: Failed state"))
+                trace!("connection: failed");
+                return Err(anyhow!("Failed to connect to Pulse Server: Failed state"));
             }
             State::Terminated => {
+                trace!("connection: terminated");
                 return Err(anyhow!(
                     "Failed to connect to Pulse Server: Terminated state"
-                ))
+                ));
             }
             State::Connecting => {
-                info!("connecting");
+                trace!("connection: connecting");
             }
             _ => {
-                info!("another state");
+                trace!("connection: unexpected state");
             }
         };
 
