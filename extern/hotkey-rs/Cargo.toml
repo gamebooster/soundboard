@@ -1,17 +1,17 @@
 [package]
-name = "hotkey-soundboard"
-version = "0.0.1"
-license = "MIT"
-description = "An modified fork of hotkey-rs https://github.com/UnwrittenFun/hotkey-rs for internal usage with the project soundboard"
-repository = "https://github.com/gamebooster/soundboard/tree/master/extern/hotkey-rs"
 authors = ["James Birtles <jameshbirtles@gmail.com>", "Karl Skomski <karl@skomski.com>"]
+description = "An modified fork of hotkey-rs https://github.com/UnwrittenFun/hotkey-rs for internal usage with the project soundboard"
 edition = "2018"
+license = "MIT"
+name = "hotkey-soundboard"
+repository = "https://github.com/gamebooster/soundboard/tree/master/extern/hotkey-rs"
+version = "0.0.1"
 
 [dependencies]
 thiserror = "1"
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winuser"] }
+winapi = {version = "0.3", features = ["winuser", "errhandlingapi"]}
 
 [target.'cfg(target_os = "linux")'.dependencies]
 x11-dl = "2.18"

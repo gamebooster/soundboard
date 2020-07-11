@@ -9,10 +9,22 @@ use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
 use warp::http::StatusCode;
-use warp::{reject, Filter, Rejection, Reply};
+use warp::{reject, sse::ServerSentEvent, Filter, Rejection, Reply};
 extern crate futures;
+use super::hotkey;
 use bytes::BufMut;
-use futures::{Future, Stream, TryFutureExt, TryStreamExt};
+use futures::{Future, Stream, StreamExt, TryFutureExt, TryStreamExt};
+use tokio::sync::mpsc;
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct HotkeyRegisterRequest {
+    hotkey: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct HotkeyFireEvent {
+    hotkey: String,
+}
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct SoundPlayRequest {
@@ -42,6 +54,12 @@ struct SoundAddRequest {
     name: String,
     hotkey: Option<String>,
     path: String,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct SoundCopyRequest {
+    source_soundboard_id: usize,
+    source_sound_id: usize,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
@@ -118,6 +136,11 @@ fn format_json_error<T: std::fmt::Display>(err: T) -> warp::reply::WithStatus<wa
         )),
         warp::http::StatusCode::INTERNAL_SERVER_ERROR,
     )
+}
+
+#[derive(Debug)]
+enum HotkeyMessage {
+    Pressed(String),
 }
 
 #[derive(Debug)]
@@ -214,27 +237,35 @@ pub async fn run(
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     gui_receiver: crossbeam_channel::Receiver<sound::Message>,
 ) {
-    let soundboards_route = warp::path!("soundboards").map(move || {
-        let mut soundboards = Vec::new();
-
-        if let Err(err) = config::MainConfig::reload_from_disk() {
-            error!("{:#}", err);
-            return format_json_error(err);
-        }
-
-        for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
-            soundboards.push(StrippedSoundboardInfo {
-                name: soundboard.name.clone(),
-                hotkey: soundboard.hotkey.clone(),
-                position: soundboard.position,
-                id,
-            });
-        }
-        warp::reply::with_status(
-            warp::reply::json(&ResultData::with_data(soundboards)),
-            warp::http::StatusCode::OK,
+    let soundboards_route = warp::path!("soundboards")
+        .and(
+            warp::filters::query::raw()
+                .or(warp::any().map(String::default))
+                .unify(),
         )
-    });
+        .map(move |query: String| {
+            let mut soundboards = Vec::new();
+
+            if query.contains("reload") {
+                if let Err(err) = config::MainConfig::reload_from_disk() {
+                    error!("{:#}", err);
+                    return format_json_error(err);
+                }
+            }
+
+            for (id, soundboard) in config::MainConfig::read().soundboards.iter().enumerate() {
+                soundboards.push(StrippedSoundboardInfo {
+                    name: soundboard.name.clone(),
+                    hotkey: soundboard.hotkey.clone(),
+                    position: soundboard.position,
+                    id,
+                });
+            }
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(soundboards)),
+                warp::http::StatusCode::OK,
+            )
+        });
 
     let soundboards_soundboard_route = check_soundboard_index()
         .and(warp::path::end())
@@ -405,9 +436,82 @@ pub async fn run(
             },
         );
 
+    let soundboards_soundboard_copy_sound_route = check_soundboard_index()
+        .and(warp::path!("sounds"))
+        .and(warp::post())
+        .and(warp::header::exact("x-method", "copy"))
+        .and(warp::body::json())
+        .map(
+            move |(mut soundboard, index): (config::SoundboardConfig, usize),
+                  sound_copy_request: SoundCopyRequest| {
+                let main_config = config::MainConfig::read();
+                let source_soundboard = main_config
+                    .soundboards
+                    .get(sound_copy_request.source_soundboard_id);
+
+                if source_soundboard.is_none() {
+                    return format_json_error("invalid source soundboard");
+                }
+
+                let source_sound = source_soundboard
+                    .as_ref()
+                    .unwrap()
+                    .sounds
+                    .as_ref()
+                    .unwrap()
+                    .get(sound_copy_request.source_sound_id);
+
+                if source_sound.is_none() {
+                    return format_json_error("invalid source sound");
+                }
+
+                let source_sound = source_sound.unwrap();
+
+                if !source_sound.path.starts_with("http") {
+                    let source_sound_path =
+                        std::path::PathBuf::from_str(&source_sound.path).unwrap();
+                    if source_sound_path.is_relative() {
+                        let mut new_sound_path = config::get_soundboard_sound_directory(
+                            std::path::PathBuf::from_str(&soundboard.path)
+                                .unwrap()
+                                .as_path(),
+                        )
+                        .unwrap();
+                        new_sound_path.push(&source_sound.path);
+                        if let Err(err) = std::fs::copy(&source_sound.full_path, &new_sound_path) {
+                            return format_json_error(err);
+                        }
+                    }
+                }
+
+                soundboard
+                    .sounds
+                    .as_mut()
+                    .unwrap()
+                    .push(source_sound.clone());
+
+                if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
+                    return format_json_error(err);
+                }
+                let main_config = config::MainConfig::read();
+                let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
+                let sound_index = sounds.len() - 1;
+                let sound = sounds[sound_index].clone();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name,
+                        hotkey: sound.hotkey,
+                        id: sound_index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
     let soundboards_soundboard_add_sound_route = check_soundboard_index()
         .and(warp::path!("sounds"))
         .and(warp::post())
+        .and(warp::header::exact("x-method", "create"))
         .and(warp::body::json())
         .map(
             move |(old_soundboard, index): (config::SoundboardConfig, usize),
@@ -570,6 +674,48 @@ pub async fn run(
                 )
             });
 
+    fn sse_json(id: PlayStatusResponse) -> Result<impl ServerSentEvent, Infallible> {
+        Ok(warp::sse::json(id))
+    }
+
+    let gui_sender_clone = gui_sender.clone();
+    let gui_receiver_clone = gui_receiver.clone();
+    let sounds_events_route = warp::path!("sounds" / "events")
+        .and(warp::get())
+        .map(move || {
+            let gui_sender_clone = gui_sender_clone.clone();
+            let gui_receiver_clone = gui_receiver_clone.clone();
+            let event_stream =
+                tokio::time::interval(tokio::time::Duration::from_millis(111)).map(move |_| loop {
+                    gui_sender_clone
+                        .send(sound::Message::PlayStatus(Vec::new(), 0.0))
+                        .unwrap();
+                    if let Ok(sound::Message::PlayStatus(sounds, volume)) =
+                        gui_receiver_clone.recv()
+                    {
+                        let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
+                        for sound in sounds {
+                            sound_info.push(StrippedSoundActiveInfo {
+                                status: sound.0,
+                                name: sound.1.name,
+                                hotkey: sound.1.hotkey,
+                                play_duration: sound.2.as_secs_f32(),
+                                total_duration: sound
+                                    .3
+                                    .unwrap_or_else(|| std::time::Duration::from_secs(0))
+                                    .as_secs_f32(),
+                            });
+                        }
+                        let play_status_response = PlayStatusResponse {
+                            sounds: sound_info,
+                            volume,
+                        };
+                        return sse_json(play_status_response);
+                    }
+                });
+            warp::sse::reply(warp::sse::keep_alive().stream(event_stream))
+        });
+
     let gui_sender_clone = gui_sender.clone();
     let sounds_active_route = warp::path!("sounds" / "active")
         .and(warp::get())
@@ -606,6 +752,61 @@ pub async fn run(
             }
         });
 
+    let senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>> =
+        Arc::new(std::sync::Mutex::new(Vec::new()));
+    let senders_filter = warp::any().map(move || senders.clone());
+
+    fn sse_event(id: String) -> Result<impl ServerSentEvent, Infallible> {
+        Ok(warp::sse::data(id))
+    }
+
+    let hotkey_events_route = warp::path!("hotkeys" / "events")
+        .and(warp::get())
+        .and(senders_filter.clone())
+        .map(
+            move |senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>>| {
+                let event_stream = || {
+                    let (tx, rx) = mpsc::unbounded_channel::<HotkeyMessage>();
+                    senders.lock().unwrap().push(tx);
+                    rx.map(|msg| match msg {
+                        HotkeyMessage::Pressed(id) => sse_event(id),
+                    })
+                };
+                warp::sse::reply(warp::sse::keep_alive().stream(event_stream()))
+            },
+        );
+
+    let hotkey_manager = std::sync::Arc::new(std::sync::Mutex::new(hotkey::HotkeyManager::new()));
+    let hotkey_manager_clone = hotkey_manager.clone();
+
+    let hotkey_register_route = warp::path!("hotkeys")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(senders_filter)
+        .map(move |hotkey_request: HotkeyRegisterRequest, senders: Arc<std::sync::Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>>| {
+            let hotkey = match config::parse_hotkey(&hotkey_request.hotkey) {
+                Ok(key) => key,
+                Err(err) => return format_json_error(err),
+            };
+
+            let hotkey_request_clone = hotkey_request.clone();
+            if let Err(err) = hotkey_manager_clone.lock().unwrap().register(hotkey, move || {
+                let mut senders = senders.lock().unwrap();
+                senders.retain(|s| {
+                    if s.send(HotkeyMessage::Pressed(hotkey_request_clone.hotkey.clone())).is_err() {
+                        return false;
+                    }
+                    true
+                });
+            }) {
+                return format_json_error(err);
+            };
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(hotkey_request)),
+                warp::http::StatusCode::OK,
+            )
+        });
+
     let help_api = warp::path::end()
         .and(warp::get())
         .map(|| "This is the Soundboard API. Try calling /api/soundboards or /api/sounds/active");
@@ -626,18 +827,23 @@ pub async fn run(
         .or(soundboards_sounds_sound_route)
         .or(soundboards_soundboard_add_sound_upload_route)
         .or(soundboards_soundboard_add_sound_route)
+        .or(soundboards_soundboard_copy_sound_route)
         .or(soundboards_sounds_delete_sound_route);
 
     let sound_thread_routes = sounds_play_route
         .or(sounds_stop_route)
         .or(sounds_stop_all_route)
         .or(sounds_active_route)
-        .or(sounds_set_volume);
+        .or(sounds_set_volume)
+        .or(sounds_events_route);
+
+    let hotkey_routes = hotkey_events_route.or(hotkey_register_route);
 
     let routes = (warp::path("api").and(
         soundboard_routes
             .or(soundboard_sound_routes)
             .or(sound_thread_routes)
+            .or(hotkey_routes)
             .or(help_api),
     ))
     .or(warp::get().and(warp::fs::dir(web_path)))

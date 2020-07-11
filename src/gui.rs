@@ -35,6 +35,7 @@ struct SoundboardButton {
 enum SoundboardState {
     Loading,
     Loaded,
+    Unsupported,
 }
 
 pub struct Soundboard {
@@ -197,7 +198,7 @@ impl Application for Soundboard {
                 }
 
                 if let Err(err) = self.hotkey_manager.unregister_all() {
-                    error!("Unregister all hotkeys failed {}", err);
+                    error!("Unregister all hotkeys failed {:#}", err);
                 }
 
                 let stop_hotkey = {
@@ -214,7 +215,7 @@ impl Application for Soundboard {
                 if let Err(err) = self.hotkey_manager.register(stop_hotkey, move || {
                     let _result = tx_clone.send(sound::Message::StopAll);
                 }) {
-                    error!("register hotkey failed {}", err);
+                    error!("register hotkey failed {:#}", err);
                 }
                 let tx_clone = self.sound_sender.clone();
                 self.current_sounds = config::MainConfig::read()
@@ -244,8 +245,13 @@ impl Application for Soundboard {
                     });
                 }
 
-                self.panel_view = panel_view::PanelView::new(&self.current_sounds);
-                self.list_view = list_view::ListView::new(&self.current_sounds);
+                if self.current_sounds.len() > 64 {
+                    self.current_state = SoundboardState::Unsupported;
+                } else {
+                    self.current_state = SoundboardState::Loaded;
+                    self.panel_view = panel_view::PanelView::new(&self.current_sounds);
+                    self.list_view = list_view::ListView::new(&self.current_sounds);
+                }
             }
             SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
                 if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
@@ -414,7 +420,21 @@ impl Application for Soundboard {
             );
 
         let sound_view = {
-            if self.current_style == LayoutStyle::ListView {
+            if self.current_state == SoundboardState::Unsupported {
+                Column::new()
+                    .spacing(10)
+                    .height(Length::FillPortion(18))
+                    .width(Length::Fill)
+                    .push(
+                        Text::new(
+                            "soundboard has over 64 sounds. Please use webui for this usecase.",
+                        )
+                        .size(24)
+                        .color(iced::Color::BLACK)
+                        .vertical_alignment(VerticalAlignment::Center),
+                    )
+                    .into()
+            } else if self.current_style == LayoutStyle::ListView {
                 self.list_view
                     .view()
                     .map(SoundboardMessage::HandleListViewMessage)

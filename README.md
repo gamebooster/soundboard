@@ -1,6 +1,8 @@
 # soundboard
 
-[![Build](https://github.com/gamebooster/soundboard/workflows/Build/badge.svg)](https://github.com/gamebooster/soundboard/actions?query=workflow%3ABuild)
+[![cratesio](https://img.shields.io/crates/v/soundboard.svg)](https://crates.io/crates/soundboard)
+[![BuildDebug](https://github.com/gamebooster/soundboard/workflows/BuildDebug/badge.svg)](https://github.com/gamebooster/soundboard/actions?query=workflow%3ABuildDebug)
+[![BuildRelease](https://github.com/gamebooster/soundboard/workflows/BuildRelease/badge.svg)](https://github.com/gamebooster/soundboard/actions?query=workflow%3ABuildRelease)
 
 cross-platform desktop application to spice up your audio/video conferences
 

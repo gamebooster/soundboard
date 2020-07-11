@@ -220,7 +220,7 @@ fn try_main() -> Result<()> {
     Ok(())
 }
 
-fn no_gui_routine(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
+fn no_gui_routine(_gui_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
     use winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -232,47 +232,47 @@ fn no_gui_routine(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Resu
         .with_visible(false)
         .build(&event_loop)
         .unwrap();
-    let mut hotkey_manager = hotkey::HotkeyManager::new();
+    // let mut hotkey_manager = hotkey::HotkeyManager::new();
 
-    let stop_hotkey = {
-        if let Some(key) = config::MainConfig::read().stop_hotkey.as_ref() {
-            config::parse_hotkey(&key)?
-        } else {
-            config::Hotkey {
-                modifier: vec![config::Modifier::CTRL],
-                key: config::Key::S,
-            }
-        }
-    };
-    let gui_sender_clone = gui_sender.clone();
-    hotkey_manager
-        .register(stop_hotkey, move || {
-            let _result = gui_sender_clone.send(sound::Message::StopAll);
-        })
-        .map_err(|_s| anyhow!("register key"))?;
+    // let stop_hotkey = {
+    //     if let Some(key) = config::MainConfig::read().stop_hotkey.as_ref() {
+    //         config::parse_hotkey(&key)?
+    //     } else {
+    //         config::Hotkey {
+    //             modifier: vec![config::Modifier::CTRL],
+    //             key: config::Key::S,
+    //         }
+    //     }
+    // };
+    // let gui_sender_clone = gui_sender.clone();
+    // hotkey_manager
+    //     .register(stop_hotkey, move || {
+    //         let _result = gui_sender_clone.send(sound::Message::StopAll);
+    //     })
+    //     .map_err(|_s| anyhow!("register key"))?;
 
-    let gui_sender_clone = gui_sender;
-    // only register hotkeys for first soundboard in no-gui-mode
-    for sound in config::MainConfig::read().soundboards[0]
-        .sounds
-        .clone()
-        .unwrap_or_default()
-    {
-        if sound.hotkey.is_none() {
-            continue;
-        }
-        let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
-        let tx_clone = gui_sender_clone.clone();
-        info!("register hotkey  {} for sound {}", &hotkey, sound.name);
-        let _result = hotkey_manager.register(hotkey, move || {
-            if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-                sound.clone(),
-                sound::SoundDevices::Both,
-            )) {
-                error!("failed to play sound {}", err);
-            };
-        })?;
-    }
+    // let gui_sender_clone = gui_sender;
+    // // only register hotkeys for first soundboard in no-gui-mode
+    // for sound in config::MainConfig::read().soundboards[0]
+    //     .sounds
+    //     .clone()
+    //     .unwrap_or_default()
+    // {
+    //     if sound.hotkey.is_none() {
+    //         continue;
+    //     }
+    //     let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
+    //     let tx_clone = gui_sender_clone.clone();
+    //     info!("register hotkey  {} for sound {}", &hotkey, sound.name);
+    //     let _result = hotkey_manager.register(hotkey, move || {
+    //         if let Err(err) = tx_clone.send(sound::Message::PlaySound(
+    //             sound.clone(),
+    //             sound::SoundDevices::Both,
+    //         )) {
+    //             error!("failed to play sound {}", err);
+    //         };
+    //     })?;
+    // }
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
