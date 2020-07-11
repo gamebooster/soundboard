@@ -276,7 +276,7 @@ version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7aa2097be53a00de9e8fc349fea6d76221f398f5c4fa550d420669906962d160"
 dependencies = [
- "mio",
+ "mio 0.6.22",
  "mio-extras",
  "nix 0.14.1",
 ]
@@ -585,15 +585,15 @@ dependencies = [
 
 [[package]]
 name = "crossterm"
-version = "0.17.5"
+version = "0.17.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9851d20b9809e561297ec3ca85d7cba3a57507fe8d01d07ba7b52469e1c89a11"
+checksum = "b1f397c213f41eae56e512bb3bec44ac044650e30f1a15357d9d8495a01906cb"
 dependencies = [
  "bitflags",
  "crossterm_winapi",
  "lazy_static",
  "libc",
- "mio",
+ "mio 0.7.0",
  "parking_lot 0.10.2",
  "signal-hook",
  "winapi 0.3.9",
@@ -1913,6 +1913,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "mio"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e9971bc8349a361217a8f2a41f5d011274686bd4436465ba51730921039d7fb"
+dependencies = [
+ "lazy_static",
+ "libc",
+ "log 0.4.8",
+ "miow 0.3.5",
+ "ntapi",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "mio-extras"
 version = "2.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1920,7 +1934,7 @@ checksum = "52403fe290012ce777c4626790c8951324a2b9e3316b3143779c72b029742f19"
 dependencies = [
  "lazycell",
  "log 0.4.8",
- "mio",
+ "mio 0.6.22",
  "slab",
 ]
 
@@ -1931,7 +1945,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0840c1c50fd55e521b247f949c241c9997709f23bd7f023b9762cd561e935656"
 dependencies = [
  "log 0.4.8",
- "mio",
+ "mio 0.6.22",
  "miow 0.3.5",
  "winapi 0.3.9",
 ]
@@ -1944,7 +1958,7 @@ checksum = "afcb699eb26d4332647cc848492bbc15eafb26f08d0304550d5aa1f612e066f0"
 dependencies = [
  "iovec",
  "libc",
- "mio",
+ "mio 0.6.22",
 ]
 
 [[package]]
@@ -2096,6 +2110,15 @@ checksum = "ffb4262d26ed83a1c0a33a38fe2bb15797329c85770da05e6b828ddb782627af"
 dependencies = [
  "memchr",
  "version_check 0.9.2",
+]
+
+[[package]]
+name = "ntapi"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a31937dea023539c72ddae0e3571deadc1414b300483fa7aaec176168cfa9d2"
+dependencies = [
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -3114,7 +3137,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "604508c1418b99dfe1925ca9224829bb2a8a9a04dda655cc01fcad46f4ab05ed"
 dependencies = [
  "libc",
- "mio",
+ "mio 0.7.0",
  "signal-hook-registry",
 ]
 
@@ -3472,7 +3495,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "memchr",
- "mio",
+ "mio 0.6.22",
  "mio-named-pipes",
  "mio-uds",
  "num_cpus",
@@ -3898,7 +3921,7 @@ dependencies = [
  "calloop",
  "downcast-rs",
  "libc",
- "mio",
+ "mio 0.6.22",
  "nix 0.14.1",
  "wayland-commons",
  "wayland-scanner",
@@ -4098,7 +4121,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "log 0.4.8",
- "mio",
+ "mio 0.6.22",
  "mio-extras",
  "ndk",
  "ndk-glue",
