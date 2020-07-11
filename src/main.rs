@@ -134,7 +134,7 @@ fn try_main() -> Result<()> {
             info!("autoloop: created SoundboardNullSink pulse audio module");
 
             let module_name = "module-loopback";
-            let module_args = "source=@DEFAULT_SOURCE@ sink=SoundboardNullSink";
+            let module_args = "source=@DEFAULT_SOURCE@ sink=SoundboardNullSink latency_msec=20";
             match pulseauto::load_module(module_name, module_args) {
                 Ok(module_id) => {
                     loopback_module_id = Some(module_id);
