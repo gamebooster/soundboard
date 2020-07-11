@@ -60,11 +60,9 @@ where
         T: std::io::Read,
     {
         let duration = mp3_duration::from_read(reader);
-        if let Ok(duration) = duration {
-            Some(duration)
-        } else {
-            trace!("Could not read mp3 tag {:?}", duration.err());
-            None
+        match duration {
+            Ok(duration) => Some(duration),
+            Err(err) => Some(err.at_duration),
         }
     }
 }
