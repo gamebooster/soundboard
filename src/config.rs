@@ -44,6 +44,7 @@ pub struct MainConfig {
     pub telegram: Option<bool>,
     pub no_gui: Option<bool>,
     pub auto_loop_device: Option<bool>,
+    pub no_duplex_device: Option<bool>,
     pub print_possible_devices: Option<bool>,
 
     #[serde(skip_serializing, skip_deserializing)]
@@ -64,6 +65,7 @@ fn load_and_merge_config() -> Result<MainConfig> {
     merge_flag_with_args_and_env(&mut config.http_server, &arguments, "http-server");
     merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
     merge_flag_with_args_and_env(&mut config.no_gui, &arguments, "no-gui");
+    merge_flag_with_args_and_env(&mut config.no_duplex_device, &arguments, "no-duplex-device");
     merge_flag_with_args_and_env(
         &mut config.print_possible_devices,
         &arguments,
@@ -80,6 +82,13 @@ impl MainConfig {
     pub fn reload_from_disk() -> Result<()> {
         *GLOBAL_CONFIG.write() = std::sync::Arc::new(load_and_merge_config()?);
         Ok(())
+    }
+
+    #[cfg(feature = "autoloop")]
+    pub fn set_no_duplex_device_option(option: Option<bool>) {
+        let mut config: MainConfig = (*MainConfig::read()).clone();
+        config.no_duplex_device = option;
+        *GLOBAL_CONFIG.write() = std::sync::Arc::new(config);
     }
 
     #[allow(dead_code)]

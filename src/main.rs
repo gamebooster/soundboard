@@ -106,7 +106,10 @@ fn try_main() -> Result<()> {
     ) = crossbeam_channel::unbounded();
 
     #[cfg(feature = "autoloop")]
-    let mut loop_module_id: Option<u32> = None;
+    let mut null_sink_module_id: Option<u32> = None;
+
+    #[cfg(feature = "autoloop")]
+    let mut loopback_module_id: Option<u32> = None;
 
     #[cfg(feature = "autoloop")]
     let mut loop_device_id = config::MainConfig::read().loopback_device.clone();
@@ -117,17 +120,34 @@ fn try_main() -> Result<()> {
             .auto_loop_device
             .unwrap_or_default()
         {
-            match pulseauto::load_virt_sink() {
-                Ok((name, module_id)) => {
-                    loop_device_id = Some(name);
-                    loop_module_id = Some(module_id);
+            config::MainConfig::set_no_duplex_device_option(Some(true));
+            let module_name = "module-null-sink";
+            let module_args = "sink_name=SoundboardNullSink sink_properties=device.description=SoundboardNullSink";
+            match pulseauto::load_module(module_name, module_args) {
+                Ok(module_id) => {
+                    loop_device_id = Some("SoundboardNullSink".to_owned());
+                    null_sink_module_id = Some(module_id);
                 }
-                Err(error) => error!("autoloopback creation failed: {}", error),
+                Err(error) => panic!("null_sink creation failed: {}", error),
             };
+
+            info!("autoloop: created SoundboardNullSink pulse audio module");
+
+            let module_name = "module-loopback";
+            let module_args = "source=@DEFAULT_SOURCE@ sink=SoundboardNullSink latency_msec=20";
+            match pulseauto::load_module(module_name, module_args) {
+                Ok(module_id) => {
+                    loopback_module_id = Some(module_id);
+                }
+                Err(error) => panic!("loopback creation failed: {}", error),
+            };
+
+            info!("autoloop: created SoundboardLoopback pulse audio module");
         }
     }
     #[cfg(not(feature = "autoloop"))]
     let loop_device_id = config::MainConfig::read().loopback_device.clone();
+
     let loop_device_id = loop_device_id.ok_or_else(|| {
         anyhow!(
             r"No loopback device specified in config file with loopback_device or
@@ -182,9 +202,15 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "autoloop")]
     ctrlc::set_handler(move || {
-        if let Some(id) = loop_module_id {
-            pulseauto::destroy_virt_sink(id).expect("destroy virtual sink error");
+        if let Some(id) = null_sink_module_id {
+            pulseauto::unload_module(id).expect("unload null sink failed");
         }
+        info!("autoloop: unloaded SoundboardNullSink pulse audio module");
+
+        if let Some(id) = loopback_module_id {
+            pulseauto::unload_module(id).expect("unload loopback sink failed");
+        }
+        info!("autoloop: unloaded SoundboardLoopback pulse audio module");
 
         process::exit(0);
     })
