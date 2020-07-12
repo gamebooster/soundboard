@@ -407,10 +407,8 @@ pub async fn run(
 
                     trace!("file_path {}", sound_path.display());
 
-                    if sound_path.exists() {
-                        if let Err(err) = std::fs::write(&sound_path, upload_data) {
-                            return format_json_error(err);
-                        }
+                    if let Err(err) = std::fs::write(&sound_path, upload_data) {
+                        return format_json_error(err);
                     }
 
                     let sound_config = config::SoundConfig {
