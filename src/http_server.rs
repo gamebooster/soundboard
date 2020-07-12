@@ -45,9 +45,9 @@ struct SoundboardChangeRequest {
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct SoundChangeRequest {
-    name: Option<String>,
+    name: String,
     hotkey: Option<String>,
-    path: Option<String>,
+    path: String,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
@@ -349,14 +349,18 @@ pub async fn run(
             )
         });
 
-    type AddSoundMultipartResult = ((config::SoundboardConfig, usize), Vec<(String, Vec<u8>)>);
+    type AddSoundMultipartResult = (
+        (config::SoundboardConfig, usize, config::SoundConfig, usize),
+        Vec<(String, Vec<u8>)>,
+    );
 
-    let soundboards_soundboard_add_sound_upload_route = check_soundboard_index()
-        .and(warp::path!("sounds"))
+    let soundboards_soundboard_add_sound_upload_route = check_sound_index()
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::multipart::form().max_length(1024 * 1024 * 100))
         .and_then(
-            move |(soundboard, index), form: warp::multipart::FormData| async move {
+            move |(soundboard, soundboard_index, sound, sound_index),
+                  form: warp::multipart::FormData| async move {
                 // Collect the fields into (name, value): (String, Vec<u8>)
                 let part: Result<Vec<(String, Vec<u8>)>, warp::Rejection> = form
                     .and_then(|part| {
@@ -374,7 +378,7 @@ pub async fn run(
                     });
                 let final_result: Result<AddSoundMultipartResult, warp::Rejection> = {
                     if let Ok(part) = part {
-                        Ok(((soundboard, index), part))
+                        Ok(((soundboard, soundboard_index, sound, sound_index), part))
                     } else {
                         Err(part.unwrap_err())
                     }
@@ -383,7 +387,7 @@ pub async fn run(
             },
         )
         .map(
-            move |((mut soundboard, index), uploads): AddSoundMultipartResult| {
+            move |((mut soundboard, soundboard_index, _sound, sound_index), uploads): AddSoundMultipartResult| {
                 let mut added_sounds = Vec::new();
                 for (upload_name, upload_data) in uploads {
                     trace!("Received {} with size {}", upload_name, upload_data.len());
@@ -403,12 +407,10 @@ pub async fn run(
 
                     trace!("file_path {}", sound_path.display());
 
-                    if sound_path.exists() {
-                        continue;
-                    }
-
-                    if let Err(err) = std::fs::write(&sound_path, upload_data) {
-                        return format_json_error(err);
+                    if !sound_path.exists() {
+                        if let Err(err) = std::fs::write(&sound_path, upload_data) {
+                            return format_json_error(err);
+                        }
                     }
 
                     let sound_config = config::SoundConfig {
@@ -419,17 +421,18 @@ pub async fn run(
                         full_path: sound_path.to_str().unwrap().to_owned(),
                     };
 
+                    let new_id = sound_index + added_sounds.len();
+                    soundboard.sounds.as_mut().unwrap().insert(new_id, sound_config.clone());
+
                     added_sounds.push(StrippedSoundInfo {
                         name: sound_config.name.clone(),
                         hotkey: sound_config.hotkey.clone(),
                         path: sound_config.path.clone(),
-                        id: soundboard.sounds.as_ref().unwrap().len(),
+                        id: new_id,
                     });
-
-                    soundboard.sounds.as_mut().unwrap().push(sound_config);
                 }
 
-                if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
+                if let Err(err) = config::MainConfig::change_soundboard(soundboard_index, soundboard) {
                     return format_json_error(err);
                 }
 
@@ -440,13 +443,18 @@ pub async fn run(
             },
         );
 
-    let soundboards_soundboard_copy_sound_route = check_soundboard_index()
-        .and(warp::path!("sounds"))
+    let soundboards_soundboard_copy_sound_route = check_sound_index()
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::header::exact("x-method", "copy"))
         .and(warp::body::json())
         .map(
-            move |(mut soundboard, index): (config::SoundboardConfig, usize),
+            move |(mut soundboard, soundboard_index, _sound, sound_index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            ),
                   sound_copy_request: SoundCopyRequest| {
                 let main_config = config::MainConfig::read();
                 let source_soundboard = main_config
@@ -482,8 +490,12 @@ pub async fn run(
                         )
                         .unwrap();
                         new_sound_path.push(&source_sound.path);
-                        if let Err(err) = std::fs::copy(&source_sound.full_path, &new_sound_path) {
-                            return format_json_error(err);
+                        if source_sound.full_path != new_sound_path.to_str().unwrap() {
+                            if let Err(err) =
+                                std::fs::copy(&source_sound.full_path, &new_sound_path)
+                            {
+                                return format_json_error(err);
+                            }
                         }
                     }
                 }
@@ -492,14 +504,18 @@ pub async fn run(
                     .sounds
                     .as_mut()
                     .unwrap()
-                    .push(source_sound.clone());
+                    .insert(sound_index, source_sound.clone());
 
-                if let Err(err) = config::MainConfig::change_soundboard(index, soundboard) {
+                if let Err(err) =
+                    config::MainConfig::change_soundboard(soundboard_index, soundboard)
+                {
                     return format_json_error(err);
                 }
                 let main_config = config::MainConfig::read();
-                let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
-                let sound_index = sounds.len() - 1;
+                let sounds = main_config.soundboards[soundboard_index]
+                    .sounds
+                    .as_ref()
+                    .unwrap();
                 let sound = sounds[sound_index].clone();
                 warp::reply::with_status(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
@@ -513,34 +529,40 @@ pub async fn run(
             },
         );
 
-    let soundboards_soundboard_add_sound_route = check_soundboard_index()
-        .and(warp::path!("sounds"))
+    let soundboards_soundboard_add_sound_route = check_sound_index()
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::header::exact("x-method", "create"))
         .and(warp::body::json())
         .map(
-            move |(old_soundboard, index): (config::SoundboardConfig, usize),
+            move |(mut soundboard, soundboard_index, _sound, sound_index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            ),
                   sound_add_request: SoundAddRequest| {
-                let mut new_soundboard = old_soundboard;
-
-                new_soundboard
-                    .sounds
-                    .as_mut()
-                    .unwrap()
-                    .push(config::SoundConfig {
+                soundboard.sounds.as_mut().unwrap().insert(
+                    sound_index,
+                    config::SoundConfig {
                         name: sound_add_request.name,
                         path: sound_add_request.path.clone(),
                         hotkey: sound_add_request.hotkey,
                         headers: None,
                         full_path: sound_add_request.path,
-                    });
+                    },
+                );
 
-                if let Err(err) = config::MainConfig::change_soundboard(index, new_soundboard) {
+                if let Err(err) =
+                    config::MainConfig::change_soundboard(soundboard_index, soundboard)
+                {
                     return format_json_error(err);
                 }
                 let main_config = config::MainConfig::read();
-                let sounds = main_config.soundboards[index].sounds.as_ref().unwrap();
-                let sound_index = sounds.len() - 1;
+                let sounds = main_config.soundboards[soundboard_index]
+                    .sounds
+                    .as_ref()
+                    .unwrap();
                 let sound = sounds[sound_index].clone();
                 warp::reply::with_status(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
@@ -578,7 +600,7 @@ pub async fn run(
 
     let soundboards_sounds_change_sound_route = check_sound_index()
         .and(warp::path::end())
-        .and(warp::post())
+        .and(warp::put())
         .and(warp::body::json())
         .map(
             move |(mut soundboard, soundboard_index, _, sound_index): (
@@ -589,12 +611,11 @@ pub async fn run(
             ),
                   change_request: SoundChangeRequest| {
                 let mut sound = &mut soundboard.sounds.as_mut().unwrap()[sound_index];
-                if let Some(name) = change_request.name {
-                    if name.is_empty() {
-                        return format_json_error("Invalid name specified");
-                    }
-                    sound.name = name;
+
+                if change_request.name.is_empty() {
+                    return format_json_error("Invalid name specified");
                 }
+                sound.name = change_request.name;
                 if let Some(hotkey) = change_request.hotkey {
                     if hotkey.is_empty() {
                         return format_json_error("Invalid hotkey specified");
@@ -606,13 +627,12 @@ pub async fn run(
                 } else {
                     sound.hotkey = None;
                 }
-                if let Some(path) = change_request.path {
-                    if path.is_empty() {
-                        return format_json_error("Invalid path specified");
-                    }
-                    sound.path = path.clone();
-                    sound.full_path = path;
+
+                if change_request.path.is_empty() {
+                    return format_json_error("Invalid path specified");
                 }
+                sound.path = change_request.path.clone();
+                sound.full_path = change_request.path;
 
                 if let Err(err) =
                     config::MainConfig::change_soundboard(soundboard_index, soundboard)

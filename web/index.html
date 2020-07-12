@@ -98,7 +98,8 @@
         </section>
         <div class="tile is-ancestor is-vertical">
             <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id"
-                @drop="addSoundFromDrop(soundboard.id, $event)" @paste="addSoundFromPaste(soundboard.id, $event)"
+                @paste="addSoundFromPaste(soundboard.id, $event)"
+                @drop="addSoundFromDrop(soundboard.id, soundboard.sounds[soundboard.sounds.length-1].id, $event)"
                 @dragover="soundboardDragOver(soundboard.id, $event)"
                 @dragenter="soundboardDragEnter(soundboard.id, $event)"
                 @dragleave="soundboardDragLeave(soundboard.id, $event)">
@@ -136,7 +137,11 @@
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
                                     :key="sound.id" @contextmenu.prevent="editSound(soundboard.id, sound.id)"
-                                    draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
+                                    draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id, $event)"
+                                    @drop="addSoundFromDrop(soundboard.id, sound.id, $event)"
+                                    @dragover="soundDragOver(soundboard.id, sound.id, $event)"
+                                    @dragenter="soundDragEnter(soundboard.id, sound.id, $event)"
+                                    @dragleave="soundDragLeave(soundboard.id, sound.id, $event)"><span
                                         v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
                                     &nbsp;
                                     <span v-html="sound.hotkey ? ' (' + sound.hotkey + ')' : '' "></span>
