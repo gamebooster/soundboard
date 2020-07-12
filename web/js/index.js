@@ -380,7 +380,7 @@ var app = new Vue({
 
       return axios
           .post(
-              '/api/soundboards/' + soundboard.id + '/sounds' + sound_id, data,
+              '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, data,
               config)
           .then((response) => {
             response.data.data.forEach((element) => {
@@ -389,13 +389,14 @@ var app = new Vue({
                 type: 'is-success',
                 queue: false
               });
-              this.soundboards[soundboard_id].sounds.push({
-                name: element.name,
-                hotkey: element.hotkey,
-                path: element.path,
-                id: element.id,
-              });
             });
+            this.soundboards[soundboard_id].sounds.splice(
+                sound_id, 0, ...response.data.data);
+            let counter = 0;
+            for (sound of this.soundboards[soundboard_id].sounds) {
+              sound.id = counter;
+              counter++;
+            }
           })
           .catch((error) => {
             this.$buefy.toast.open({

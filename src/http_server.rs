@@ -408,11 +408,9 @@ pub async fn run(
                     trace!("file_path {}", sound_path.display());
 
                     if sound_path.exists() {
-                        continue;
-                    }
-
-                    if let Err(err) = std::fs::write(&sound_path, upload_data) {
-                        return format_json_error(err);
+                        if let Err(err) = std::fs::write(&sound_path, upload_data) {
+                            return format_json_error(err);
+                        }
                     }
 
                     let sound_config = config::SoundConfig {
@@ -423,14 +421,15 @@ pub async fn run(
                         full_path: sound_path.to_str().unwrap().to_owned(),
                     };
 
+                    let new_id = sound_index + added_sounds.len();
+                    soundboard.sounds.as_mut().unwrap().insert(new_id, sound_config.clone());
+
                     added_sounds.push(StrippedSoundInfo {
                         name: sound_config.name.clone(),
                         hotkey: sound_config.hotkey.clone(),
                         path: sound_config.path.clone(),
-                        id: soundboard.sounds.as_ref().unwrap().len(),
+                        id: new_id,
                     });
-
-                    soundboard.sounds.as_mut().unwrap().insert(sound_index, sound_config);
                 }
 
                 if let Err(err) = config::MainConfig::change_soundboard(soundboard_index, soundboard) {
