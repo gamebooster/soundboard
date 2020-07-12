@@ -135,7 +135,7 @@
                             <template v-if="!filter.length || matchedSoundNames.has(sound.name)">
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                    :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
+                                    :key="sound.id" @contextmenu.prevent="editSound(soundboard.id, sound.id)"
                                     draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
                                         v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
                                     &nbsp;

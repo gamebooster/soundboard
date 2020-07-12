@@ -539,7 +539,10 @@ fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
     for sound in &mut sounds {
         sound.full_path = resolve_sound_path(soundboard_path, &sound.path)?;
         if sound.name.is_empty() {
-            return Err(anyhow!("save_soundboard: sound name empty {}", sound.path));
+            return Err(anyhow!(
+                "load_soundboard_config: sound name empty {}",
+                sound.path
+            ));
         }
     }
     soundboard_config.sounds = Some(sounds);
@@ -610,8 +613,8 @@ fn save_soundboard_config(config: &mut SoundboardConfig, new: bool) -> Result<()
         ));
     }
 
-    for sound in config.sounds.as_ref().unwrap() {
-        resolve_sound_path(&soundboard_config_path, &sound.path)?;
+    for sound in config.sounds.as_mut().unwrap() {
+        sound.full_path = resolve_sound_path(&soundboard_config_path, &sound.path)?;
         if sound.name.is_empty() {
             return Err(anyhow!("save_soundboard: sound name empty {}", sound.path));
         }
