@@ -1,7 +1,7 @@
 MobileDragDrop.polyfill({
   // use this to make use of the scroll behaviour
   dragImageTranslateOverride:
-      MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+      MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
 });
 
 var app = new Vue({
@@ -18,7 +18,7 @@ var app = new Vue({
     selectedDevice: 'Both',
     showStatusModal: false,
     hotkeyEventStream: null,
-    registeredHotkeys: new Map()
+    registeredHotkeys: new Map(),
   },
   created: function() {
     this.reloadData(window.location.search.includes('reload') ? true : false);
@@ -28,7 +28,7 @@ var app = new Vue({
     filter: function(val, oldVal) {
       this.matchedSoundNames = new Map();
       fuzzysort.go(val, this.soundNames, {allowTypo: true, threshold: -25000})
-          .forEach(s => this.matchedSoundNames.set(s.target, s));
+          .forEach((s) => this.matchedSoundNames.set(s.target, s));
     },
     volume: function(val, oldVal) {
       axios.post('/api/sounds/volume', {volume: val}).catch(function(error) {
@@ -44,6 +44,19 @@ var app = new Vue({
     },
   },
   methods: {
+    sortChanged(soundboard, value) {
+      if (value === 'Name Ascending') {
+        soundboard.sounds.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (value === 'Name Descending') {
+        soundboard.sounds.sort((a, b) => -a.name.localeCompare(b.name));
+      } else if (value === 'Hotkey') {
+        soundboard.sounds.sort(
+            (a, b) => a.hotkey ? (a.hotkey).localeCompare(b.hotkey) :
+                                 (b.hotkey ? 1 : a.id - b.id));
+      } else {
+        soundboard.sounds.sort((a, b) => a.id - b.id);
+      }
+    },
     createEventSources() {
       this.soundEvents = new EventSource('/api/sounds/events');
       this.soundEvents.onmessage = (event) => {
@@ -87,6 +100,7 @@ var app = new Vue({
           .get(
               reload_from_disk ? '/api/soundboards?reload' : '/api/soundboards')
           .then((response) => {
+            response.data.data.sounds = [];
             this.soundboards = response.data.data;
             this.soundNames = [];
             let requests = [];
@@ -98,21 +112,23 @@ var app = new Vue({
                 .then((sounds_responses) => {
                   let soundboard_id = 0;
                   for (const response of sounds_responses) {
-                    self.soundboards[soundboard_id].sounds = response.data.data;
-                    for (const sound of self.soundboards[soundboard_id]
-                             .sounds) {
+                    let soundboard = self.soundboards[soundboard_id];
+                    soundboard.sounds = response.data.data;
+                    for (const sound of soundboard.sounds) {
                       self.soundNames.push(sound.name);
                       if (!sound.hotkey) continue;
-                      self.registerHotkey(
-                          sound.hotkey,
-                          {soundboard_id: soundboard_id, sound_id: sound.id});
+                      self.registerHotkey(sound.hotkey, {
+                        soundboard_id: soundboard_id,
+                        sound_id: sound.id,
+                      });
                     }
+                    soundboard.order = 'Index';
                     soundboard_id++;
                   }
                   self.showLoadingModal = false;
                   self.registerHotkey('CTRL-ALT-E', {special: 'STOPALL'});
                 })
-                .catch(errors => {
+                .catch((errors) => {
                   self.showStatusModal = true;
                 });
           })
@@ -125,6 +141,10 @@ var app = new Vue({
     },
     registerHotkey: function(hotkey, eventObject) {
       if (this.registeredHotkeys.has(hotkey)) {
+        this.$buefy.toast.open({
+          message: 'registerHotkey failed: ' + hotkey + ' already registered!',
+          type: 'is-danger',
+        });
         return;
       }
 
