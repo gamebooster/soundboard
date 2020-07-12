@@ -62,7 +62,38 @@ where
         let duration = mp3_duration::from_read(reader);
         match duration {
             Ok(duration) => Some(duration),
-            Err(err) => Some(err.at_duration),
+            Err(err) => {
+                if err.at_duration > std::time::Duration::from_nanos(0) {
+                    trace!("mp3-duration: used error duration");
+                    Some(err.at_duration)
+                } else {
+                    fn get_duration<R: std::io::Read>(reader: R) -> Option<std::time::Duration> {
+                        let mut decoder = Decoder::new(reader);
+                        let mut length_in_seconds = 0.0;
+                        loop {
+                            match decoder.next_frame() {
+                                Ok(Frame {
+                                    data,
+                                    sample_rate,
+                                    channels,
+                                    ..
+                                }) => {
+                                    length_in_seconds +=
+                                        (data.len() / channels) as f32 / sample_rate as f32;
+                                }
+                                Err(minimp3::Error::Eof) => {
+                                    return Some(std::time::Duration::from_secs_f32(
+                                        length_in_seconds,
+                                    ))
+                                }
+                                Err(_) => return None,
+                            }
+                        }
+                    };
+                    trace!("mp3-duration: used decoder duration");
+                    get_duration(reader)
+                }
+            }
         }
     }
 }
