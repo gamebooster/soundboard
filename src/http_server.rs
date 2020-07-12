@@ -47,6 +47,7 @@ struct SoundboardChangeRequest {
 struct SoundChangeRequest {
     name: Option<String>,
     hotkey: Option<String>,
+    path: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
@@ -74,6 +75,7 @@ struct StrippedSoundboardInfo {
 struct StrippedSoundInfo {
     name: String,
     hotkey: Option<String>,
+    path: String,
     id: usize,
 }
 
@@ -337,6 +339,7 @@ pub async fn run(
                             v.push(StrippedSoundInfo {
                                 name: a.name.clone(),
                                 hotkey: a.hotkey.clone(),
+                                path: a.path.clone(),
                                 id: v.len(),
                             });
                             v
@@ -419,6 +422,7 @@ pub async fn run(
                     added_sounds.push(StrippedSoundInfo {
                         name: sound_config.name.clone(),
                         hotkey: sound_config.hotkey.clone(),
+                        path: sound_config.path.clone(),
                         id: soundboard.sounds.as_ref().unwrap().len(),
                     });
 
@@ -501,6 +505,7 @@ pub async fn run(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                         name: sound.name,
                         hotkey: sound.hotkey,
+                        path: sound.path,
                         id: sound_index,
                     })),
                     warp::http::StatusCode::OK,
@@ -541,6 +546,7 @@ pub async fn run(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                         name: sound.name,
                         hotkey: sound.hotkey,
+                        path: sound.path,
                         id: sound_index,
                     })),
                     warp::http::StatusCode::OK,
@@ -562,7 +568,69 @@ pub async fn run(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                         name: sound.name.clone(),
                         hotkey: sound.hotkey,
+                        path: sound.path,
                         id: index,
+                    })),
+                    warp::http::StatusCode::OK,
+                )
+            },
+        );
+
+    let soundboards_sounds_change_sound_route = check_sound_index()
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(warp::body::json())
+        .map(
+            move |(mut soundboard, soundboard_index, _, sound_index): (
+                config::SoundboardConfig,
+                usize,
+                config::SoundConfig,
+                usize,
+            ),
+                  change_request: SoundChangeRequest| {
+                let mut sound = &mut soundboard.sounds.as_mut().unwrap()[sound_index];
+                if let Some(name) = change_request.name {
+                    if name.is_empty() {
+                        return format_json_error("Invalid name specified");
+                    }
+                    sound.name = name;
+                }
+                if let Some(hotkey) = change_request.hotkey {
+                    if hotkey.is_empty() {
+                        return format_json_error("Invalid hotkey specified");
+                    }
+                    if let Err(err) = config::parse_hotkey(&hotkey) {
+                        return format_json_error(format!("Invalid hotkey specified: {}", err));
+                    }
+                    sound.hotkey = Some(hotkey);
+                } else {
+                    sound.hotkey = None;
+                }
+                if let Some(path) = change_request.path {
+                    if path.is_empty() {
+                        return format_json_error("Invalid path specified");
+                    }
+                    sound.path = path.clone();
+                    sound.full_path = path;
+                }
+
+                if let Err(err) =
+                    config::MainConfig::change_soundboard(soundboard_index, soundboard)
+                {
+                    return format_json_error(err);
+                }
+                let main_config = config::MainConfig::read();
+                let sounds = main_config.soundboards[soundboard_index]
+                    .sounds
+                    .as_ref()
+                    .unwrap();
+                let sound = sounds[sound_index].clone();
+                warp::reply::with_status(
+                    warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
+                        name: sound.name,
+                        hotkey: sound.hotkey,
+                        path: sound.path,
+                        id: sound_index,
                     })),
                     warp::http::StatusCode::OK,
                 )
@@ -591,6 +659,7 @@ pub async fn run(
                     warp::reply::json(&ResultData::with_data(StrippedSoundInfo {
                         name: sound.name,
                         hotkey: sound.hotkey,
+                        path: sound.path,
                         id: sound_index,
                     })),
                     warp::http::StatusCode::OK,
@@ -777,8 +846,8 @@ pub async fn run(
         );
 
     let hotkey_manager = std::sync::Arc::new(std::sync::Mutex::new(hotkey::HotkeyManager::new()));
-    let hotkey_manager_clone = hotkey_manager.clone();
 
+    let hotkey_manager_clone = hotkey_manager.clone();
     let hotkey_register_route = warp::path!("hotkeys")
         .and(warp::post())
         .and(warp::body::json())
@@ -799,6 +868,25 @@ pub async fn run(
                     true
                 });
             }) {
+                return format_json_error(err);
+            };
+            warp::reply::with_status(
+                warp::reply::json(&ResultData::with_data(hotkey_request)),
+                warp::http::StatusCode::OK,
+            )
+        });
+
+    let hotkey_manager_clone = hotkey_manager.clone();
+    let hotkey_deregister_route = warp::path!("hotkeys")
+        .and(warp::delete())
+        .and(warp::body::json())
+        .map(move |hotkey_request: HotkeyRegisterRequest| {
+            let hotkey = match config::parse_hotkey(&hotkey_request.hotkey) {
+                Ok(key) => key,
+                Err(err) => return format_json_error(err),
+            };
+
+            if let Err(err) = hotkey_manager_clone.lock().unwrap().unregister(&hotkey) {
                 return format_json_error(err);
             };
             warp::reply::with_status(
@@ -828,7 +916,8 @@ pub async fn run(
         .or(soundboards_soundboard_add_sound_upload_route)
         .or(soundboards_soundboard_add_sound_route)
         .or(soundboards_soundboard_copy_sound_route)
-        .or(soundboards_sounds_delete_sound_route);
+        .or(soundboards_sounds_delete_sound_route)
+        .or(soundboards_sounds_change_sound_route);
 
     let sound_thread_routes = sounds_play_route
         .or(sounds_stop_route)
@@ -837,7 +926,9 @@ pub async fn run(
         .or(sounds_set_volume)
         .or(sounds_events_route);
 
-    let hotkey_routes = hotkey_events_route.or(hotkey_register_route);
+    let hotkey_routes = hotkey_events_route
+        .or(hotkey_register_route)
+        .or(hotkey_deregister_route);
 
     let routes = (warp::path("api").and(
         soundboard_routes

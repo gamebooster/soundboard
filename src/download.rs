@@ -11,7 +11,7 @@ use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
 use super::config;
 use super::utils;
 
-pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result<bool> {
+pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result<Option<PathBuf>> {
     if sound.path.starts_with("http") {
         let mut headers_tuple = Vec::new();
         if let Some(headers) = &sound.headers {
@@ -23,13 +23,13 @@ pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result
         let mut file_path = std::env::temp_dir();
         file_path.push(string_hash);
         if file_path.exists() {
-            return Ok(true);
+            return Ok(Some(file_path));
         }
     } else {
-        return Ok(true);
+        return Ok(Some(PathBuf::from_str(&sound.full_path)?));
     }
 
-    Ok(false)
+    Ok(None)
 }
 
 pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<PathBuf> {

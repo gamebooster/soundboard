@@ -1,11 +1,66 @@
 MobileDragDrop.polyfill({
   // use this to make use of the scroll behaviour
   dragImageTranslateOverride:
-      MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+      MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
 });
+
+const ModalForm = {
+  props: ['initialName', 'initialHotkey', 'initialPath'],
+  data: function() {
+    return {
+      name: this.initialName,
+      hotkey: this.initialHotkey,
+      path: this.initialPath
+    };
+  },
+  template: `
+        <form @submit.prevent="$emit('submit', {name: name, hotkey: hotkey, path: path});  $parent.close();">
+            <div class="modal-card">
+                <header class="modal-card-head">
+                    <p class="modal-card-title">Edit sound</p>
+                </header>
+                <section class="modal-card-body">
+                    <b-field label="Name" label-position="on-border">
+                        <b-input :value="name" v-model="name" required>
+                        </b-input>
+                    </b-field>
+
+                    <b-field label="Path" label-position="on-border">
+                        <b-input :value="path" v-model="path" type="textarea" required>
+                        </b-input>
+                    </b-field>
+
+                    <b-field label="Hotkey" label-position="on-border">
+                        <b-input :value="hotkey" v-model="hotkey">
+                        </b-input>
+                    </b-field>
+                </section>
+                <footer class="modal-card-foot" style="display: block;">
+                  <nav class="level">
+                    <!-- Left side -->
+                    <div class="level-left">
+                        <div class="level-item">
+                            <button class="button is-danger" type="button" @click="$emit('delete'); $parent.close();">Delete</button>
+                        </div>
+                    </div>
+                    <div class="level-right">
+                        <div class="level-item">
+                            <button class="button" type="button" @click="$parent.close()">Cancel</button>
+                        </div>
+                        <div class="level-item">
+                            <button class="button is-primary">Submit</button>
+                        </div>
+                    </div>
+                  </nav>
+                </footer>
+            </div>
+        </form>
+    `
+}
 
 var app = new Vue({
   el: '#app',
+  components: {ModalForm},
   data: {
     activeSounds: [],
     soundboards: [],
@@ -18,7 +73,7 @@ var app = new Vue({
     selectedDevice: 'Both',
     showStatusModal: false,
     hotkeyEventStream: null,
-    registeredHotkeys: new Map()
+    registeredHotkeys: new Map(),
   },
   created: function() {
     this.reloadData(window.location.search.includes('reload') ? true : false);
@@ -28,7 +83,7 @@ var app = new Vue({
     filter: function(val, oldVal) {
       this.matchedSoundNames = new Map();
       fuzzysort.go(val, this.soundNames, {allowTypo: true, threshold: -25000})
-          .forEach(s => this.matchedSoundNames.set(s.target, s));
+          .forEach((s) => this.matchedSoundNames.set(s.target, s));
     },
     volume: function(val, oldVal) {
       axios.post('/api/sounds/volume', {volume: val}).catch(function(error) {
@@ -44,6 +99,19 @@ var app = new Vue({
     },
   },
   methods: {
+    sortChanged(soundboard, value) {
+      if (value === 'Name Ascending') {
+        soundboard.sounds.sort((a, b) => a.name.localeCompare(b.name));
+      } else if (value === 'Name Descending') {
+        soundboard.sounds.sort((a, b) => -a.name.localeCompare(b.name));
+      } else if (value === 'Hotkey') {
+        soundboard.sounds.sort(
+            (a, b) => a.hotkey ? (a.hotkey).localeCompare(b.hotkey) :
+                                 (b.hotkey ? 1 : a.id - b.id));
+      } else {
+        soundboard.sounds.sort((a, b) => a.id - b.id);
+      }
+    },
     createEventSources() {
       this.soundEvents = new EventSource('/api/sounds/events');
       this.soundEvents.onmessage = (event) => {
@@ -87,6 +155,7 @@ var app = new Vue({
           .get(
               reload_from_disk ? '/api/soundboards?reload' : '/api/soundboards')
           .then((response) => {
+            response.data.data.sounds = [];
             this.soundboards = response.data.data;
             this.soundNames = [];
             let requests = [];
@@ -98,21 +167,23 @@ var app = new Vue({
                 .then((sounds_responses) => {
                   let soundboard_id = 0;
                   for (const response of sounds_responses) {
-                    self.soundboards[soundboard_id].sounds = response.data.data;
-                    for (const sound of self.soundboards[soundboard_id]
-                             .sounds) {
+                    let soundboard = self.soundboards[soundboard_id];
+                    soundboard.sounds = response.data.data;
+                    for (const sound of soundboard.sounds) {
                       self.soundNames.push(sound.name);
                       if (!sound.hotkey) continue;
-                      self.registerHotkey(
-                          sound.hotkey,
-                          {soundboard_id: soundboard_id, sound_id: sound.id});
+                      self.registerHotkey(sound.hotkey, {
+                        soundboard_id: soundboard_id,
+                        sound_id: sound.id,
+                      });
                     }
+                    soundboard.order = 'Index';
                     soundboard_id++;
                   }
                   self.showLoadingModal = false;
                   self.registerHotkey('CTRL-ALT-E', {special: 'STOPALL'});
                 })
-                .catch(errors => {
+                .catch((errors) => {
                   self.showStatusModal = true;
                 });
           })
@@ -125,6 +196,11 @@ var app = new Vue({
     },
     registerHotkey: function(hotkey, eventObject) {
       if (this.registeredHotkeys.has(hotkey)) {
+        this.$buefy.toast.open({
+          message: 'registerHotkey failed: ' + hotkey + ' already registered!',
+          type: 'is-danger',
+          queue: false
+        });
         return;
       }
 
@@ -140,25 +216,28 @@ var app = new Vue({
               message: 'registerHotkey failed ' + hotkey + ' ' +
                   JSON.stringify(error.response.data.errors),
               type: 'is-danger',
+              queue: false
             });
           });
     },
-    deregisterHotkey: function(hotkey, eventObject) {
+    deregisterHotkey: function(hotkey) {
       axios
           .delete('/api/hotkeys', {
-            hotkey: sound.hotkey,
+            data: {
+              hotkey: hotkey,
+            }
           })
           .then((response) => {
             this.$buefy.toast.open({
               message: 'deregisterHotkey: ' + response.data.data.hotkey,
               type: 'is-success',
+              queue: false
             });
-            this.registeredHotkeys.set(hotkey, eventObject);
+            this.registeredHotkeys.delete(hotkey);
           })
           .catch((error) => {
             this.$buefy.toast.open({
-              message: 'deregisterHotkey failed ' + response.data.data.hotkey +
-                  ' ' + error,
+              message: 'deregisterHotkey failed ' + error,
               type: 'is-danger',
             });
           });
@@ -205,6 +284,7 @@ var app = new Vue({
         this.$buefy.toast.open({
           message: 'addSoundFromPaste failed: unsupported data',
           type: 'is-danger',
+          queue: false
         });
       }
     },
@@ -259,6 +339,7 @@ var app = new Vue({
         this.$buefy.toast.open({
           message: 'addSoundFromDrop failed: unsupported data',
           type: 'is-danger',
+          queue: false
         });
       }
     },
@@ -282,6 +363,7 @@ var app = new Vue({
               this.$buefy.toast.open({
                 message: 'addSound: ' + element.name + ' to ' + soundboard.name,
                 type: 'is-success',
+                queue: false
               });
               this.soundboards[soundboard_id].sounds.push({
                 name: element.name,
@@ -297,6 +379,7 @@ var app = new Vue({
                   JSON.stringify(error.response.data.errors),
               position: 'is-top',
               type: 'is-danger',
+              queue: false
             });
             this.reloadData();
           });
@@ -316,6 +399,7 @@ var app = new Vue({
               message: 'copySound: ' + response.data.data.name + ' to ' +
                   soundboard.name,
               type: 'is-success',
+              queue: false
             });
             this.soundboards[target_soundboard_id].sounds.push({
               name: response.data.data.name,
@@ -330,6 +414,76 @@ var app = new Vue({
                   JSON.stringify(error.response.data.errors),
               position: 'is-top',
               type: 'is-danger',
+              queue: false
+            });
+            this.reloadData();
+          });
+    },
+    editSound: function(soundboard_id, sound_id) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+      if (!soundboard) return;
+      let sound = soundboard.sounds.find((s) => s.id === sound_id);
+      if (!sound) return;
+
+      let props = {
+        'initialName': sound.name,
+        'initialHotkey': sound.hotkey,
+        'initialPath': sound.path
+      };
+
+      this.$buefy.modal.open({
+        parent: this,
+        component: ModalForm,
+        hasModalCard: true,
+        trapFocus: true,
+        props: props,
+        events: {
+          'submit': (new_data) => {
+            if (sound.hotkey && new_data.hotkey !== sound.hotkey) {
+              this.deregisterHotkey(sound.hotkey);
+            }
+            if (new_data.hotkey === '') {
+              new_data.hotkey = null;
+            }
+            this.changeSound(soundboard_id, sound_id, new_data);
+          },
+          'delete': () => {
+            this.deleteSound(soundboard_id, sound_id);
+          }
+        }
+      });
+    },
+    changeSound: function(soundboard_id, sound_id, new_data) {
+      let soundboard = this.soundboards[soundboard_id];
+      axios
+          .post('/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, {
+            name: new_data.name,
+            hotkey: new_data.hotkey,
+            path: new_data.path,
+          })
+          .then((response) => {
+            let sound = response.data.data;
+            this.$buefy.toast.open({
+              message: 'changeSound: ' + sound.name + ' to ' + soundboard.name,
+              type: 'is-success',
+              queue: false
+            });
+            Vue.set(soundboard.sounds, sound_id, sound);
+            if (sound.hotkey) {
+              this.registerHotkey(sound.hotkey, {
+                soundboard_id: soundboard_id,
+                sound_id: sound.id,
+              });
+            }
+          })
+          .catch((error) => {
+            this.$buefy.toast.open({
+              duration: 5000,
+              message: `Failed to change sound at soundboard: ` +
+                  JSON.stringify(error.response.data.errors),
+              position: 'is-top',
+              type: 'is-danger',
+              queue: false
             });
             this.reloadData();
           });
@@ -349,6 +503,7 @@ var app = new Vue({
               message: 'addSound: ' + response.data.data.name + ' to ' +
                   soundboard.name,
               type: 'is-success',
+              queue: false
             });
             this.soundboards[soundboard_id].sounds.push({
               name: response.data.data.name,
@@ -363,6 +518,7 @@ var app = new Vue({
                   JSON.stringify(error.response.data.errors),
               position: 'is-top',
               type: 'is-danger',
+              queue: false
             });
             this.reloadData();
           });
@@ -384,6 +540,7 @@ var app = new Vue({
                   message: 'deleteSound: ' + soundboard.sounds[sound_id].name +
                       ' from ' + soundboard.name,
                   type: 'is-success',
+                  queue: false
                 });
                 this.soundboards[soundboard_id].sounds.splice(sound_id, 1);
               })
@@ -394,6 +551,7 @@ var app = new Vue({
                       JSON.stringify(error.response.data.errors),
                   position: 'is-top',
                   type: 'is-danger',
+                  queue: false
                 });
                 this.reloadData();
               });
@@ -412,6 +570,7 @@ var app = new Vue({
             this.$buefy.toast.open({
               message: 'Updated soundboard name to: ' + response.data.data.name,
               type: 'is-success',
+              queue: false
             });
           })
           .catch((error) => {
@@ -421,6 +580,7 @@ var app = new Vue({
                   JSON.stringify(error.response.data.errors),
               position: 'is-top',
               type: 'is-danger',
+              queue: false
             });
             this.reloadData();
           });

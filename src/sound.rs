@@ -165,10 +165,20 @@ pub fn run_sound_loop(
         ms_loop_device.as_ref().unwrap().name()
     );
 
-    let ms_loop_device_clone = ms_loop_device.clone();
-    let loop_back_device =
-        create_duplex_device(&context, ms_input_device, ms_loop_device_clone.unwrap())
-            .expect("create duplex device failed");
+    let loop_back_device = {
+        if !config::MainConfig::read()
+            .no_duplex_device
+            .unwrap_or_default()
+        {
+            let ms_loop_device_clone = ms_loop_device.clone();
+            Some(
+                create_duplex_device(&context, ms_input_device, ms_loop_device_clone.unwrap())
+                    .expect("create duplex device failed"),
+            )
+        } else {
+            None
+        }
+    };
 
     run_sound_message_loop(
         context,
@@ -258,11 +268,11 @@ pub enum Message {
         )>,
         f32,
     ),
-    _PlaySoundDownloaded(config::SoundConfig, SoundDevices),
+    _PlaySoundDownloaded(config::SoundConfig, SoundDevices, std::path::PathBuf),
 }
 
 fn insert_sink_with_config(
-    resolved_local_path: &std::path::Path,
+    path: &std::path::Path,
     device: Option<miniaudio::DeviceIdAndName>,
     sink: &mut SinkDecoder,
     sound_config: config::SoundConfig,
@@ -280,11 +290,10 @@ fn insert_sink_with_config(
         sound_config, device_name
     );
 
-    let file = std::fs::File::open(&resolved_local_path)?;
-    let mut decoder = Decoder::new(file)?;
-    let mut file = std::fs::File::open(&resolved_local_path)?;
-    let total_duration = decoder.total_duration_mut(&mut file);
-
+    let reader = std::io::BufReader::with_capacity(1000 * 50, std::fs::File::open(path)?);
+    let mut decoder = Decoder::new(reader)?;
+    let mut reader = std::io::BufReader::with_capacity(1000 * 50, std::fs::File::open(path)?);
+    let total_duration = decoder.total_duration_mut(&mut reader);
     sink.play(sound_config.clone().into(), decoder);
 
     match sinks.entry(sound_config.into()) {
@@ -305,7 +314,7 @@ fn insert_sink_with_config(
     Ok(())
 }
 
-type SinkDecoder = Sink<SoundKey, Decoder<std::fs::File>>;
+type SinkDecoder = Sink<SoundKey, Decoder<std::io::BufReader<std::fs::File>>>;
 
 fn run_sound_message_loop(
     context: Context,
@@ -314,7 +323,7 @@ fn run_sound_message_loop(
     gui_sender: crossbeam_channel::Sender<Message>,
     loop_device: miniaudio::DeviceIdAndName,
     output_device: Option<miniaudio::DeviceIdAndName>,
-    loopback_device: miniaudio::Device,
+    loopback_device: Option<miniaudio::Device>,
 ) -> ! {
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
@@ -341,15 +350,22 @@ fn run_sound_message_loop(
         match sound_receiver.recv() {
             Ok(message) => match message {
                 Message::PlaySound(sound_config, sound_devices) => {
-                    let result = download::local_path_for_sound_config_exists(&sound_config);
-                    if let Err(err) = result {
-                        error!("local_path_for_sound_config_exists error {}", err);
-                        continue;
-                    }
+                    let maybe_path = {
+                        let result = download::local_path_for_sound_config_exists(&sound_config);
+                        if let Err(err) = result {
+                            error!("local_path_for_sound_config_exists error {}", err);
+                            continue;
+                        }
+                        result.unwrap()
+                    };
 
-                    if result.unwrap() {
+                    if let Some(path) = maybe_path {
                         gui_sender
-                            .send(Message::_PlaySoundDownloaded(sound_config, sound_devices))
+                            .send(Message::_PlaySoundDownloaded(
+                                sound_config,
+                                sound_devices,
+                                path,
+                            ))
                             .expect("sound channel send error");
                     } else {
                         match sinks.entry(sound_config.clone().into()) {
@@ -368,11 +384,12 @@ fn run_sound_message_loop(
                         std::thread::spawn(
                             move || match download::get_local_path_from_sound_config(&sound_config)
                             {
-                                Ok(_) => {
+                                Ok(path) => {
                                     gui_sender_clone
                                         .send(Message::_PlaySoundDownloaded(
                                             sound_config,
                                             sound_devices,
+                                            path,
                                         ))
                                         .expect("sound channel send error");
                                 }
@@ -383,13 +400,11 @@ fn run_sound_message_loop(
                         );
                     }
                 }
-                Message::_PlaySoundDownloaded(sound_config, sound_devices) => {
-                    let local_path =
-                        download::get_local_path_from_sound_config(&sound_config).unwrap();
+                Message::_PlaySoundDownloaded(sound_config, sound_devices, path) => {
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
                         match insert_sink_with_config(
-                            &local_path,
+                            &path,
                             output_device.clone(),
                             &mut output_sink,
                             sound_config.clone(),
@@ -404,7 +419,7 @@ fn run_sound_message_loop(
                     }
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Loop {
                         match insert_sink_with_config(
-                            &local_path,
+                            &path,
                             Some(loop_device.clone()),
                             &mut loopback_sink,
                             sound_config,
@@ -479,10 +494,12 @@ fn run_sound_message_loop(
                 .start()
                 .expect("failed to start output_sink again");
         }
-        if !loopback_device.is_started() {
-            loopback_device
-                .start()
-                .expect("failed to start loopback device again");
+        if let Some(loopback_device) = loopback_device.as_ref() {
+            if !loopback_device.is_started() {
+                loopback_device
+                    .start()
+                    .expect("failed to start loopback device again");
+            }
         }
     }
 }

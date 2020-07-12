@@ -102,9 +102,23 @@
                 @dragover="soundboardDragOver(soundboard.id, $event)"
                 @dragenter="soundboardDragEnter(soundboard.id, $event)"
                 @dragleave="soundboardDragLeave(soundboard.id, $event)">
-                <div class=" tile is-child box" :id="'soundboard' + soundboard.id">
-                    <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
-                    </p>
+                <div class="tile is-child box" :id="'soundboard' + soundboard.id">
+                    <div v-if="!soundboard.edit" class="columns">
+                        <div class="column">
+                            <p @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}</p>
+                        </div>
+                        <div class="column">
+                            <b-field label="Sort by" label-position="on-border">
+                                <b-select v-model="soundboard.order"
+                                    @change.native="sortChanged(soundboard, $event.target.value)">
+                                    <option>Index</option>
+                                    <option>Name Ascending</option>
+                                    <option>Name Descending</option>
+                                    <option>Hotkey</option>
+                                </b-select>
+                            </b-field>
+                        </div>
+                    </div>
                     <b-field v-else="soundboard.edit" label="Name" label-position="on-border">
                         <b-input type="text" v-model="soundboard.name"
                             @keyup.enter.native="if (soundboard.edit) {soundboard.edit=false; updateSoundboard(soundboard.id);}"
@@ -121,7 +135,7 @@
                             <template v-if="!filter.length || matchedSoundNames.has(sound.name)">
                                 <button v-if="!activeSounds.some(item => sound.name == item.name)"
                                     class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                    :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
+                                    :key="sound.id" @contextmenu.prevent="editSound(soundboard.id, sound.id)"
                                     draggable="true" @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
                                         v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
                                     &nbsp;
