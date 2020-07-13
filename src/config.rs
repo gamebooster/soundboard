@@ -692,7 +692,7 @@ fn parse_arguments() -> clap::ArgMatches {
             .long("auto-loop-device")
             .about("Automatically create PulseAudio Loopback Device"),
     );
-    #[cfg(any(feature = "gui", feature = "terminal-ui"))]
+    #[cfg(feature = "gui")]
     let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
     #[cfg(feature = "http")]
     let matches = matches.arg(

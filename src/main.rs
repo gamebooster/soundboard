@@ -81,8 +81,6 @@ soundboard encountered an fatal error:
         error!(FATAL_ERROR_MESSAGE!(), err, "No location");
         std::process::exit(1);
     }
-
-    tui::quit_terminal_ui().ok();
     info!("Auf Wiedersehen!");
 }
 
@@ -221,12 +219,6 @@ fn try_main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-
-    #[cfg(feature = "terminal-ui")]
-    {
-        tui::draw_terminal().ok();
-    }
-
     #[cfg(feature = "gui")]
     {
         if config::MainConfig::read().no_gui.unwrap_or_default() {
@@ -239,9 +231,14 @@ fn try_main() -> Result<()> {
         gui::Soundboard::run(settings);
     }
 
+    #[cfg(feature = "terminal-ui")]
+    {
+        tui::draw_terminal()?;
+    }
+
     #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
     {
-        no_gui_routine(gui_sender)?;
+        tui::draw_terminal()?;
     }
     Ok(())
 }
