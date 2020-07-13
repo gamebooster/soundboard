@@ -13,6 +13,7 @@ cross-platform desktop application to spice up your audio/video conferences
 # Initial requirements
 
 - play local file sounds on a button press over the microphone and one output
+- supported formats: mp3, wav
 - cross-platform
 - global hotkey support
 - readable config format (toml, json etc)
@@ -24,9 +25,44 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ---
 
+# Current status
+
+- all initial requirements implemented
+- supported formats: mp3, wav, ogg, flac, xm
+- config file format: toml
+- extra features:
+  - http links as source (download)
+  - multiple soundboards
+  - http-api/webui with drag/drop and mobile support
+  - telegram bot
+- automatic continuous builds via Github Action
+- python scrapers for myinstants.com, soundboard.com, 101soundboards.com
+- first alpha release v0.0.2 on crates.io and packaged as binary release
+
+---
+
+# Config file example
+
+`soundboards\favorites.toml`
+````
+name = 'favorites'
+position = 0
+
+[[sound]]
+hotkey = 'CTRL-P'
+name = 'Nicht so tief, Rüdiger!'
+path = 'nicht-so-tief-rudiger.mp3'
+
+[[sound]]
+name = 'Wer wird Millionär - Showstart'
+path = 'https://www.myinstants.com//media/sounds/wer-wird-millionar-soundtracks-soundstart.mp3'
+````
+
+---
+
 # Architecture overview
 
-- sound <--> (channel)
+- sound <--> (mpsc channel)
   - http-api <--> webapp (js/html)
   - native-gui
   - telegram bot
@@ -34,7 +70,7 @@ cross-platform desktop application to spice up your audio/video conferences
   - http-api <--> webapp (js/html)
   - native-gui
   - telegram bot
-- hotkey <--> (channel)
+- hotkey <--> (mpsc channel)
   - http-api <--> webapp (js/html)
   - native-gui
 
@@ -57,7 +93,7 @@ cross-platform desktop application to spice up your audio/video conferences
   -> initial external user setup needed
 - First version with rust audio crates cpal and rodio but only supports alsa on linux. Also few updates.
   -> Switched to miniaudio: C-Library with rust-binding but maintained.
-- But miniaudio didn't work on one arch linux dev system so we implemented native pulseaudio routing as a fallback on linux.
+- But miniaudio loopback stream didn't work on one arch linux dev system so we implemented native pulseaudio routing as a fallback on linux.
 
 ---
 
@@ -83,11 +119,13 @@ cross-platform desktop application to spice up your audio/video conferences
   -> slow development iteration: compile times are a problem
 
 ---
+<!-- _header: "" -->
+<!-- _footer: "" -->
 
-- expands to 386 crates with default features
+- current deps expand to 386 crates with default features
+- incremental builds still take 10-30 seconds
 
 ```
-[dependencies]
 anyhow = "1.0"
 bytes = "0.5"
 clap = "3.0.0-beta.1"
@@ -108,12 +146,6 @@ tokio = {version = "0.2", features = ["macros", "full", "sync", "time"]}
 toml = "0.5"
 winit = "0.22"
 
-fuzzy-matcher = {version = "0.3", optional = true}
-tgbot = {version = "0.10", optional = true}
-
-ctrlc = {version = "3.1.4", features = ["termination"], optional = true}
-libpulse-binding = {version = "2.16", features = ["pa_latest_common"], optional = true}
-
 iced = {version = "0.1", optional = true, features = ["tokio"]}
 iced_native = {version = "0.2", optional = true}
 
@@ -123,7 +155,6 @@ warp = {version = "0.2", optional = true}
 claxon = {version = "0.4", optional = true}
 hound = {version = "3", optional = true}
 lewton = {version = "0.10", optional = true}
-libxm-soundboard = {version = "0.0.1", path = "extern/libxm-rs", optional = true}
 minimp3 = {version = "0.3", optional = true}
 mp3-duration = {version = "0.1.10", optional = true}
 ogg_metadata = {version = "0.4", optional = true}

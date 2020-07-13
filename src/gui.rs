@@ -18,6 +18,8 @@ use super::hotkey;
 use anyhow::{anyhow, Context, Result};
 use std::time::{Duration, Instant};
 
+static UI_SOUNDS_LIMIT: usize = 128;
+
 #[derive(PartialEq)]
 enum LayoutStyle {
     PanelView,
@@ -245,7 +247,7 @@ impl Application for Soundboard {
                     });
                 }
 
-                if self.current_sounds.len() > 64 {
+                if self.current_sounds.len() > UI_SOUNDS_LIMIT {
                     self.current_state = SoundboardState::Unsupported;
                 } else {
                     self.current_state = SoundboardState::Loaded;
@@ -426,9 +428,10 @@ impl Application for Soundboard {
                     .height(Length::FillPortion(18))
                     .width(Length::Fill)
                     .push(
-                        Text::new(
-                            "soundboard has over 64 sounds. Please use webui for this usecase.",
-                        )
+                        Text::new(format!(
+                            "soundboard has over {} sounds. Please use webui for this usecase.",
+                            UI_SOUNDS_LIMIT
+                        ))
                         .size(24)
                         .color(iced::Color::BLACK)
                         .vertical_alignment(VerticalAlignment::Center),
