@@ -99,7 +99,7 @@
         <div class="tile is-ancestor is-vertical">
             <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id"
                 @paste="addSoundFromPaste(soundboard.id, $event)"
-                @drop="addSoundFromDrop(soundboard.id, soundboard.sounds[soundboard.sounds.length-1].id, $event)"
+                @drop="addSoundFromDrop(soundboard.id, soundboard.sounds.length - 1, $event)"
                 @dragover="soundboardDragOver(soundboard.id, $event)"
                 @dragenter="soundboardDragEnter(soundboard.id, $event)"
                 @dragleave="soundboardDragLeave(soundboard.id, $event)">
