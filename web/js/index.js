@@ -64,15 +64,14 @@ var app = new Vue({
   data: {
     activeSounds: [],
     soundboards: [],
-    volume: 1.0,
-    filter: '',
-    filterRegex: new RegExp('', 'i'),
     soundNames: [],
     matchedSoundNames: [],
-    showBottomMenu: true,
+    filter: '',
+    volume: 1.0,
     selectedDevice: 'Both',
+    showBottomMenu: true,
     showStatusModal: false,
-    hotkeyEventStream: null,
+    showLoadingModal: true,
     registeredHotkeys: new Map(),
   },
   created: function() {
@@ -194,14 +193,24 @@ var app = new Vue({
     hideKeyboard() {
       document.activeElement.blur();
     },
+    showResponseError(text, err) {
+      this.showWarning(
+          text + ' error: ' +
+          (err.response ? JSON.stringify(err.response.data.errors) :
+                          JSON.stringify(err)));
+    },
+    showWarning(text) {
+      this.$buefy.toast.open(
+          {message: text, type: 'is-danger', duration: 5000, queue: false});
+    },
+    showSuccess(text) {
+      this.$buefy.toast.open({message: text, type: 'is-success', queue: false});
+    },
     registerHotkey: function(hotkey, eventObject) {
       if (this.registeredHotkeys.has(hotkey)) {
-        this.$buefy.toast.open({
-          message: 'registerHotkey failed: ' + hotkey + ' already registered!',
-          type: 'is-danger',
-          queue: false
-        });
         return;
+        // this.showWarning(  'registerHotkey failed: ' + hotkey + ' already
+        // registered!');
       }
 
       axios
@@ -212,12 +221,7 @@ var app = new Vue({
             this.registeredHotkeys.set(hotkey, eventObject);
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              message: 'registerHotkey failed ' + hotkey + ' ' +
-                  JSON.stringify(error.response.data.errors),
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('registerHotkey', error);
           });
     },
     deregisterHotkey: function(hotkey) {
@@ -228,18 +232,11 @@ var app = new Vue({
             }
           })
           .then((response) => {
-            this.$buefy.toast.open({
-              message: 'deregisterHotkey: ' + response.data.data.hotkey,
-              type: 'is-success',
-              queue: false
-            });
+            this.showSuccess('deregisterHotkey: ' + response.data.data.hotkey);
             this.registeredHotkeys.delete(hotkey);
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              message: 'deregisterHotkey failed ' + error,
-              type: 'is-danger',
-            });
+            this.showResponseError('deregisterHotkey', error);
           });
     },
     playSound: function(soundboard_id, sound_id) {
@@ -275,26 +272,16 @@ var app = new Vue({
           },
           trapFocus: true,
           onConfirm: (value) => {
-            var last_id =
-                this.soundboards[soundboard_id]
-                    .sounds[this.soundboards[soundboard_id].sounds.length - 1]
-                    .id;
+            var last_id = this.soundboards[soundboard_id].sounds.length - 1;
             this.addSound(soundboard_id, last_id, value, text);
           },
         });
       } else if (event.clipboardData.files.length > 0) {
-        var last_id =
-            this.soundboards[soundboard_id]
-                .sounds[this.soundboards[soundboard_id].sounds.length - 1]
-                .id;
+        var last_id = this.soundboards[soundboard_id].sounds.length - 1;
         this.addSoundFromFiles(
             soundboard_id, sound_id, event.clipboardData.files);
       } else {
-        this.$buefy.toast.open({
-          message: 'addSoundFromPaste failed: unsupported data',
-          type: 'is-danger',
-          queue: false
-        });
+        this.showWarning('addSoundFromPaste failed: unsupported data');
       }
     },
     soundDragStart: function(soundboard_id, sound_id, event) {
@@ -308,14 +295,11 @@ var app = new Vue({
     },
     soundboardDragOver: function(soundboard_id, event) {
       event.preventDefault();
-      // event.target.closest('#soundboard' + soundboard_id).style.opacity =
-      // 0.75;
     },
     soundboardDragEnter: function(soundboard_id, event) {
       event.preventDefault();
     },
     soundboardDragLeave: function(soundboard_id, event) {
-      // event.target.closest('#soundboard' + soundboard_id).style.opacity = 1;
       event.preventDefault();
     },
     soundDragOver: function(soundboard_id, sound_id, event) {
@@ -352,17 +336,20 @@ var app = new Vue({
       } else if (move_data !== '') {
         let data = JSON.parse(move_data);
         this.sendCopyExistingSound(
-            soundboard_id, sound_id, data.soundboard_id, data.sound_id);
+            soundboard_id, sound_id, data.soundboard_id, data.sound_id,
+            soundboard_id == data.soundboard_id ? true : false);
 
       } else if (event.dataTransfer.files.length > 0) {
         this.addSoundFromFiles(
             soundboard_id, sound_id, event.dataTransfer.files);
       } else {
-        this.$buefy.toast.open({
-          message: 'addSoundFromDrop failed: unsupported data',
-          type: 'is-danger',
-          queue: false
-        });
+        this.showWarning('addSoundFromDrop failed: unsupported data');
+      }
+    },
+    updateSoundboardIds: function(soundboard_id) {
+      let soundboard = this.soundboards[soundboard_id];
+      for (let i = 0; i < soundboard.sounds.length; i++) {
+        soundboard.sounds[i].id = i;
       }
     },
     addSoundFromFiles: function(soundboard_id, sound_id, files) {
@@ -383,36 +370,23 @@ var app = new Vue({
               '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, data,
               config)
           .then((response) => {
-            response.data.data.forEach((element) => {
-              this.$buefy.toast.open({
-                message: 'addSound: ' + element.name + ' to ' + soundboard.name,
-                type: 'is-success',
-                queue: false
-              });
+            let sounds = response.data.data;
+            sounds.forEach((element) => {
+              this.showSuccess(
+                  'addSound: ' + element.name + ' to ' + soundboard.name);
             });
-            this.soundboards[soundboard_id].sounds.splice(
-                sound_id, 0, ...response.data.data);
-            let counter = 0;
-            for (sound of this.soundboards[soundboard_id].sounds) {
-              sound.id = counter;
-              counter++;
-            }
+            soundboard.sounds.sort((a, b) => a.id - b.id);
+            soundboard.sounds.splice(sounds[0].id, 0, ...response.data.data);
+            this.updateSoundboardIds(soundboard.id);
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              duration: 5000,
-              message: `Failed to add sound to soundboard: ` +
-                  JSON.stringify(error.response.data.errors),
-              position: 'is-top',
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('addSoundFromFiles', error);
             this.reloadData();
           });
     },
     sendCopyExistingSound: function(
         target_soundboard_id, target_sound_id, source_soundboard_id,
-        source_sound_id) {
+        source_sound_id, delete_source_sound) {
       let soundboard = this.soundboards[target_soundboard_id];
       axios
           .post(
@@ -424,34 +398,24 @@ var app = new Vue({
               },
               {headers: {'x-method': 'copy'}})
           .then((response) => {
-            this.$buefy.toast.open({
-              message: 'copySound: ' + response.data.data.name + ' to ' +
-                  soundboard.name,
-              type: 'is-success',
-              queue: false
-            });
+            let sound = response.data.data;
+            this.showSuccess(
+                'copySound: ' + sound.name + ' to ' + soundboard.name);
+            this.soundboards[target_soundboard_id].sounds.sort(
+                (a, b) => a.id - b.id);
             this.soundboards[target_soundboard_id].sounds.splice(
-                target_sound_id, 0, {
-                  name: response.data.data.name,
-                  path: response.data.data.path,
-                  hotkey: response.data.data.hotkey,
-                  id: response.data.data.id,
-                });
-            let counter = 0;
-            for (sound of this.soundboards[target_soundboard_id].sounds) {
-              sound.id = counter;
-              counter++;
+                sound.id, 0, sound);
+            this.updateSoundboardIds(target_soundboard_id);
+            if (delete_source_sound) {
+              if (source_soundboard_id == target_soundboard_id &&
+                  target_sound_id < source_sound_id) {
+                source_sound_id += 1;
+              }
+              this.deleteSound(source_soundboard_id, source_sound_id, true);
             }
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              duration: 5000,
-              message: `Failed to add sound to soundboard: ` +
-                  JSON.stringify(error.response.data.errors),
-              position: 'is-top',
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('sendCopyExistingSound', error);
             this.reloadData();
           });
     },
@@ -499,11 +463,9 @@ var app = new Vue({
           })
           .then((response) => {
             let sound = response.data.data;
-            this.$buefy.toast.open({
-              message: 'changeSound: ' + sound.name + ' to ' + soundboard.name,
-              type: 'is-success',
-              queue: false
-            });
+            this.showSuccess(
+                'changeSound: ' + sound.name + ' to ' + soundboard.name);
+            soundboard.sounds.sort((a, b) => a.id - b.id);
             Vue.set(soundboard.sounds, sound_id, sound);
             if (sound.hotkey) {
               this.registerHotkey(sound.hotkey, {
@@ -513,14 +475,7 @@ var app = new Vue({
             }
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              duration: 5000,
-              message: `Failed to change sound at soundboard: ` +
-                  JSON.stringify(error.response.data.errors),
-              position: 'is-top',
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('changeSound', error);
             this.reloadData();
           });
     },
@@ -535,75 +490,51 @@ var app = new Vue({
               },
               {headers: {'x-method': 'create'}})
           .then((response) => {
-            this.$buefy.toast.open({
-              message: 'addSound: ' + response.data.data.name + ' to ' +
-                  soundboard.name,
-              type: 'is-success',
-              queue: false
-            });
-            this.soundboards[soundboard_id].sounds.splice(sound_id, 0, {
-              name: response.data.data.name,
-              path: response.data.data.path,
-              hotkey: response.data.data.hotkey,
-              id: response.data.data.id,
-            });
-            let counter = 0;
-            for (sound of this.soundboards[soundboard_id].sounds) {
-              sound.id = counter;
-              counter++;
-            }
+            let sound = response.data.data;
+            this.showSuccess(
+                'addSound: ' + sound.name + ' to ' + soundboard.name);
+            soundboard.sounds.sort((a, b) => a.id - b.id);
+            soundboard.sounds.splice(sound.id, 0, sound);
+            this.updateSoundboardIds(soundboard.id);
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              duration: 5000,
-              message: `Failed to add sound to soundboard: ` +
-                  JSON.stringify(error.response.data.errors),
-              position: 'is-top',
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('addSound', error);
             this.reloadData();
           });
     },
-    deleteSound: function(soundboard_id, sound_id) {
+    sendDeleteSound: function(soundboard_id, sound_id) {
       let soundboard = this.soundboards[soundboard_id];
       let sound = soundboard.sounds[sound_id];
 
-      this.$buefy.dialog.confirm({
-        message: 'Remove sound <b>' + sound.name + '</b> from soundboard <b>' +
-            soundboard.name + '</b>?',
-        type: 'is-danger',
-        onConfirm: () => {
-          axios
-              .delete(
-                  '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id)
-              .then((response) => {
-                this.$buefy.toast.open({
-                  message: 'deleteSound: ' + soundboard.sounds[sound_id].name +
-                      ' from ' + soundboard.name,
-                  type: 'is-success',
-                  queue: false
-                });
-                this.soundboards[soundboard_id].sounds.splice(sound_id, 1);
-                let counter = 0;
-                for (sound of this.soundboards[soundboard_id].sounds) {
-                  sound.id = counter;
-                  counter++;
-                }
-              })
-              .catch((error) => {
-                this.$buefy.toast.open({
-                  duration: 5000,
-                  message: `Failed to delete sound from soundboard: ` +
-                      JSON.stringify(error.response.data.errors),
-                  position: 'is-top',
-                  type: 'is-danger',
-                  queue: false
-                });
-                this.reloadData();
-              });
-        },
-      });
+      axios.delete('/api/soundboards/' + soundboard.id + '/sounds/' + sound.id)
+          .then((response) => {
+            this.showSuccess(
+                'deleteSound: ' + sound.name + ' from ' + soundboard.name);
+            soundboard.sounds.sort((a, b) => a.id - b.id);
+            soundboard.sounds.splice(sound.id, 1);
+            this.updateSoundboardIds(soundboard.id);
+          })
+          .catch((error) => {
+            this.showResponseError('deleteSound', error);
+            this.reloadData();
+          });
+    },
+    deleteSound: function(soundboard_id, sound_id, without_confirmation) {
+      let soundboard = this.soundboards[soundboard_id];
+      let sound = soundboard.sounds[sound_id];
+
+      if (without_confirmation) {
+        this.sendDeleteSound(soundboard_id, sound_id);
+      } else {
+        this.$buefy.dialog.confirm({
+          message: 'Remove sound <b>' + sound.name +
+              '</b> from soundboard <b>' + soundboard.name + '</b>?',
+          type: 'is-danger',
+          onConfirm: () => {
+            this.sendDeleteSound(soundboard_id, sound_id);
+          },
+        });
+      }
     },
     updateSoundboard: function(soundboard_id) {
       let soundboard = this.soundboards[soundboard_id];
@@ -614,21 +545,11 @@ var app = new Vue({
             position: soundboard.position,
           })
           .then((response) => {
-            this.$buefy.toast.open({
-              message: 'Updated soundboard name to: ' + response.data.data.name,
-              type: 'is-success',
-              queue: false
-            });
+            this.showSuccess(
+                'Updated soundboard name to: ' + response.data.data.name);
           })
           .catch((error) => {
-            this.$buefy.toast.open({
-              duration: 5000,
-              message: `Failed to update soundboard name: ` +
-                  JSON.stringify(error.response.data.errors),
-              position: 'is-top',
-              type: 'is-danger',
-              queue: false
-            });
+            this.showResponseError('updateSoundboard', error);
             this.reloadData();
           });
     },
