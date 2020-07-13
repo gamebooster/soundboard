@@ -64,15 +64,13 @@ var app = new Vue({
   data: {
     activeSounds: [],
     soundboards: [],
-    volume: 1.0,
-    filter: '',
-    filterRegex: new RegExp('', 'i'),
     soundNames: [],
     matchedSoundNames: [],
-    showBottomMenu: true,
+    volume: 1.0,
     selectedDevice: 'Both',
+    showBottomMenu: true,
     showStatusModal: false,
-    hotkeyEventStream: null,
+    showLoadingModal: true,
     registeredHotkeys: new Map(),
   },
   created: function() {
@@ -352,7 +350,8 @@ var app = new Vue({
       } else if (move_data !== '') {
         let data = JSON.parse(move_data);
         this.sendCopyExistingSound(
-            soundboard_id, sound_id, data.soundboard_id, data.sound_id);
+            soundboard_id, sound_id, data.soundboard_id, data.sound_id,
+            soundboard_id == data.soundboard_id ? true : false);
 
       } else if (event.dataTransfer.files.length > 0) {
         this.addSoundFromFiles(
@@ -412,7 +411,7 @@ var app = new Vue({
     },
     sendCopyExistingSound: function(
         target_soundboard_id, target_sound_id, source_soundboard_id,
-        source_sound_id) {
+        source_sound_id, delete_source_sound) {
       let soundboard = this.soundboards[target_soundboard_id];
       axios
           .post(
@@ -441,6 +440,13 @@ var app = new Vue({
             for (sound of this.soundboards[target_soundboard_id].sounds) {
               sound.id = counter;
               counter++;
+            }
+            if (delete_source_sound) {
+              if (source_soundboard_id == target_soundboard_id &&
+                  target_sound_id < source_sound_id) {
+                source_sound_id += 1;
+              }
+              this.deleteSound(source_soundboard_id, source_sound_id, true);
             }
           })
           .catch((error) => {
@@ -565,45 +571,53 @@ var app = new Vue({
             this.reloadData();
           });
     },
-    deleteSound: function(soundboard_id, sound_id) {
+    sendDeleteSound: function(soundboard_id, sound_id) {
       let soundboard = this.soundboards[soundboard_id];
       let sound = soundboard.sounds[sound_id];
 
-      this.$buefy.dialog.confirm({
-        message: 'Remove sound <b>' + sound.name + '</b> from soundboard <b>' +
-            soundboard.name + '</b>?',
-        type: 'is-danger',
-        onConfirm: () => {
-          axios
-              .delete(
-                  '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id)
-              .then((response) => {
-                this.$buefy.toast.open({
-                  message: 'deleteSound: ' + soundboard.sounds[sound_id].name +
-                      ' from ' + soundboard.name,
-                  type: 'is-success',
-                  queue: false
-                });
-                this.soundboards[soundboard_id].sounds.splice(sound_id, 1);
-                let counter = 0;
-                for (sound of this.soundboards[soundboard_id].sounds) {
-                  sound.id = counter;
-                  counter++;
-                }
-              })
-              .catch((error) => {
-                this.$buefy.toast.open({
-                  duration: 5000,
-                  message: `Failed to delete sound from soundboard: ` +
-                      JSON.stringify(error.response.data.errors),
-                  position: 'is-top',
-                  type: 'is-danger',
-                  queue: false
-                });
-                this.reloadData();
-              });
-        },
-      });
+      axios.delete('/api/soundboards/' + soundboard.id + '/sounds/' + sound.id)
+          .then((response) => {
+            this.$buefy.toast.open({
+              message:
+                  'deleteSound: ' + sound.name + ' from ' + soundboard.name,
+              type: 'is-success',
+              queue: false
+            });
+            soundboard.sounds.splice(sound.id, 1);
+            let counter = 0;
+            for (sound of soundboard.sounds) {
+              sound.id = counter;
+              counter++;
+            }
+          })
+          .catch((error) => {
+            this.$buefy.toast.open({
+              duration: 5000,
+              message: `Failed to delete sound from soundboard: ` +
+                  JSON.stringify(error.response.data.errors),
+              position: 'is-top',
+              type: 'is-danger',
+              queue: false
+            });
+            this.reloadData();
+          });
+    },
+    deleteSound: function(soundboard_id, sound_id, without_confirmation) {
+      let soundboard = this.soundboards[soundboard_id];
+      let sound = soundboard.sounds[sound_id];
+
+      if (without_confirmation) {
+        this.sendDeleteSound(soundboard_id, sound_id);
+      } else {
+        this.$buefy.dialog.confirm({
+          message: 'Remove sound <b>' + sound.name +
+              '</b> from soundboard <b>' + soundboard.name + '</b>?',
+          type: 'is-danger',
+          onConfirm: () => {
+            this.sendDeleteSound(soundboard_id, sound_id);
+          },
+        });
+      }
     },
     updateSoundboard: function(soundboard_id) {
       let soundboard = this.soundboards[soundboard_id];
