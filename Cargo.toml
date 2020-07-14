@@ -18,7 +18,7 @@ lto = "fat"
 
 [features]
 autoloop = ["libpulse-binding", "ctrlc"]
-default = ["mp3", "flac", "vorbis", "wav", "http", "terminal-ui"]
+default = ["mp3", "flac", "vorbis", "wav", "http", "gui", "terminal-ui"]
 flac = ["claxon"]
 gui = ["iced", "iced_native"]
 terminal-ui = ["tui", "crossterm"]

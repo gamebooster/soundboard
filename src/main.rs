@@ -238,7 +238,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
     {
-        tui::draw_terminal()?;
+        no_gui_routine(gui_sender)?;
     }
     Ok(())
 }
