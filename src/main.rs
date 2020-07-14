@@ -86,7 +86,7 @@ soundboard encountered an fatal error:
 
 fn try_main() -> Result<()> {
     env_logger::builder()
-        .filter_module("soundboard", log::LevelFilter::Error)
+        .filter_module("soundboard", log::LevelFilter::Trace)
         .filter_module("warp", log::LevelFilter::Info)
         .init();
 
