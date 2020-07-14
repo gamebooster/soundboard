@@ -1,0 +1,121 @@
+% Template for talks using the Corporate Design of the Freie Universitaet
+%   Berlin, created following the guidelines on www.fu-berlin.de/cd by
+%   Tobias G. Pfeiffer, <tobias.pfeiffer@math.fu-berlin.de>
+% This file can be redistributed and/or modified in any way you like.
+%   If you feel you have done significant improvements to this template,
+%   please consider providing your modified version to
+%   https://www.mi.fu-berlin.de/w/Mi/BeamerTemplateCorporateDesign
+
+\usepackage{amsmath,dsfont,listings}
+
+%%% FU logo
+% small version for upper right corner of normal pages
+\pgfdeclareimage[height=0.9cm]{university-logo}{FULogo_RGB}
+\logo{\pgfuseimage{university-logo}}
+% large version for upper right corner of title page
+\pgfdeclareimage[height=1.085cm]{big-university-logo}{FULogo_RGB}
+\newcommand{\titleimage}[1]{\pgfdeclareimage[height=2.92cm]{title-image}{#1}}
+\titlegraphic{\pgfuseimage{title-image}}
+%%% end FU logo
+
+% NOTE: 1cm = 0.393 in = 28.346 pt;    1 pt = 1/72 in = 0.0352 cm
+\setbeamersize{text margin right=3.5mm, text margin left=7.5mm}  % text margin
+
+% colors to be used
+\definecolor{text-grey}{rgb}{0.45, 0.45, 0.45} % grey text on white background
+\definecolor{bg-grey}{rgb}{0.66, 0.65, 0.60} % grey background (for white text)
+\definecolor{fu-blue}{RGB}{0, 51, 102} % blue text
+\definecolor{fu-green}{RGB}{153, 204, 0} % green text
+\definecolor{fu-red}{RGB}{204, 0, 0} % red text (used by \alert)
+
+% switch off the sidebars
+% TODO: loading \useoutertheme{sidebar} (which is maybe wanted) also inserts
+%   a sidebar on title page (unwanted), also indents the page title (unwanted?),
+%   and duplicates the navigation symbols (unwanted)
+\setbeamersize{sidebar width left=0cm, sidebar width right=0mm}
+\setbeamertemplate{sidebar right}{}
+\setbeamertemplate{sidebar left}{}
+%    XOR
+% \useoutertheme{sidebar}
+
+% frame title
+% is truncated before logo and splits on two lines
+% if neccessary (or manually using \\)
+\setbeamertemplate{frametitle}{%
+    \vskip-30pt \color{text-grey}\large%
+    \begin{minipage}[b][23pt]{80.5mm}%
+    \flushleft\insertframetitle%
+    \end{minipage}%
+}
+
+%%% title page
+% TODO: get rid of the navigation symbols on the title page.
+%   actually, \frame[plain] *should* remove them...
+\setbeamertemplate{title page}{
+% upper right: FU logo
+\vskip2pt\hfill\pgfuseimage{big-university-logo} \\
+\vskip6pt\hskip3pt
+% title image of the presentation
+\begin{minipage}{11.6cm}
+\hspace{-1mm}\inserttitlegraphic
+\end{minipage}
+
+% set the title and the author
+\vskip14pt
+\parbox[top][1.35cm][c]{11cm}{\color{text-grey}\inserttitle \\ \small \insertsubtitle}
+\vskip11pt
+\parbox[top][1.35cm][c]{11cm}{\small \insertauthor \\ \insertinstitute \\[3mm] \insertdate}
+}
+%%% end title page
+
+%%% colors
+\usecolortheme{lily}
+\setbeamercolor*{normal text}{fg=black,bg=white}
+\setbeamercolor*{alerted text}{fg=fu-red}
+\setbeamercolor*{example text}{fg=fu-green}
+\setbeamercolor*{structure}{fg=fu-blue}
+
+\setbeamercolor*{block title}{fg=white,bg=black!50}
+\setbeamercolor*{block title alerted}{fg=white,bg=black!50}
+\setbeamercolor*{block title example}{fg=white,bg=black!50}
+
+\setbeamercolor*{block body}{bg=black!10}
+\setbeamercolor*{block body alerted}{bg=black!10}
+\setbeamercolor*{block body example}{bg=black!10}
+
+\setbeamercolor{bibliography entry author}{fg=fu-blue}
+% TODO: this doesn't work at all:
+\setbeamercolor{bibliography entry journal}{fg=text-grey}
+
+\setbeamercolor{item}{fg=fu-blue}
+\setbeamercolor{navigation symbols}{fg=text-grey,bg=bg-grey}
+%%% end colors
+
+%%% headline
+\setbeamertemplate{headline}{
+\vskip4pt\hfill\insertlogo\hspace{3.5mm} % logo on the right
+
+\vskip6pt\color{fu-blue}\rule{\textwidth}{0.4pt} % horizontal line
+}
+%%% end headline
+
+%%% footline
+\newcommand{\footlinetext}{\insertshortinstitute, \insertshorttitle, \insertshortdate}
+\setbeamertemplate{footline}{
+\vskip5pt\color{fu-blue}\rule{\textwidth}{0.4pt}\\ % horizontal line
+\vskip2pt
+\makebox[123mm]{\hspace{7.5mm}
+\color{fu-blue}\footlinetext
+\hfill \raisebox{-1pt}{\usebeamertemplate***{navigation symbols}}
+\hfill \insertframenumber}
+\vskip4pt
+}
+%%% end footline
+
+%%% settings for listings package
+\lstset{extendedchars=true, showstringspaces=false, basicstyle=\footnotesize\sffamily, tabsize=2, breaklines=true, breakindent=10pt, frame=l, columns=fullflexible}
+\lstset{language=Java} % this sets the syntax highlighting
+\lstset{mathescape=true} % this switches on $...$ substitution in code
+% enables UTF-8 in source code:
+\lstset{literate={ä}{{\"a}}1 {ö}{{\"o}}1 {ü}{{\"u}}1 {Ä}{{\"A}}1 {Ö}{{\"O}}1 {Ü}{{\"U}}1 {ß}{\ss}1}
+%%% end listings
