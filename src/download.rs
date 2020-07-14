@@ -4,15 +4,21 @@ use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::path::PathBuf;
+use std::process::Command;
 use std::str::FromStr;
-use tokio::prelude::*;
-use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
 
 use super::config;
 use super::utils;
 
 pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result<Option<PathBuf>> {
-    if sound.path.starts_with("http") {
+    if sound.path.contains("youtube.com") || sound.path.contains("youtu.be") {
+        let string_hash = utils::calculate_hash(&sound.path).to_string();
+        let mut file_path = std::env::temp_dir();
+        file_path.push(string_hash);
+        if file_path.exists() {
+            return Ok(Some(file_path));
+        }
+    } else if sound.path.starts_with("http") {
         let mut headers_tuple = Vec::new();
         if let Some(headers) = &sound.headers {
             for header in headers {
@@ -33,8 +39,47 @@ pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result
 }
 
 pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<PathBuf> {
+    use std::io::{self, Write};
+
     let path = {
-        if sound.path.starts_with("http") {
+        if sound.path.contains("youtube.com") || sound.path.contains("youtu.be") {
+            let string_hash = utils::calculate_hash(&sound.path).to_string();
+            let mut file_path = std::env::temp_dir();
+            file_path.push(string_hash);
+            if file_path.exists() {
+                return Ok(file_path);
+            }
+
+            let temp_file_path = format!("{}{}", file_path.to_str().unwrap(), "_temp");
+            let output = Command::new("youtube-dl")
+                .args(&["-f", "250,251,249", &sound.path, "-o", &temp_file_path])
+                .output()?;
+            info!("youtube-dl status: {}", output.status);
+            if !output.status.success() {
+                io::stdout().write_all(&output.stdout).unwrap();
+                io::stderr().write_all(&output.stderr).unwrap();
+                return Err(anyhow!("youtube-dl error"));
+            }
+            let output = Command::new("mkvextract")
+                .args(&[
+                    &temp_file_path,
+                    "tracks",
+                    &format!("0:{}", file_path.to_str().unwrap()),
+                ])
+                .output()?;
+            std::fs::remove_file(temp_file_path).context("could not delete youtube temp file")?;
+            info!("mkvextract status: {}", output.status);
+            if !output.status.success() {
+                io::stdout().write_all(&output.stdout).unwrap();
+                io::stderr().write_all(&output.stderr).unwrap();
+                return Err(anyhow!("mkvextract error"));
+            }
+            if file_path.exists() {
+                return Ok(file_path);
+            } else {
+                return Err(anyhow!("unkndown youtube download error"));
+            }
+        } else if sound.path.starts_with("http") {
             let mut headers_tuple = Vec::new();
             if let Some(headers) = &sound.headers {
                 for header in headers {
@@ -102,6 +147,9 @@ pub async fn download_file_if_needed_async(
     url: &str,
     headers: Vec<(String, String)>,
 ) -> Result<PathBuf> {
+    use tokio::prelude::*;
+    use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
+
     let string_hash = utils::calculate_hash(&(&url, &headers)).to_string();
     let mut file_path = std::env::temp_dir();
     file_path.push(string_hash);

@@ -21,7 +21,7 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ### features (rust feature name: rfm)
 
-- play local and remote sounds (http) to your microphone and output device
+- play local and remote sounds (http, youtube) to your microphone and output device
   - supported codecs: mp3 (rfm: mp3), flac (rfm: flac), wav (rfm: wav), vorbis (rfm: vorbis), xm (rfm: xm, non-default)
 - hotkeys
 - native user interface (rfm: gui)
@@ -37,6 +37,7 @@ cross-platform desktop application to spice up your audio/video conferences
 2. create soundboard config directory with soundboards (see below for example config)
 3. provide virtual microphone (instructions below)
 4. (optional) copy `web` directory in soundboard config directory for webui
+5. (optional) add youtube-dl and mkvextract to PATH variable to use youtube links as source
 
 ## default usage
 

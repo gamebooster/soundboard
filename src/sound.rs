@@ -462,6 +462,9 @@ fn run_sound_message_loop(
                                         .expect("sound channel send error");
                                 }
                                 Err(err) => {
+                                    gui_sender_clone
+                                        .send(Message::StopSound(sound_config))
+                                        .expect("sound channel error");
                                     error!("get_local_path_from_sound_config failed: {:#}", err)
                                 }
                             },

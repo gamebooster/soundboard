@@ -72,3 +72,26 @@ path = 'https://www.myinstants.com/media/sounds/original_zeowGW1.mp3'
 hotkey = 'CTRL-P'
 name = 'Nicht so tief, Rüdiger!'
 path = 'nicht-so-tief-rudiger.mp3'
+
+[[sound]]
+end = 11
+name = "Traeumaschlauma"
+path = "https://youtu.be/W3fzR5gvbIw"
+
+[[sound]]
+end = 15
+name = "Oh well"
+path = "https://youtu.be/YUKeiJ3igXg"
+start = 10
+
+[[sound]]
+end = 18.5
+name = "dreams"
+path = "https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+start = 14
+
+[[sound]]
+end = 58
+name = "tired"
+path = "https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+start = 53
