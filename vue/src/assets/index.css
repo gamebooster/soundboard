@@ -1,0 +1,104 @@
+.button {
+    border-radius: 0px;
+}
+
+.buttons.has-addons .button:last-child {
+    margin-right: .5rem;
+}
+
+.buttons:last-child {
+    margin-bottom: 0rem;
+}
+
+.buttons:not(:last-child) {
+    margin-bottom: 0rem;
+}
+
+.fill-size {
+    width: 100%;
+    height: 90%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 0.2rem;
+    display: block;
+}
+
+body.has-navbar-fixed-bottom,
+html.has-navbar-fixed-bottom {
+    padding-bottom: 10rem;
+}
+
+input[type="range"].slider {
+    padding-right: 0.2rem;
+    margin: 0.8rem 0;
+}
+
+.navbar {
+    padding: 1rem;
+    border-top: 1px solid #363636;
+}
+
+.box {
+    border-radius: 0px;
+}
+
+.center {
+    text-align: center;
+    line-height: 1.5;
+}
+.song_progress .title {
+    text-align: center;
+}
+.song_progress .progress-value {
+    text-align: center;
+    text-shadow: 0 0 1px #363636, 0 0 1px #363636, 0 0 1px #363636, 0 0 1px #363636;
+}
+
+html, body {
+    background-color: #363636;
+}
+
+body {
+    min-height: 100vh;
+}
+
+.navbar.hide_bottom_menu {
+    background-color: transparent;
+    border: 0px;
+    left: auto;
+}
+
+.select select:not([multiple]) {
+    width: 100%;
+}
+
+.select:not(.is-multiple) {
+    width: 100%;
+}
+
+@media screen and (max-width:768px) {
+    #bottom_menu {
+        padding: 0.5rem;
+    }
+
+    .title.is-5 {
+        font-size: 1rem;
+    }
+}
+
+@media screen and (min-width:768px) {
+    .song_progress .columns {
+        display: block;
+    }
+
+    .song_progress .columns .column {
+        padding-bottom: 0.2rem;
+    }
+
+    #inputs {
+        margin-right: 0.5rem;
+        padding: 0.5rem;
+        padding-top: 0.7rem;
+        margin-top: 0.5rem;
+    }
+}

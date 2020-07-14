@@ -72,6 +72,15 @@ struct StrippedSoundboardInfo {
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, Default)]
+struct ExtendedSoundboardInfo {
+    name: String,
+    hotkey: Option<String>,
+    position: Option<usize>,
+    id: usize,
+    sounds: Vec<StrippedSoundInfo>,
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 struct StrippedSoundInfo {
     name: String,
     hotkey: Option<String>,
@@ -275,11 +284,23 @@ pub async fn run(
         .map(
             move |(soundboard, index): (config::SoundboardConfig, usize)| {
                 warp::reply::with_status(
-                    warp::reply::json(&ResultData::with_data(StrippedSoundboardInfo {
+                    warp::reply::json(&ResultData::with_data(ExtendedSoundboardInfo {
                         name: soundboard.name,
                         hotkey: soundboard.hotkey,
                         id: index,
                         position: soundboard.position,
+                        sounds: soundboard.sounds.as_ref().unwrap().iter().fold(
+                            Vec::new(),
+                            |mut v, a| {
+                                v.push(StrippedSoundInfo {
+                                    name: a.name.clone(),
+                                    hotkey: a.hotkey.clone(),
+                                    id: v.len(),
+                                    path: a.path.clone(),
+                                });
+                                v
+                            },
+                        ),
                     })),
                     warp::http::StatusCode::OK,
                 )
@@ -950,6 +971,11 @@ pub async fn run(
         .or(hotkey_register_route)
         .or(hotkey_deregister_route);
 
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_headers(vec!["content-type", "auth", "origin"])
+        .allow_methods(vec!["GET", "POST", "DELETE", "OPTIONS"]);
+
     let routes = (warp::path("api").and(
         soundboard_routes
             .or(soundboard_sound_routes)
@@ -958,6 +984,7 @@ pub async fn run(
             .or(help_api),
     ))
     .or(warp::get().and(warp::fs::dir(web_path)))
+    .with(cors)
     .recover(handle_rejection);
 
     let socket_addr: std::net::SocketAddr = {
