@@ -26,7 +26,7 @@
             <button v-for="sound in filteredSounds" class="button is-success"
                     :class="{'is-danger': soundNames.includes(sound.name), 'is-warning is-outlined': selectedSounds.includes(sound.id)}"
                     :key="sound.id"
-                    @click="playSound(sound.id)" @click.right="e => selectSound(sound.id, e)">{{ sound.name }}
+                    @click="soundNames.includes(sound.name) ? stopSound(sound.id) : playSound(sound.id)" @click.right="e => selectSound(sound.id, e)">{{ sound.name }}
             </button>
         </div>
         <p v-else>No sounds here :(</p>
@@ -69,6 +69,12 @@
             },
             playSound(id) {
                 axios.post('/api/soundboards/' + this.id + '/sounds/' + id + '/play', {devices: "Both"})
+                    .then(() => {
+                        this.$emit('update');
+                    });
+            },
+            stopSound(id) {
+                axios.post('/api/soundboards/' + this.id + '/sounds/' + id + '/stop')
                     .then(() => {
                         this.$emit('update');
                     });
