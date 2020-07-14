@@ -1,4 +1,3 @@
-
 use std::{error:: Error, io::{stdout, Write}};
 use tui:: {
     Terminal,
@@ -36,7 +35,7 @@ pub fn draw_terminal() -> Result<()> {
         .as_ref()
         .unwrap()
         .clone();
-    let (sound_sender, sound_receiver ) = unbounded();
+    let (sound_sender, _sound_receiver ) = unbounded();
     for sound in &current_sounds {
         if sound.hotkey.is_none() {
             continue;
@@ -53,7 +52,7 @@ pub fn draw_terminal() -> Result<()> {
             };
         });
     }
-    if let Err(err) = sound_sender.send(sound::Message::SetVolume(1.0)){
+    if let Err(err) = sound_sender.send(sound::Message::SetVolume(1.0)) {
         error!("failed to set volume {}", err);
     };
     execute!(stdout(), EnableMouseCapture)?;

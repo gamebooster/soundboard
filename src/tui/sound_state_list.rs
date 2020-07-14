@@ -1,6 +1,5 @@
-
-use super::super::config::{SoundConfig};
 use tui::widgets::{ListState};
+use super::super::config::{SoundConfig};
 
 pub struct SoundStateList<SoundConfig> {
     pub sounds: Vec<SoundConfig>,
