@@ -25,11 +25,11 @@ use super::config;
 use super::hotkey;
 use super::sound;
 
-use crossbeam_channel::unbounded;
+use crossbeam_channel;
 
 mod sound_state_list;
 
-pub fn draw_terminal() -> Result<()> {
+pub fn draw_terminal(sound_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
     let mut hotkey_manager = hotkey::HotkeyManager::new();
     let current_sounds = config::MainConfig::read()
         .soundboards
@@ -40,7 +40,6 @@ pub fn draw_terminal() -> Result<()> {
         .as_ref()
         .unwrap()
         .clone();
-    let (sound_sender, _sound_receiver) = unbounded();
     for sound in &current_sounds {
         if sound.hotkey.is_none() {
             continue;

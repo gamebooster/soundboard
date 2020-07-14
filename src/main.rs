@@ -86,7 +86,7 @@ soundboard encountered an fatal error:
 
 fn try_main() -> Result<()> {
     env_logger::builder()
-        .filter_module("soundboard", log::LevelFilter::Trace)
+        .filter_module("soundboard", log::LevelFilter::Error)
         .filter_module("warp", log::LevelFilter::Info)
         .init();
 
@@ -226,14 +226,17 @@ fn try_main() -> Result<()> {
             std::thread::park();
             return Ok(());
         }
-        let mut settings = Settings::with_flags((gui_sender, gui_receiver));
+        let gui_sender_clone = gui_sender.clone();
+        let gui_receiver_clone = gui_receiver.clone();
+        let mut settings = Settings::with_flags((gui_sender_clone, gui_receiver_clone));
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }
 
     #[cfg(feature = "terminal-ui")]
     {
-        tui::draw_terminal()?;
+        let gui_sender_clone = gui_sender.clone();
+        tui::draw_terminal(gui_sender_clone)?;
     }
 
     #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
