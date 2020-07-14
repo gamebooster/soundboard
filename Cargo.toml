@@ -18,9 +18,10 @@ lto = "fat"
 
 [features]
 autoloop = ["libpulse-binding", "ctrlc"]
-default = ["mp3", "flac", "vorbis", "wav", "http", "gui"]
+default = ["mp3", "flac", "vorbis", "wav", "http", "gui", "terminal-ui"]
 flac = ["claxon"]
 gui = ["iced", "iced_native"]
+terminal-ui = ["tui", "crossterm"]
 http = ["warp", "futures"]
 mp3 = ["minimp3", "mp3-duration"]
 opus = ["audiopus", "ogg"]
@@ -71,6 +72,9 @@ minimp3 = {version = "0.3", optional = true}
 mp3-duration = {version = "0.1.10", optional = true}
 ogg = {version = "0.7", optional = true}
 ogg_metadata = {version = "0.4", optional = true}
+
+tui = {version = "0.9", optional = true, default-features = false, features = ['crossterm']}
+crossterm  = {version = "0.17", optional = true}
 
 [build-dependencies]
 fs_extra = "1"
