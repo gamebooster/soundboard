@@ -1,24 +1,25 @@
-use std::{error:: Error, io::{stdout, Write}};
-use tui:: {
-    Terminal,
-    backend::CrosstermBackend,
-    layout::{Layout, Constraint, Direction, Corner},
-    style::{Color, Modifier, Style},
-    widgets::{Widget, Block, Borders, BorderType, List, Text, ListState}
-};
+
 use crossterm::{
-    event::{KeyEvent, EnableMouseCapture, KeyCode, read, Event}, 
+    cursor::{DisableBlinking, EnableBlinking, Hide, MoveTo, RestorePosition, SavePosition, Show},
+    event::{EnableMouseCapture, Event, KeyCode, KeyEvent, read}, 
     ExecutableCommand,
     execute, 
     Result, 
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, ScrollUp, ScrollDown, SetSize, size, Clear, ClearType},
-    cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition, Show, Hide}
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, ScrollUp, ScrollDown, SetSize, size, Clear, ClearType}
 };
 use log::{error, info, trace, warn};
+use std::{error:: Error, io::{stdout, Write}};
+use tui:: {
+    backend::CrosstermBackend,
+    layout::{Constraint, Corner, Direction, Layout},
+    style::{Color, Modifier, Style},
+    widgets::{Block, Borders, BorderType, List, ListState, Text, Widget},
+    Terminal,
+};
 
 use super::config;
-use super::sound;
 use super::hotkey;
+use super::sound;
 
 use crossbeam_channel::unbounded;
 
@@ -35,7 +36,7 @@ pub fn draw_terminal() -> Result<()> {
         .as_ref()
         .unwrap()
         .clone();
-    let (sound_sender, _sound_receiver ) = unbounded();
+    let (sound_sender, _sound_receiver) = unbounded();
     for sound in &current_sounds {
         if sound.hotkey.is_none() {
             continue;
@@ -66,10 +67,7 @@ pub fn draw_terminal() -> Result<()> {
         terminal.draw(|mut f| {
             let size = f.size();
             let chunks = Layout::default()
-                .constraints([
-                    Constraint::Percentage(50),
-                    Constraint::Percentage(50)
-                    ].as_ref())
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
                 .direction(Direction::Horizontal)
                 .margin(2)
                 .split(size);
