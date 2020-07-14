@@ -359,6 +359,15 @@ fn run_sound_message_loop(
                         result.unwrap()
                     };
 
+                    if config::MainConfig::read()
+                        .disable_simultaneous_playback
+                        .unwrap_or_default()
+                    {
+                        gui_sender
+                            .send(Message::StopAll)
+                            .expect("error stopping all playing sounds");
+                    }
+
                     if let Some(path) = maybe_path {
                         gui_sender
                             .send(Message::_PlaySoundDownloaded(

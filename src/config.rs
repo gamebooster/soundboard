@@ -46,6 +46,7 @@ pub struct MainConfig {
     pub auto_loop_device: Option<bool>,
     pub no_duplex_device: Option<bool>,
     pub print_possible_devices: Option<bool>,
+    pub disable_simultaneous_playback: Option<bool>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub soundboards: Vec<SoundboardConfig>,
@@ -71,6 +72,12 @@ fn load_and_merge_config() -> Result<MainConfig> {
         &arguments,
         "print-possible-devices",
     );
+    merge_flag_with_args_and_env(
+        &mut config.disable_simultaneous_playback,
+        &arguments,
+        "disable-simultaneous-playback",
+    );
+
     Ok(config)
 }
 
