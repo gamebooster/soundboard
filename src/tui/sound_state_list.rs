@@ -1,12 +1,12 @@
-use tui::widgets::ListState;
 use super::super::config::SoundConfig;
+use tui::widgets::ListState;
 
 pub struct SoundStateList<SoundConfig> {
     pub sounds: Vec<SoundConfig>,
     pub state: ListState,
 }
 
-impl<SoundConfig> SoundStateList <SoundConfig> {
+impl<SoundConfig> SoundStateList<SoundConfig> {
 
     pub fn new(sounds: Vec<SoundConfig>) -> SoundStateList<SoundConfig> {
         SoundStateList {

@@ -1,19 +1,24 @@
 
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, Hide, MoveTo, RestorePosition, SavePosition, Show},
-    event::{EnableMouseCapture, Event, KeyCode, KeyEvent, read}, 
-    ExecutableCommand,
-    execute, 
-    Result, 
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, ScrollUp, ScrollDown, SetSize, size, Clear, ClearType}
+    event::{read, EnableMouseCapture, Event, KeyCode, KeyEvent},
+    execute,
+    terminal::{
+        size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, ScrollDown, ScrollUp,
+        SetSize,
+    },
+    ExecutableCommand, Result,
 };
 use log::{error, info, trace, warn};
-use std::{error:: Error, io::{stdout, Write}};
+use std::{
+    error:: Error, 
+    io::{stdout, Write},
+};
 use tui:: {
     backend::CrosstermBackend,
     layout::{Constraint, Corner, Direction, Layout},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, BorderType, List, ListState, Text, Widget},
+    widgets::{Block, BorderType, Borders, List, ListState, Text, Widget},
     Terminal,
 };
 
@@ -103,10 +108,9 @@ pub fn draw_terminal() -> Result<()> {
                     )) {
                         error!("failed to play sound {}", err);
                     };
-
                 }
                 _ => {}
-            }
+            },
             _ => {}
         }
     }
