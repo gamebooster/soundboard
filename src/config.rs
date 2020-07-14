@@ -67,8 +67,16 @@ fn load_and_merge_config() -> Result<MainConfig> {
     merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
     merge_flag_with_args_and_env(&mut config.no_gui, &arguments, "no-gui");
     merge_flag_with_args_and_env(&mut config.no_duplex_device, &arguments, "no-duplex-device");
-	merge_flag_with_args_and_env(&mut config.print_possible_devices, &arguments,"print-possible-devices");
-    merge_flag_with_args_and_env(&mut config.disable_simultaneous_playback, &arguments, "disable-simultaneous-playback");
+    merge_flag_with_args_and_env(
+        &mut config.print_possible_devices,
+        &arguments,
+        "print-possible-devices",
+    );
+    merge_flag_with_args_and_env(
+        &mut config.disable_simultaneous_playback,
+        &arguments,
+        "disable-simultaneous-playback",
+    );
 
     Ok(config)
 }

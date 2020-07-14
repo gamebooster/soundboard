@@ -358,7 +358,7 @@ fn run_sound_message_loop(
                         }
                         result.unwrap()
                     };
-                    
+
                     if config::MainConfig::read()
                         .disable_simultaneous_playback
                         .unwrap_or_default()
