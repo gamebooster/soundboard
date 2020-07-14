@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>soundboard</title>
+    <script src="ext/vue_2_6_11.min.js" defer></script>
+    <script src="ext/axios_0_19_2.min.js" defer></script>
+    <script src="ext/buefy_0_8_20.min.js" defer></script>
+    <script src="js/index.js" defer></script>
+    <link rel="stylesheet" href="ext/bulma_0_9_0.min.css">
+    <link rel="stylesheet" href="ext/buefy_0_8_20.min.css">
+    <link rel="stylesheet" href="css/index.css">
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimal-ui" />
+</head>
+
+<body class="has-navbar-fixed-bottom">
+    <div id="app">
+        <div class="modal is-active" v-if="showStatusModal" id="status_modal">
+            <div class="modal-background"></div>
+            <div class="notification is-danger">
+                <p class="title is-5 center">Lost connection to soundboard server</p>
+            </div>
+        </div>
+        <nav class="navbar is-fixed-bottom is-white padding-1">
+            <div class="columns">
+                <div class="column is-hidden-tablet" id="bottom_menu">
+                    <button v-if="!showBottomMenu" class="button fill-size" @click="showBottomMenu=true">Show</button>
+                </div>
+                <div class="colum" id="inputs" v-if="showBottomMenu">
+                    <div class="columns is-mobile">
+                        <div class="column is-hidden-tablet is-narrow" v-if="showBottomMenu"> <button class="button"
+                                @click="showBottomMenu=false">Hide</button></div>
+                        <div class="column filter"><input class="input" type="text" placeholder="filter" :value='filter'
+                                @input='evt=>filter=evt.target.value' v-on:keyup.enter="hideKeyboard">
+                        </div>
+                        <div class="column is-narrow" id="device_chooser">
+                            <div class="select is-up">
+                                <select v-model="selectedDevice">
+                                    <option value="Both" selected="selected">Both</option>
+                                    <option value="Output">Output</option>
+                                    <option value="Loop">Loop</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <b-slider :step="0.1" :min="0.0" :max="1.0" v-model="volume" lazy></b-slider>
+                        </div>
+                    </div>
+                </div>
+                <template v-if="showBottomMenu && activeSounds.length > 0">
+                    <div class="colum"><button class="button is-danger fill-size" @click="stopAllSound">Stop
+                            All</button></div>
+                    <div class="column song_progress is-narrow" v-for="sound in activeSounds" :key="sound.id">
+                        <div class="columns is-mobile">
+                            <div class="column">
+                                <div class="title is-5">{{ sound.name }}</div>
+                            </div>
+                            <div class="column">
+                                <b-progress v-if="sound.total_duration != 0" :value="sound.play_duration"
+                                    :max="sound.total_duration" size="is-medium" show-value>
+                                    {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }} /
+                                    {{ new Date(sound.total_duration * 1000).toISOString().substr(14, 5)  }}
+                                </b-progress>
+                                <b-progress v-else>
+                                    {{ new Date(sound.play_duration * 1000).toISOString().substr(14, 5)  }}</b-progress>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div class="column is-hidden-mobile" v-else>
+                    <p class="title is-3 center">No active sounds</p>
+                </div>
+
+            </div>
+        </nav>
+        <section class="hero is-dark is-bold">
+            <div class="hero-body">
+                <h1 class="title">
+                    soundboard
+                </h1>
+            </div>
+        </section>
+        <div class="tile is-ancestor is-vertical">
+            <div class="tile is-parent" v-for="soundboard in soundboards" :key="soundboard.id">
+                <div class="tile is-child box">
+                    <p v-if="!soundboard.edit" @dblclick="soundboard.edit = true" class="title">{{ soundboard.name }}
+                    </p>
+                    <b-field v-else="soundboard.edit" label="Name" label-position="on-border">
+                        <b-input type="text" v-model="soundboard.name"
+                            @keyup.enter.native="soundboard.edit=false; updateSoundboard(soundboard.id);"
+                            @blur="soundboard.edit=false; updateSoundboard(soundboard.id);"></b-input>
+                        <p class="control">
+                            <b-button @click="soundboard.edit=false; updateSoundboard(soundboard.id);"
+                                class="button is-primary">Submit</b-button>
+                        </p>
+                    </b-field>
+                    <div class="buttons">
+                        <template v-for="sound in soundboard.sounds">
+                            <template v-if="filterRegex.test(sound.name)">
+                                <button v-if="!activeSounds.some(item => sound.name == item.name)"
+                                    class="button is-success" @click="playSound(soundboard.id, sound.id)"
+                                    :key="sound.id">{{ sound.name }}</button>
+                                <template v-else>
+                                    <div class="buttons has-addons">
+                                        <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
+                                            :key="sound.id">{{ sound.name }}</button>
+                                        <button class="button is-danger" @click="stopSound(soundboard.id, sound.id)">
+                                            <span class="icon is-small">
+                                                ■
+                                            </span>
+                                        </button>
+                                    </div>
+                                </template>
+                            </template>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
