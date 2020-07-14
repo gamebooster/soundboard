@@ -130,6 +130,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "audiopus"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3743519567e9135cf6f9f1a509851cb0c8e4cb9d66feb286668afb1923bec458"
+dependencies = [
+ "audiopus_sys",
+]
+
+[[package]]
+name = "audiopus_sys"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cabfa29cd59a7bf6fbb12b6a663dc26d30378b7303c67b803abf72a36dfc1223"
+dependencies = [
+ "log 0.4.8",
+ "pkg-config",
+]
+
+[[package]]
 name = "autocfg"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3158,6 +3177,7 @@ name = "soundboard"
 version = "0.0.2"
 dependencies = [
  "anyhow",
+ "audiopus",
  "bytes 0.5.5",
  "clap",
  "claxon",
@@ -3179,6 +3199,7 @@ dependencies = [
  "miniaudio",
  "minimp3",
  "mp3-duration",
+ "ogg 0.7.0",
  "ogg_metadata",
  "once_cell",
  "parking_lot 0.11.0",

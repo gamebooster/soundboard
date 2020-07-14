@@ -23,6 +23,7 @@ flac = ["claxon"]
 gui = ["iced", "iced_native"]
 http = ["warp", "futures"]
 mp3 = ["minimp3", "mp3-duration"]
+opus = ["audiopus", "ogg"]
 telegram = ["tgbot", "fuzzy-matcher"]
 vorbis = ["lewton", "ogg_metadata"]
 wav = ["hound"]
@@ -61,12 +62,14 @@ iced_native = {version = "0.2", optional = true}
 futures = {version = "0.3", optional = true}
 warp = {version = "0.2", optional = true}
 
+audiopus = {version = "0.2", optional = true}
 claxon = {version = "0.4", optional = true}
 hound = {version = "3", optional = true}
 lewton = {version = "0.10", optional = true}
 libxm-soundboard = {version = "0.0.1", path = "extern/libxm-rs", optional = true}
 minimp3 = {version = "0.3", optional = true}
 mp3-duration = {version = "0.1.10", optional = true}
+ogg = {version = "0.7", optional = true}
 ogg_metadata = {version = "0.4", optional = true}
 
 [build-dependencies]

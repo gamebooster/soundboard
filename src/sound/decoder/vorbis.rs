@@ -55,9 +55,6 @@ where
                 ogg_metadata::OggFormat::Vorbis(vorbis_metadata) => {
                     return Some(vorbis_metadata.get_duration().unwrap());
                 }
-                ogg_metadata::OggFormat::Opus(opus_metadata) => {
-                    return Some(opus_metadata.get_duration().unwrap());
-                }
                 _ => {}
             },
             Err(err) => {

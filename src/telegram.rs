@@ -15,7 +15,7 @@ use tgbot::{
     methods::{GetFile, SendMessage},
     types::{
         Audio, CallbackQuery, Command, Document, InlineKeyboardButton, Message, MessageData,
-        Update, UpdateKind,
+        Update, UpdateKind, Voice,
     },
     Api, Config, UpdateHandler,
 };
@@ -92,6 +92,7 @@ fn send_new_sound_config(
     new_sound_path.push(&full_name);
 
     info!("new path for incoming sound {}", &new_sound_path.display());
+    let config = config::MainConfig::read();
 
     let sound_config = config::SoundConfig {
         name,
@@ -101,7 +102,23 @@ fn send_new_sound_config(
         path: full_name,
     };
 
-    if !new_sound_path.exists() {
+    let telegram_soundboard_index = config.soundboards.iter().position(|s| s.name == "telegram");
+
+    let mut sound_exists = false;
+    if let Some(telegram_soundboard_index) = telegram_soundboard_index {
+        let telegram_soundboard = &config.soundboards[telegram_soundboard_index];
+        let maybe_sound = telegram_soundboard
+            .sounds
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|s| &s.full_path == new_sound_path.to_str().unwrap());
+        if maybe_sound.is_some() {
+            sound_exists = true;
+        }
+    }
+
+    if !sound_exists {
         let mut telegram_sounds_dir = config::get_soundboards_path()?;
         telegram_sounds_dir.push("telegram");
         if !telegram_sounds_dir.exists() {
@@ -115,28 +132,14 @@ fn send_new_sound_config(
             )
         })?;
 
-        if let Some(index) = config::MainConfig::read()
-            .soundboards
-            .iter()
-            .position(|s| s.name == "telegram")
-        {
-            let mut soundboard = config::MainConfig::read().soundboards[index].clone();
-            soundboard.sounds = Some(soundboard.sounds.unwrap_or_default());
-            if soundboard
+        if let Some(telegram_soundboard_index) = telegram_soundboard_index {
+            let mut telegram_soundboard = config.soundboards[telegram_soundboard_index].clone();
+            telegram_soundboard
                 .sounds
-                .as_ref()
+                .as_mut()
                 .unwrap()
-                .iter()
-                .find(|s| **s == sound_config)
-                .is_none()
-            {
-                soundboard
-                    .sounds
-                    .as_mut()
-                    .unwrap()
-                    .push(sound_config.clone());
-                config::MainConfig::change_soundboard(index, soundboard)?;
-            }
+                .push(sound_config.clone());
+            config::MainConfig::change_soundboard(telegram_soundboard_index, telegram_soundboard)?;
         } else {
             let mut sb = config::SoundboardConfig::default();
             sb.name = "telegram".to_string();
@@ -164,7 +167,7 @@ async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio)
 
     send_new_sound_config(
         sender,
-        audio.title.clone().unwrap_or_default(),
+        audio.title.clone().unwrap_or(audio.file_unique_id.clone()),
         ".".to_owned()
             + audio
                 .mime_type
@@ -177,6 +180,30 @@ async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio)
     )?;
 
     Ok(audio.title.clone().unwrap_or_default())
+}
+
+async fn handle_voice(api: &Api, sender: &Sender<sound::Message>, voice: &Voice) -> Result<String> {
+    let path = download_file(api, &voice.file_id, &voice.file_unique_id).await?;
+
+    info!("Name: {:?}", voice.file_unique_id);
+    info!("Mime-Type: {:?}", voice.mime_type);
+    info!("File size: {:?}", voice.file_size);
+
+    send_new_sound_config(
+        sender,
+        voice.file_unique_id.clone(),
+        ".".to_owned()
+            + voice
+                .mime_type
+                .clone()
+                .unwrap_or_default()
+                .split('/')
+                .last()
+                .unwrap_or_default(),
+        path.to_str().unwrap().to_string(),
+    )?;
+
+    Ok(voice.file_unique_id.clone())
 }
 
 async fn handle_document(
@@ -192,7 +219,10 @@ async fn handle_document(
 
     send_new_sound_config(
         sender,
-        document.file_name.clone().unwrap_or_default(),
+        document
+            .file_name
+            .clone()
+            .unwrap_or(document.file_unique_id.clone()),
         ".".to_owned()
             + document
                 .mime_type
@@ -273,13 +303,6 @@ async fn handle_sound_command(
         if let Err(err) = api.execute(method).await {
             error!("telegram api error: {}", err);
         }
-    // } else if possible_matches.len() == 1 {
-    //     send_sound_config(sender, possible_matches[0].1.clone()).expect("sound channel error");
-    //     let method = SendMessage::new(
-    //         message.get_chat_id(),
-    //         format!("Playing sound: {}", possible_matches[0].1.name),
-    //     );
-    //     api.execute(method).await.unwrap();
     } else if possible_matches.len() <= max_matches {
         let all_matches = possible_matches.iter().fold(Vec::new(), |mut acc, elem| {
             acc.push(
@@ -476,6 +499,9 @@ impl UpdateHandler for Handler {
                     match &message.data {
                         MessageData::Audio { data, .. } => {
                             result = handle_audio(&self.api, &self.sender, data).await;
+                        }
+                        MessageData::Voice { data, .. } => {
+                            result = handle_voice(&self.api, &self.sender, data).await;
                         }
                         MessageData::Document { data, .. } => {
                             result = handle_document(&self.api, &self.sender, data).await;
