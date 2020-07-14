@@ -289,19 +289,18 @@ pub async fn run(
                         hotkey: soundboard.hotkey,
                         id: index,
                         position: soundboard.position,
-                        sounds: soundboard
-                                .sounds
-                                .as_ref()
-                                .unwrap()
-                                .iter()
-                                .fold(Vec::new(), |mut v, a| {
-                                    v.push(StrippedSoundInfo {
-                                        name: a.name.clone(),
-                                        hotkey: a.hotkey.clone(),
-                                        id: v.len(),
-                                    });
-                                    v
-                                }),
+                        sounds: soundboard.sounds.as_ref().unwrap().iter().fold(
+                            Vec::new(),
+                            |mut v, a| {
+                                v.push(StrippedSoundInfo {
+                                    name: a.name.clone(),
+                                    hotkey: a.hotkey.clone(),
+                                    id: v.len(),
+                                    path: a.path.clone(),
+                                });
+                                v
+                            },
+                        ),
                     })),
                     warp::http::StatusCode::OK,
                 )
