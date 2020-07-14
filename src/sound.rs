@@ -217,7 +217,12 @@ impl From<config::SoundConfig> for SoundKey {
 
 impl PartialEq for SoundKey {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path && self.headers == other.headers
+        self.path == other.path
+            && self.headers == other.headers
+            && (self.start.unwrap_or_default() * 10.0) as usize
+                == (other.start.unwrap_or_default() * 10.0) as usize
+            && (self.end.unwrap_or_default() * 10.0) as usize
+                == (other.end.unwrap_or_default() * 10.0) as usize
     }
 }
 impl Eq for SoundKey {}
@@ -226,6 +231,8 @@ impl std::hash::Hash for SoundKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.path.hash(state);
         self.headers.hash(state);
+        ((self.start.unwrap_or_default() * 10.0) as usize).hash(state);
+        ((self.end.unwrap_or_default() * 10.0) as usize).hash(state);
     }
 }
 
