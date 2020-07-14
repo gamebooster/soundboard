@@ -2,7 +2,7 @@
 # output_device     = "Speaker/HP (Realtek High Definition Audio(SST))" # optional else default device
 # loopback_device   = "CABLE Input (VB-Audio Virtual Cable)" # required: change to your virtual loopback output
 
-http_server = true                      # api and webui; 3030 is the default port
-no_gui      = false                     # no native gui
-stop_hotkey = "CTRL-ALT-E"              # stop all sound
-disable_simultaneous_playback = true    # stop currently playing sounds when playing a new sound
+disable_simultaneous_playback = false # stop currently playing sounds when playing a new sound
+http_server = true # api and webui; 3030 is the default port
+no_gui = false # no native gui
+stop_hotkey = "CTRL-ALT-E" # stop all sound

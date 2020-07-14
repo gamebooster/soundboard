@@ -2,12 +2,10 @@ name = 'favorites'
 position = 0
 
 [[sound]]
-hotkey = 'CTRL-SHIFT-3'
 name = 'Krasser Kai Uwe'
 path = 'krasserKaiUwe.mp3'
 
 [[sound]]
-hotkey = 'CTRL-2'
 name = 'Ich rascht aus'
 path = 'ich-rascht-aus.flac'
 
@@ -32,7 +30,12 @@ name = 'Hierhoch'
 path = 'https://alleswirdaushackgemacht.de/audio/ronny/hierhoch.mp3'
 
 [[sound]]
-hotkey = 'CTRL-1'
+name = 'wo sind die brillen'
+path = 'wo ist der latest shit.mp3'
+start = 18
+
+[[sound]]
+end = 6.7
 name = 'wo ist der latest shit'
 path = 'wo ist der latest shit.mp3'
 
@@ -41,7 +44,6 @@ name = 'Wer wird Millionär - Showstart'
 path = 'https://www.myinstants.com//media/sounds/wer-wird-millionar-soundtracks-soundstart.mp3'
 
 [[sound]]
-hotkey = 'CTRL-3'
 name = 'Summasummarum'
 path = 'Summasummarum.mp3'
 
@@ -59,7 +61,6 @@ name = 'the one and only'
 path = 'oneandonly.wav'
 
 [[sound]]
-hotkey = 'CTRL-ALT-S'
 name = 'steam incoming'
 path = 'https://www.myinstants.com/media/sounds/message_2.mp3'
 

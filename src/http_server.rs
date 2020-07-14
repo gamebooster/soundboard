@@ -439,6 +439,8 @@ pub async fn run(
                         path: upload_name,
                         hotkey: None,
                         headers: None,
+                        start: None,
+                        end: None,
                         full_path: sound_path.to_str().unwrap().to_owned(),
                     };
 
@@ -571,6 +573,8 @@ pub async fn run(
                         hotkey: sound_add_request.hotkey,
                         headers: None,
                         full_path: sound_add_request.path,
+                        start: None,
+                        end: None,
                     },
                 );
 

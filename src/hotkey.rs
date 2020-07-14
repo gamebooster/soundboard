@@ -34,6 +34,11 @@ impl HotkeyManager {
     where
         F: 'static + FnMut() + Send,
     {
+        let position = self.registered_hotkeys.iter().position(|h| h == &hotkey);
+        if position.is_some() {
+            return Err(anyhow!("hotkey already registered {}", hotkey));
+        }
+
         let hotkey_clone = hotkey.clone();
         match GLOBAL_HOTKEY_MAP.lock().entry(hotkey.clone()) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
@@ -68,7 +73,7 @@ impl HotkeyManager {
     pub fn unregister(&mut self, hotkey: &config::Hotkey) -> Result<()> {
         let position = self.registered_hotkeys.iter().position(|h| h == hotkey);
         if position.is_none() {
-            return Err(anyhow!("no hotkey registered with this id"));
+            return Err(anyhow!("hotkey not registered {}", hotkey));
         }
         self.registered_hotkeys.remove(position.unwrap());
 

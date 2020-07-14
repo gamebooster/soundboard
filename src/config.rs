@@ -162,6 +162,8 @@ pub struct SoundConfig {
     pub name: String,
     pub path: String,
     pub hotkey: Option<String>,
+    pub start: Option<f32>,
+    pub end: Option<f32>,
     #[serde(rename = "header")]
     pub headers: Option<Vec<HeaderConfig>>,
 
@@ -175,6 +177,8 @@ impl PartialEq for SoundConfig {
             && self.hotkey == other.hotkey
             && self.path == other.path
             && self.headers == other.headers
+            && self.start == other.start
+            && self.end == other.end
     }
 }
 impl Eq for SoundConfig {}

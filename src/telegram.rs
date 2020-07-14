@@ -100,6 +100,8 @@ fn send_new_sound_config(
         hotkey: None,
         full_path: new_sound_path.to_str().unwrap().to_owned(),
         path: full_name,
+        start: None,
+        end: None,
     };
 
     let telegram_soundboard_index = config.soundboards.iter().position(|s| s.name == "telegram");

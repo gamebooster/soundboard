@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::Duration;
 
 use super::config;
 use super::download;
@@ -197,6 +198,8 @@ struct SoundKey {
     pub path: String,
     pub hotkey: Option<String>,
     pub headers: Option<Vec<config::HeaderConfig>>,
+    pub start: Option<f32>,
+    pub end: Option<f32>,
 }
 
 impl From<config::SoundConfig> for SoundKey {
@@ -206,6 +209,8 @@ impl From<config::SoundConfig> for SoundKey {
             headers: sound_config.headers,
             name: sound_config.name,
             hotkey: sound_config.hotkey,
+            start: sound_config.start,
+            end: sound_config.end,
         }
     }
 }
@@ -290,11 +295,65 @@ fn insert_sink_with_config(
         sound_config, device_name
     );
 
+    if let Some(start) = sound_config.start {
+        if start < 0.0 {
+            return Err(anyhow!("error: start timestamp is negative {}", start));
+        }
+    }
+
+    if let Some(end) = sound_config.end {
+        if end < 0.0 {
+            return Err(anyhow!("error: end timestamp is negative {}", end));
+        }
+    }
+
     let reader = std::io::BufReader::with_capacity(1000 * 50, std::fs::File::open(path)?);
     let mut decoder = Decoder::new(reader)?;
     let mut reader = std::io::BufReader::with_capacity(1000 * 50, std::fs::File::open(path)?);
     let total_duration = decoder.total_duration_mut(&mut reader);
-    sink.play(sound_config.clone().into(), decoder);
+    let total_duration = match (total_duration, sound_config.start, sound_config.end) {
+        (Some(total_duration), Some(start), None) => {
+            if let Some(duration) = total_duration.checked_sub(Duration::from_secs_f32(start)) {
+                Some(duration)
+            } else {
+                return Err(anyhow!(
+                    "error: total_duration - supplied start timestamp is negative"
+                ));
+            }
+        }
+        (Some(total_duration), None, None) => Some(total_duration),
+        (None, None, Some(end)) => Some(Duration::from_secs_f32(end)),
+        (Some(total_duration), None, Some(end)) => {
+            let end = Duration::from_secs_f32(end);
+            if total_duration < end {
+                Some(total_duration)
+            } else {
+                Some(end)
+            }
+        }
+        (total_duration, Some(start), Some(mut end)) => {
+            if let Some(total_duration) = total_duration {
+                if total_duration.as_secs_f32() < end {
+                    end = total_duration.as_secs_f32();
+                }
+            }
+            if end - start < 0.0 {
+                return Err(anyhow!(
+                    "error: end - start duration is negative start: {} end: {}",
+                    start,
+                    end
+                ));
+            }
+            Some(Duration::from_secs_f32(end - start))
+        }
+        (None, _, None) => None,
+    };
+    sink.play(
+        sound_config.clone().into(),
+        decoder,
+        sound_config.start,
+        sound_config.end,
+    )?;
 
     match sinks.entry(sound_config.into()) {
         std::collections::hash_map::Entry::Occupied(mut entry) => {
@@ -474,6 +533,8 @@ fn run_sound_message_loop(
                                 headers: id.headers.clone(),
                                 hotkey: id.hotkey.clone(),
                                 full_path: String::new(),
+                                start: id.start,
+                                end: id.end,
                             },
                             instant.elapsed(),
                             *total_duration,

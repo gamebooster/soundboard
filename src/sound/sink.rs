@@ -24,7 +24,9 @@ unsafe impl Sync for ConverterWrapper {}
 unsafe impl Send for ConverterWrapper {}
 
 type SourcesType<T, S> = std::sync::Arc<
-    parking_lot::Mutex<HashMap<T, Vec<(S, VecDeque<i16>, Option<ConverterWrapper>)>>>,
+    parking_lot::Mutex<
+        HashMap<T, Vec<(S, VecDeque<i16>, Option<ConverterWrapper>, f32, f32, f32)>>,
+    >,
 >;
 
 pub struct Sink<T, S>
@@ -71,7 +73,26 @@ where
             let mut unlocked = hash_map_clone.lock();
 
             for (key, sources) in unlocked.iter_mut() {
-                for (source, buffer, resampler) in sources {
+                for (source, buffer, resampler, start, end, current_duration) in sources {
+                    if *start > 0.0 {
+                        source
+                            .skip(
+                                ((*start * source.sample_rate() as f32) * source.channels() as f32)
+                                    as usize,
+                            )
+                            .next();
+                        *current_duration = *start;
+                        *start = 0.0;
+                    }
+                    if current_duration >= end {
+                        remove_keys.push(key.clone());
+                        continue;
+                    }
+
+                    *current_duration += ((output.sample_count() / output.channels() as usize)
+                        as f32)
+                        / device.sample_rate() as f32;
+
                     if source.sample_rate() != device.sample_rate()
                         || source.channels() != output.channels() as u16
                     {
@@ -173,17 +194,45 @@ where
         })
     }
 
-    pub fn play(&mut self, key: T, source: S) {
+    pub fn play(&mut self, key: T, source: S, start: Option<f32>, end: Option<f32>) -> Result<()> {
         let mut unlocked = self.sources.lock();
+        let start_float = {
+            let start = start.unwrap_or_default();
+            if start < 0.0 {
+                return Err(anyhow!("supplied start timestamp is negative {}", start));
+            }
+            start
+        };
+        let end_float = {
+            if let Some(end_duration) = end {
+                if end_duration < 0.0 {
+                    return Err(anyhow!(
+                        "supplied end timestamp is negative {}",
+                        end_duration
+                    ));
+                }
+                end_duration
+            } else {
+                f32::INFINITY
+            }
+        };
         match unlocked.entry(key) {
             std::collections::hash_map::Entry::Occupied(mut entry) => {
                 let entry = entry.get_mut();
-                entry.push((source, VecDeque::new(), None));
+                entry.push((source, VecDeque::new(), None, start_float, end_float, 0.0));
             }
             std::collections::hash_map::Entry::Vacant(entry) => {
-                entry.insert(vec![(source, VecDeque::new(), None)]);
+                entry.insert(vec![(
+                    source,
+                    VecDeque::new(),
+                    None,
+                    start_float,
+                    end_float,
+                    0.0,
+                )]);
             }
         }
+        Ok(())
     }
 
     pub fn remove(&mut self, key: &T) {
