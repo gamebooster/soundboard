@@ -7,7 +7,6 @@ pub struct SoundStateList<SoundConfig> {
 }
 
 impl<SoundConfig> SoundStateList<SoundConfig> {
-
     pub fn new(sounds: Vec<SoundConfig>) -> SoundStateList<SoundConfig> {
         SoundStateList {
             state: ListState::default(),

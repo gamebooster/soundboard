@@ -1,4 +1,3 @@
-
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, Hide, MoveTo, RestorePosition, SavePosition, Show},
     event::{read, EnableMouseCapture, Event, KeyCode, KeyEvent},
@@ -11,7 +10,7 @@ use crossterm::{
 };
 use log::{error, info, trace, warn};
 use std::{
-    error:: Error, 
+    error::Error, 
     io::{stdout, Write},
 };
 use tui:: {
