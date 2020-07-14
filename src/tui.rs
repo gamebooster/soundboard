@@ -13,7 +13,7 @@ use std::{
     error::Error, 
     io::{stdout, Write},
 };
-use tui:: {
+use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Corner, Direction, Layout},
     style::{Color, Modifier, Style},
