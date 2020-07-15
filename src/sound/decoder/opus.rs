@@ -7,10 +7,16 @@ use std::vec;
 use crate::sound::source::Source;
 
 use audiopus::coder::Decoder;
+use audiopus::TryFrom;
 use ogg::reading::PacketReader;
 
 use parking_lot::Mutex;
 use std::sync::Arc;
+
+const CHANNELS: usize = 2;
+const SAMPLE_RATE: usize = 48000;
+const MAX_PACKET_DURATION_IN_MS: usize = 120;
+const MAX_BUFFER_SIZE: usize = MAX_PACKET_DURATION_IN_MS * (SAMPLE_RATE / 1000) * CHANNELS;
 
 /// Decoder for an OGG file that contains Opus sound format.
 pub struct OpusDecoder<R>
@@ -34,9 +40,12 @@ where
 
         let mut packet_reader = PacketReader::new(data);
 
-        let mut decoded_data: Vec<i16> = vec![0; 4096];
-        let mut decoder =
-            Decoder::new(audiopus::SampleRate::Hz48000, audiopus::Channels::Mono).unwrap();
+        let mut decoded_data: Vec<i16> = vec![0; MAX_BUFFER_SIZE];
+        let mut decoder = Decoder::new(
+            audiopus::SampleRate::try_from(SAMPLE_RATE as i32).unwrap(),
+            audiopus::Channels::try_from(CHANNELS as i32).unwrap(),
+        )
+        .unwrap();
         loop {
             let input_data = match packet_reader.read_packet() {
                 Ok(Some(d)) => d.data,
@@ -52,7 +61,7 @@ where
                 }
             };
             if let Ok(length) = decoder.decode(Some(&input_data), &mut decoded_data, false) {
-                decoded_data.truncate(length);
+                decoded_data.truncate(length * CHANNELS);
                 break;
             }
         }
@@ -93,12 +102,12 @@ where
 
     #[inline]
     fn channels(&self) -> u16 {
-        1
+        CHANNELS as u16
     }
 
     #[inline]
     fn sample_rate(&self) -> u32 {
-        48000
+        SAMPLE_RATE as u32
     }
 
     #[inline]
@@ -123,13 +132,13 @@ where
                 Err(_) => return None,
             };
 
-            let mut decoded_data: Vec<i16> = vec![0; 4096];
+            let mut decoded_data: Vec<i16> = vec![0; MAX_BUFFER_SIZE];
             match self
                 .decoder
                 .lock()
                 .decode(Some(&input_data), &mut decoded_data, false)
             {
-                Ok(length) => decoded_data.truncate(length),
+                Ok(length) => decoded_data.truncate(length * self.channels() as usize),
                 Err(err) => {
                     error!("opus decoder error {}", err);
                     return None;
