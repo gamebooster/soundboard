@@ -51,12 +51,11 @@ where
     {
         use ogg_metadata::AudioMetadata;
         match ogg_metadata::read_format(reader) {
-            Ok(vec) => match &vec[0] {
-                ogg_metadata::OggFormat::Vorbis(vorbis_metadata) => {
+            Ok(vec) => {
+                if let ogg_metadata::OggFormat::Vorbis(vorbis_metadata) = &vec[0] {
                     return Some(vorbis_metadata.get_duration().unwrap());
                 }
-                _ => {}
-            },
+            }
             Err(err) => {
                 trace!("Could not read ogg info {}", err);
             }

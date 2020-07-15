@@ -1,12 +1,13 @@
 [package]
-name = "libxm-soundboard"
-version = "0.0.1"
 authors = ["Dan Spencer <dan@atomicpotato.net>", "Karl Skomski <karl@skomski.com>"]
-description = "An modified fork of libxm-rs https://github.com/nukep/libxm-rs for internal usage with the project soundboard"
-readme = "README.md"
-license = "Unlicense"
 build = "build.rs"
+description = "An modified fork of libxm-rs https://github.com/nukep/libxm-rs for internal usage with the project soundboard"
+edition = "2018"
+license = "Unlicense"
+name = "libxm-soundboard"
+readme = "README.md"
 repository = "https://github.com/gamebooster/soundboard/tree/master/extern/libxm-rs"
+version = "0.0.1"
 
 [dependencies]
 libc = "0.2"

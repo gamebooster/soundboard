@@ -1,5 +1,3 @@
-extern crate reqwest;
-
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};

@@ -1,17 +1,9 @@
 #![allow(unused_imports)]
-extern crate clap;
-#[cfg(feature = "autoloop")]
-extern crate ctrlc;
-extern crate log;
-extern crate strum;
-extern crate strum_macros;
 
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
 use std::panic;
 
-#[cfg(feature = "gui")]
-extern crate iced;
 #[cfg(feature = "gui")]
 use iced::Application;
 #[cfg(feature = "gui")]
@@ -222,31 +214,29 @@ fn try_main() -> Result<()> {
     #[cfg(feature = "gui")]
     {
         if config::MainConfig::read().no_gui.unwrap_or_default() {
-            no_gui_routine(gui_sender)?;
+            no_gui_routine()?;
             std::thread::park();
             return Ok(());
         }
         let gui_sender_clone = gui_sender.clone();
-        let gui_receiver_clone = gui_receiver.clone();
-        let mut settings = Settings::with_flags((gui_sender_clone, gui_receiver_clone));
+        let mut settings = Settings::with_flags((gui_sender_clone, gui_receiver));
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }
 
     #[cfg(feature = "terminal-ui")]
     {
-        let gui_sender_clone = gui_sender.clone();
-        tui::draw_terminal(gui_sender_clone)?;
+        tui::draw_terminal(gui_sender)?;
     }
 
     #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
     {
-        no_gui_routine(gui_sender)?;
+        no_gui_routine()?;
     }
     Ok(())
 }
 
-fn no_gui_routine(_gui_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
+fn no_gui_routine() -> Result<()> {
     use winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -258,47 +248,6 @@ fn no_gui_routine(_gui_sender: crossbeam_channel::Sender<sound::Message>) -> Res
         .with_visible(false)
         .build(&event_loop)
         .unwrap();
-    // let mut hotkey_manager = hotkey::HotkeyManager::new();
-
-    // let stop_hotkey = {
-    //     if let Some(key) = config::MainConfig::read().stop_hotkey.as_ref() {
-    //         config::parse_hotkey(&key)?
-    //     } else {
-    //         config::Hotkey {
-    //             modifier: vec![config::Modifier::CTRL],
-    //             key: config::Key::S,
-    //         }
-    //     }
-    // };
-    // let gui_sender_clone = gui_sender.clone();
-    // hotkey_manager
-    //     .register(stop_hotkey, move || {
-    //         let _result = gui_sender_clone.send(sound::Message::StopAll);
-    //     })
-    //     .map_err(|_s| anyhow!("register key"))?;
-
-    // let gui_sender_clone = gui_sender;
-    // // only register hotkeys for first soundboard in no-gui-mode
-    // for sound in config::MainConfig::read().soundboards[0]
-    //     .sounds
-    //     .clone()
-    //     .unwrap_or_default()
-    // {
-    //     if sound.hotkey.is_none() {
-    //         continue;
-    //     }
-    //     let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap())?;
-    //     let tx_clone = gui_sender_clone.clone();
-    //     info!("register hotkey  {} for sound {}", &hotkey, sound.name);
-    //     let _result = hotkey_manager.register(hotkey, move || {
-    //         if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-    //             sound.clone(),
-    //             sound::SoundDevices::Both,
-    //         )) {
-    //             error!("failed to play sound {}", err);
-    //         };
-    //     })?;
-    // }
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;

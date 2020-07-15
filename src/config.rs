@@ -1,10 +1,3 @@
-extern crate anyhow;
-extern crate clap;
-extern crate hotkey_soundboard;
-extern crate log;
-extern crate serde;
-extern crate toml;
-
 use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_version, App, Arg};
 use hotkey_soundboard::keys;

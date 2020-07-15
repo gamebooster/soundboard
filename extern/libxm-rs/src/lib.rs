@@ -35,8 +35,6 @@
 //! }
 //! ```
 
-extern crate libc;
-
 pub mod ffi;
 use ffi as raw;
 

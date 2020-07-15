@@ -1,4 +1,3 @@
-extern crate fs_extra;
 use std::path::Path;
 use std::{env, fs};
 

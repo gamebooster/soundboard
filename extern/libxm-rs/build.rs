@@ -1,5 +1,3 @@
-extern crate cc;
-
 fn main() {
     fn parse_env(key: &str, default: bool) -> bool {
         use std::env::{var, VarError};

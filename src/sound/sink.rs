@@ -75,12 +75,10 @@ where
             for (key, sources) in unlocked.iter_mut() {
                 for (source, buffer, resampler, start, end, current_duration) in sources {
                     if *start > 0.0 {
-                        source
-                            .skip(
-                                ((*start * source.sample_rate() as f32) * source.channels() as f32)
-                                    as usize,
-                            )
-                            .next();
+                        source.nth(
+                            ((*start * source.sample_rate() as f32) * source.channels() as f32)
+                                as usize,
+                        );
                         *current_duration = *start;
                         *start = 0.0;
                     }

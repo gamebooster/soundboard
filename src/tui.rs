@@ -25,8 +25,6 @@ use super::config;
 use super::hotkey;
 use super::sound;
 
-use crossbeam_channel;
-
 mod sound_state_list;
 
 pub fn draw_terminal(sound_sender: crossbeam_channel::Sender<sound::Message>) -> Result<()> {
@@ -83,8 +81,9 @@ pub fn draw_terminal(sound_sender: crossbeam_channel::Sender<sound::Message>) ->
                 .highlight_symbol("> ");
             f.render_stateful_widget(list, chunks[0], &mut sound_list.state);
         })?;
-        match read()? {
-            Event::Key(event) => match event.code {
+
+        if let Event::Key(event) = read()? {
+            match event.code {
                 KeyCode::Char('q') => {
                     break;
                 }
@@ -108,8 +107,7 @@ pub fn draw_terminal(sound_sender: crossbeam_channel::Sender<sound::Message>) ->
                     };
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         }
     }
     execute!(stdout(), LeaveAlternateScreen)?;

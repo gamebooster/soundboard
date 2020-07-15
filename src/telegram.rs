@@ -114,7 +114,7 @@ fn send_new_sound_config(
             .as_ref()
             .unwrap()
             .iter()
-            .find(|s| &s.full_path == new_sound_path.to_str().unwrap());
+            .find(|s| s.full_path == new_sound_path.to_str().unwrap());
         if maybe_sound.is_some() {
             sound_exists = true;
         }
@@ -169,7 +169,10 @@ async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio)
 
     send_new_sound_config(
         sender,
-        audio.title.clone().unwrap_or(audio.file_unique_id.clone()),
+        audio
+            .title
+            .clone()
+            .unwrap_or_else(|| audio.file_unique_id.clone()),
         ".".to_owned()
             + audio
                 .mime_type
@@ -224,7 +227,7 @@ async fn handle_document(
         document
             .file_name
             .clone()
-            .unwrap_or(document.file_unique_id.clone()),
+            .unwrap_or_else(|| document.file_unique_id.clone()),
         ".".to_owned()
             + document
                 .mime_type

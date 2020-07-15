@@ -2,19 +2,18 @@ use super::config;
 use super::sound;
 use anyhow::{anyhow, Context, Result};
 
+use super::hotkey;
+use bytes::BufMut;
+use futures::{Future, Stream, StreamExt, TryFutureExt, TryStreamExt};
 use log::{error, info, trace, warn};
 use serde::Deserialize;
 use serde::Serialize;
 use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use warp::http::StatusCode;
 use warp::{reject, sse::ServerSentEvent, Filter, Rejection, Reply};
-extern crate futures;
-use super::hotkey;
-use bytes::BufMut;
-use futures::{Future, Stream, StreamExt, TryFutureExt, TryStreamExt};
-use tokio::sync::mpsc;
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct HotkeyRegisterRequest {

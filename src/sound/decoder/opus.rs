@@ -51,12 +51,9 @@ where
                     break;
                 }
             };
-            match decoder.decode(Some(&input_data), &mut decoded_data, false) {
-                Ok(length) => {
-                    decoded_data.truncate(length);
-                    break;
-                }
-                Err(_) => {}
+            if let Ok(length) = decoder.decode(Some(&input_data), &mut decoded_data, false) {
+                decoded_data.truncate(length);
+                break;
             }
         }
 
@@ -72,12 +69,11 @@ where
     {
         use ogg_metadata::AudioMetadata;
         match ogg_metadata::read_format(reader) {
-            Ok(vec) => match &vec[0] {
-                ogg_metadata::OggFormat::Opus(opus_metadata) => {
+            Ok(vec) => {
+                if let ogg_metadata::OggFormat::Opus(opus_metadata) = &vec[0] {
                     return Some(opus_metadata.get_duration().unwrap());
                 }
-                _ => {}
-            },
+            }
             Err(err) => {
                 trace!("Could not read ogg info {}", err);
             }
@@ -158,15 +154,12 @@ where
     let stream_pos = data.seek(SeekFrom::Current(0)).unwrap();
 
     use ogg_metadata::AudioMetadata;
-    match ogg_metadata::read_format(data.by_ref()) {
-        Ok(vec) => match &vec[0] {
-            ogg_metadata::OggFormat::Opus(_) => {
-                data.seek(SeekFrom::Start(stream_pos)).unwrap();
-                return true;
-            }
-            _ => {}
-        },
-        Err(_) => {}
+
+    if let Ok(vec) = ogg_metadata::read_format(data.by_ref()) {
+        if let ogg_metadata::OggFormat::Opus(_) = &vec[0] {
+            data.seek(SeekFrom::Start(stream_pos)).unwrap();
+            return true;
+        }
     }
 
     data.seek(SeekFrom::Start(stream_pos)).unwrap();
