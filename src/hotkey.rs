@@ -1,5 +1,5 @@
 use super::config;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use hotkey_soundboard::HotkeyListener;
 use hotkey_soundboard::Listener;
 use hotkey_soundboard::ListenerHotkey;
@@ -9,6 +9,7 @@ use parking_lot::Mutex;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use thiserror::Error;
 
 type GlobalListener = Lazy<Arc<Mutex<Listener>>>;
 type GlobalHotkeyMap =
@@ -23,6 +24,16 @@ pub struct HotkeyManager {
     id: usize,
 }
 
+#[derive(Error, Debug)]
+pub enum HotkeyManagerError {
+    #[error("BackendListenerError")]
+    BackendListenerError(#[from] anyhow::Error),
+    #[error("Hotkey already registered")]
+    HotkeyAlreadyRegistered(config::Hotkey),
+    #[error("Hotkey is not registered")]
+    HotkeyNotRegistered(config::Hotkey),
+}
+
 impl HotkeyManager {
     pub fn new() -> Self {
         HotkeyManager {
@@ -30,13 +41,17 @@ impl HotkeyManager {
             id: ID_COUNTER.fetch_add(1, Ordering::Relaxed),
         }
     }
-    pub fn register<F>(&mut self, hotkey: config::Hotkey, callback: F) -> Result<()>
+    pub fn register<F>(
+        &mut self,
+        hotkey: config::Hotkey,
+        callback: F,
+    ) -> Result<(), HotkeyManagerError>
     where
         F: 'static + FnMut() + Send,
     {
         let position = self.registered_hotkeys.iter().position(|h| h == &hotkey);
         if position.is_some() {
-            return Err(anyhow!("hotkey already registered {}", hotkey));
+            return Err(HotkeyManagerError::HotkeyAlreadyRegistered(hotkey));
         }
 
         let hotkey_clone = hotkey.clone();
@@ -70,10 +85,10 @@ impl HotkeyManager {
         Ok(())
     }
 
-    pub fn unregister(&mut self, hotkey: &config::Hotkey) -> Result<()> {
+    pub fn unregister(&mut self, hotkey: &config::Hotkey) -> Result<(), HotkeyManagerError> {
         let position = self.registered_hotkeys.iter().position(|h| h == hotkey);
         if position.is_none() {
-            return Err(anyhow!("hotkey not registered {}", hotkey));
+            return Err(HotkeyManagerError::HotkeyNotRegistered(hotkey.clone()));
         }
         self.registered_hotkeys.remove(position.unwrap());
 
@@ -101,7 +116,7 @@ impl HotkeyManager {
         info!("unregister hotkey {}", hotkey);
         Ok(())
     }
-    pub fn unregister_all(&mut self) -> Result<()> {
+    pub fn unregister_all(&mut self) -> Result<(), HotkeyManagerError> {
         let mut result = Ok(());
         for hotkey in self.registered_hotkeys.clone().iter() {
             result = self.unregister(hotkey);

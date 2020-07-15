@@ -326,18 +326,9 @@ checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
 name = "clang-sys"
-version = "0.29.4"
+version = "0.29.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b14a9b9fadc5fabb63ceb60e8c2d833bcc97d19d8eb1e229f452d07fe2001e0"
-dependencies = [
- "clang-sys-linkage",
-]
-
-[[package]]
-name = "clang-sys-linkage"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "720a18d5e5b09e70856c278d2fcf64917db370987beb78bf569fde9adba4ea63"
+checksum = "fe6837df1d5cba2397b835c8530f51723267e16abbf83892e9e5af4f0e5dd10a"
 dependencies = [
  "glob",
  "libc",
@@ -610,9 +601,9 @@ dependencies = [
 
 [[package]]
 name = "crossterm"
-version = "0.17.6"
+version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f397c213f41eae56e512bb3bec44ac044650e30f1a15357d9d8495a01906cb"
+checksum = "6f4919d60f26ae233e14233cc39746c8c8bb8cd7b05840ace83604917b51b6c7"
 dependencies = [
  "bitflags",
  "crossterm_winapi",
@@ -800,9 +791,9 @@ dependencies = [
 
 [[package]]
 name = "ep-miniaudio-sys"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc6d5890c0892deb3cbd3dd95f755ff28ccb5d0288ef1c6e87fa559a72365636"
+checksum = "5ca7d43cbcbe83d08cf793d6081140650d407ece07318b9ea85b990a455eb4de"
 dependencies = [
  "bindgen",
  "bitflags",
@@ -1867,9 +1858,9 @@ dependencies = [
 
 [[package]]
 name = "miniaudio"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4152807902ad684d1d3456ec49ed71204e165991fc27223b9bccaf105b415e78"
+checksum = "64693896aabe139b6ef7935381a421e22fea4c7770f7c9175abd3cbd06499bf8"
 dependencies = [
  "bitflags",
  "ep-miniaudio-sys",
@@ -3260,6 +3251,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "tgbot",
+ "thiserror",
  "tokio",
  "toml",
  "tui",
