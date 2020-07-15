@@ -5,7 +5,7 @@ edition = "2018"
 license = "MIT"
 name = "hotkey-soundboard"
 repository = "https://github.com/gamebooster/soundboard/tree/master/extern/hotkey-rs"
-version = "0.0.1"
+version = "0.0.2"
 
 [dependencies]
 thiserror = "1"
