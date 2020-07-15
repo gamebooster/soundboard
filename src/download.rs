@@ -50,8 +50,9 @@ pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<P
 
             let temp_file_path = format!("{}{}", file_path.to_str().unwrap(), "_temp");
             let output = Command::new("youtube-dl")
-                .args(&["-f", "250,251,249", &sound.path, "-o", &temp_file_path])
-                .output()?;
+                .args(&["-f", "250/251/249", &sound.path, "-o", &temp_file_path])
+                .output()
+                .context("executing youtube-dl failed")?;
             info!("youtube-dl status: {}", output.status);
             if !output.status.success() {
                 io::stdout().write_all(&output.stdout).unwrap();
@@ -64,7 +65,8 @@ pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<P
                     "tracks",
                     &format!("0:{}", file_path.to_str().unwrap()),
                 ])
-                .output()?;
+                .output()
+                .context("executing mkvextract failed")?;
             std::fs::remove_file(temp_file_path).context("could not delete youtube temp file")?;
             info!("mkvextract status: {}", output.status);
             if !output.status.success() {
@@ -75,7 +77,7 @@ pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<P
             if file_path.exists() {
                 return Ok(file_path);
             } else {
-                return Err(anyhow!("unkndown youtube download error"));
+                return Err(anyhow!("unknown youtube download error"));
             }
         } else if sound.path.starts_with("http") {
             let mut headers_tuple = Vec::new();
