@@ -35,6 +35,7 @@ pub struct MainConfig {
 
     pub http_server: Option<bool>,
     pub telegram: Option<bool>,
+    pub terminal_ui: Option<bool>,
     pub no_gui: Option<bool>,
     pub auto_loop_device: Option<bool>,
     pub no_duplex_device: Option<bool>,
@@ -58,6 +59,7 @@ fn load_and_merge_config() -> Result<MainConfig> {
     merge_flag_with_args_and_env(&mut config.auto_loop_device, &arguments, "auto-loop-device");
     merge_flag_with_args_and_env(&mut config.http_server, &arguments, "http-server");
     merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
+    merge_flag_with_args_and_env(&mut config.terminal_ui, &arguments, "terminal-ui");
     merge_flag_with_args_and_env(&mut config.no_gui, &arguments, "no-gui");
     merge_flag_with_args_and_env(&mut config.no_duplex_device, &arguments, "no-duplex-device");
     merge_flag_with_args_and_env(
@@ -698,6 +700,12 @@ fn parse_arguments() -> clap::ArgMatches {
     );
     #[cfg(feature = "gui")]
     let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
+    #[cfg(feature = "terminal-ui")]
+    let matches = matches.arg(
+        Arg::with_name("terminal-ui")
+            .long("terminal-ui")
+            .about("Enable terminal-ui"),
+    );
     #[cfg(feature = "http")]
     let matches = matches.arg(
         Arg::with_name("http-server")

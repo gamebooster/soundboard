@@ -211,29 +211,26 @@ fn try_main() -> Result<()> {
     })
     .expect("Error setting Ctrl-C handler");
 
-    #[cfg(feature = "gui")]
+    if config::MainConfig::read().no_gui.unwrap_or_default() {
+        no_gui_routine()?;
+        return Ok(());
+    }
+    #[cfg(feature = "terminal-ui")]
     {
-        if config::MainConfig::read().no_gui.unwrap_or_default() {
-            no_gui_routine()?;
-            std::thread::park();
+        if config::MainConfig::read().terminal_ui.unwrap_or_default() {
+            tui::draw_terminal(gui_sender)?;
             return Ok(());
         }
-        let gui_sender_clone = gui_sender.clone();
-        let mut settings = Settings::with_flags((gui_sender_clone, gui_receiver));
+    }
+
+    #[cfg(feature = "gui")]
+    {
+        let mut settings = Settings::with_flags((gui_sender, gui_receiver));
         settings.window.size = (500, 350);
         gui::Soundboard::run(settings);
     }
 
-    #[cfg(feature = "terminal-ui")]
-    {
-        tui::draw_terminal(gui_sender)?;
-    }
-
-    #[cfg(not(any(feature = "gui", feature = "terminal-ui")))]
-    {
-        no_gui_routine()?;
-    }
-    Ok(())
+    no_gui_routine()
 }
 
 fn no_gui_routine() -> Result<()> {
