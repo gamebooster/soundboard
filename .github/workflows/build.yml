@@ -76,18 +76,21 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: install opus
         run: |
-          wget https://homebrew.bintray.com/bottles/pkg-config-0.29.2_3.catalina.bottle.tar.gz
-          tar xvf pkg-config-0.29.2_3.catalina.bottle.tar.gz pkg-config/0.29.2_3/bin/
-          cp -a pkg-config/0.29.2_3/bin /usr/local
           wget https://homebrew.bintray.com/bottles/opus-1.3.1.catalina.bottle.1.tar.gz
           tar -xvf opus-1.3.1.catalina.bottle.1.tar.gz opus/1.3.1/lib opus/1.3.1/include
-          cp -a opus/1.3.1/lib /usr/local
-          cp -a opus/1.3.1/include /usr/local
+          sudo cp -a opus/1.3.1/lib /usr/local
+          sudo cp -a opus/1.3.1/include /usr/local
       - name: Build debug soundboard binary
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
+          OPUS_STATIC: 1
+          OPUS_NO_PKG: 1
+          OPUS_LIB_DIR: "/usr/local/lib"
         run: cargo build --verbose
       - name: Run tests
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
+          OPUS_STATIC: 1
+          OPUS_NO_PKG: 1
+          OPUS_LIB_DIR: "/usr/local/lib"
         run: cargo test
