@@ -8,7 +8,29 @@ use std::str::FromStr;
 use super::config;
 use super::utils;
 
+#[cfg(feature = "text-to-speech")]
+pub mod ttsclient;
+
 pub fn local_path_for_sound_config_exists(sound: &config::SoundConfig) -> Result<Option<PathBuf>> {
+    #[cfg(feature = "text-to-speech")]
+    if sound.path.contains("<speak>") {
+        let string_hash =
+            utils::calculate_hash(&(&sound.path, &sound.tts_language, &sound.tts_options))
+                .to_string();
+        let mut file_path = std::env::temp_dir();
+        file_path.push(string_hash);
+        if file_path.exists() {
+            return Ok(Some(file_path));
+        } else {
+            return Ok(None);
+        }
+    }
+
+    #[cfg(not(feature = "text-to-speech"))]
+    if sound.path.contains("<speak>") {
+        return Err(anyhow!("text-to-speech feature not compiled in binary"));
+    }
+
     if sound.path.contains("youtube.com") || sound.path.contains("youtu.be") {
         let string_hash = utils::calculate_hash(&sound.path).to_string();
         let mut file_path = std::env::temp_dir();
@@ -40,6 +62,44 @@ pub fn get_local_path_from_sound_config(sound: &config::SoundConfig) -> Result<P
     use std::io::{self, Write};
 
     let path = {
+        #[cfg(feature = "text-to-speech")]
+        if sound.path.contains("<speak>") {
+            let string_hash =
+                utils::calculate_hash(&(&sound.path, &sound.tts_language, &sound.tts_options))
+                    .to_string();
+            let mut file_path = std::env::temp_dir();
+            file_path.push(string_hash);
+            if file_path.exists() {
+                return Ok(file_path);
+            }
+
+            let mut client =
+                ttsclient::TTSClient::connect().context("tts: failed to connect to service")?;
+            let default_language = "en-GB".to_owned();
+            let data = client
+                .synthesize_speech(
+                    sound.path.clone(),
+                    sound
+                        .tts_language
+                        .as_ref()
+                        .unwrap_or_else(|| &default_language)
+                        .clone(),
+                    sound.tts_options.clone(),
+                )
+                .context("tts: failed to synthesize speech")?;
+            std::fs::write(&file_path, data).context("tts: failed to write result file")?;
+            if file_path.exists() {
+                return Ok(file_path);
+            } else {
+                return Err(anyhow!("unknown text to speech download error"));
+            }
+        }
+
+        #[cfg(not(feature = "text-to-speech"))]
+        if sound.path.contains("<speak>") {
+            return Err(anyhow!("text-to-speech feature not compiled in binary"));
+        }
+
         if sound.path.contains("youtube.com") || sound.path.contains("youtu.be") {
             let string_hash = utils::calculate_hash(&sound.path).to_string();
             let mut file_path = std::env::temp_dir();

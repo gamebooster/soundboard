@@ -439,11 +439,8 @@ pub async fn run(
                     let sound_config = config::SoundConfig {
                         name: upload_name.clone(),
                         path: upload_name,
-                        hotkey: None,
-                        headers: None,
-                        start: None,
-                        end: None,
                         full_path: sound_path.to_str().unwrap().to_owned(),
+                        .. config::SoundConfig::default()
                     };
 
                     let new_id = sound_index + added_sounds.len();
@@ -573,10 +570,7 @@ pub async fn run(
                         name: sound_add_request.name,
                         path: sound_add_request.path.clone(),
                         hotkey: sound_add_request.hotkey,
-                        headers: None,
-                        full_path: sound_add_request.path,
-                        start: None,
-                        end: None,
+                        ..config::SoundConfig::default()
                     },
                 );
 

@@ -95,3 +95,27 @@ end = 58
 name = "tired"
 path = "https://www.youtube.com/watch?v=ZXsQAXx_ao0"
 start = 53
+
+[[sound]]
+name = "Baurmann"
+path = '''
+<speak>
+  <par>
+    <media>
+      <speak>Was macht <emphasis level="strong"> Baurmann </emphasis> schon wieder?</speak>
+    </media>
+    <media begin="3s">
+      <speak><prosody rate="fast" pitch="-5st">Da könnt ich grad verrückt werden.</prosody></speak>
+    </media>
+    <media begin="2s">
+      <speak>Absoluter Schwachsinn.</speak>
+    </media>
+    <media begin="4s">
+      <audio
+        src="https://www.myinstants.com/media/sounds/gege.mp3"/>
+    </media>
+  </par>
+</speak>
+'''
+tts_language = "de-DE"
+tts_options = {voice_name = "de-DE-Wavenet-B"}

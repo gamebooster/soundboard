@@ -161,6 +161,10 @@ pub struct SoundConfig {
     pub end: Option<f32>,
     #[serde(rename = "header")]
     pub headers: Option<Vec<HeaderConfig>>,
+    #[cfg(feature = "text-to-speech")]
+    pub tts_language: Option<String>,
+    #[cfg(feature = "text-to-speech")]
+    pub tts_options: Option<super::download::ttsclient::SynthesisOptions>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub full_path: String,
@@ -168,12 +172,25 @@ pub struct SoundConfig {
 
 impl PartialEq for SoundConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        let result = self.name == other.name
             && self.hotkey == other.hotkey
             && self.path == other.path
             && self.headers == other.headers
-            && self.start == other.start
-            && self.end == other.end
+            && ((self.start.unwrap_or_default() * 10.0) as usize)
+                == ((other.start.unwrap_or_default() * 10.0) as usize)
+            && ((self.end.unwrap_or_default() * 10.0) as usize)
+                == ((other.end.unwrap_or_default() * 10.0) as usize);
+        if result == false {
+            return false;
+        } else {
+            #[cfg(feature = "text-to-speech")]
+            {
+                return self.tts_language == other.tts_language
+                    && self.tts_options == other.tts_options;
+            }
+            #[cfg(not(feature = "text-to-speech"))]
+            return result;
+        }
     }
 }
 impl Eq for SoundConfig {}
@@ -184,6 +201,12 @@ impl Hash for SoundConfig {
         self.path.hash(state);
         self.hotkey.hash(state);
         self.headers.hash(state);
+        ((self.start.unwrap_or_default() * 10.0) as usize).hash(state);
+        ((self.end.unwrap_or_default() * 10.0) as usize).hash(state);
+        #[cfg(feature = "text-to-speech")]
+        self.tts_language.hash(state);
+        #[cfg(feature = "text-to-speech")]
+        self.tts_options.hash(state);
     }
 }
 
@@ -508,7 +531,7 @@ pub fn get_soundboard_sound_directory(soundboard_path: &Path) -> Result<PathBuf>
 
 fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String> {
     let relative_path = Path::new(sound_path);
-    if sound_path.starts_with("http") {
+    if sound_path.starts_with("http") || sound_path.contains("<speak>") {
         return Ok(sound_path.to_string());
     }
     if relative_path.is_absolute() {

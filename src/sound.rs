@@ -193,46 +193,47 @@ pub fn run_sound_loop(
 }
 
 #[derive(Debug, Clone, Default)]
-struct SoundKey {
-    pub name: String,
-    pub path: String,
-    pub hotkey: Option<String>,
-    pub headers: Option<Vec<config::HeaderConfig>>,
-    pub start: Option<f32>,
-    pub end: Option<f32>,
-}
+struct SoundKey(pub config::SoundConfig);
 
 impl From<config::SoundConfig> for SoundKey {
     fn from(sound_config: config::SoundConfig) -> Self {
-        SoundKey {
-            path: sound_config.path,
-            headers: sound_config.headers,
-            name: sound_config.name,
-            hotkey: sound_config.hotkey,
-            start: sound_config.start,
-            end: sound_config.end,
-        }
+        SoundKey(sound_config)
     }
 }
 
 impl PartialEq for SoundKey {
     fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-            && self.headers == other.headers
-            && (self.start.unwrap_or_default() * 10.0) as usize
-                == (other.start.unwrap_or_default() * 10.0) as usize
-            && (self.end.unwrap_or_default() * 10.0) as usize
-                == (other.end.unwrap_or_default() * 10.0) as usize
+        let result = self.0.path == other.0.path
+            && self.0.headers == other.0.headers
+            && (self.0.start.unwrap_or_default() * 10.0) as usize
+                == (other.0.start.unwrap_or_default() * 10.0) as usize
+            && (self.0.end.unwrap_or_default() * 10.0) as usize
+                == (other.0.end.unwrap_or_default() * 10.0) as usize;
+        if result == false {
+            return false;
+        } else {
+            #[cfg(feature = "text-to-speech")]
+            {
+                return self.0.tts_language == other.0.tts_language
+                    && self.0.tts_options == other.0.tts_options;
+            }
+            #[cfg(not(feature = "text-to-speech"))]
+            return result;
+        }
     }
 }
 impl Eq for SoundKey {}
 
 impl std::hash::Hash for SoundKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.path.hash(state);
-        self.headers.hash(state);
-        ((self.start.unwrap_or_default() * 10.0) as usize).hash(state);
-        ((self.end.unwrap_or_default() * 10.0) as usize).hash(state);
+        self.0.path.hash(state);
+        self.0.headers.hash(state);
+        ((self.0.start.unwrap_or_default() * 10.0) as usize).hash(state);
+        ((self.0.end.unwrap_or_default() * 10.0) as usize).hash(state);
+        #[cfg(feature = "text-to-speech")]
+        self.0.tts_language.hash(state);
+        #[cfg(feature = "text-to-speech")]
+        self.0.tts_options.hash(state);
     }
 }
 
@@ -535,20 +536,7 @@ fn run_sound_message_loop(
                 Message::PlayStatus(_, _) => {
                     let mut sounds = Vec::new();
                     for (id, (status, instant, total_duration)) in sinks.iter() {
-                        sounds.push((
-                            *status,
-                            config::SoundConfig {
-                                name: id.name.clone(),
-                                path: id.path.clone(),
-                                headers: id.headers.clone(),
-                                hotkey: id.hotkey.clone(),
-                                full_path: String::new(),
-                                start: id.start,
-                                end: id.end,
-                            },
-                            instant.elapsed(),
-                            *total_duration,
-                        ));
+                        sounds.push((*status, id.0.clone(), instant.elapsed(), *total_duration));
                     }
                     sound_sender
                         .send(Message::PlayStatus(sounds, volume))
