@@ -209,16 +209,16 @@ impl PartialEq for SoundKey {
                 == (other.0.start.unwrap_or_default() * 10.0) as usize
             && (self.0.end.unwrap_or_default() * 10.0) as usize
                 == (other.0.end.unwrap_or_default() * 10.0) as usize;
-        if result == false {
-            return false;
+        if !result {
+            false
         } else {
             #[cfg(feature = "text-to-speech")]
             {
-                return self.0.tts_language == other.0.tts_language
-                    && self.0.tts_options == other.0.tts_options;
+                self.0.tts_language == other.0.tts_language
+                    && self.0.tts_options == other.0.tts_options
             }
             #[cfg(not(feature = "text-to-speech"))]
-            return result;
+            result
         }
     }
 }

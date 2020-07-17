@@ -1,6 +1,5 @@
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
-use prost;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::runtime::{Builder, Runtime};
@@ -29,13 +28,26 @@ pub struct TTSClient {
     rt: Runtime,
 }
 
-#[derive(Clone, PartialEq, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Serialize, Deserialize, Debug)]
 pub struct SynthesisOptions {
     pub speaking_rate: Option<f64>,
     pub pitch: Option<f64>,
     pub volume_gain_db: Option<f64>,
     pub voice_name: Option<String>,
     pub voice_gender: Option<SsmlVoiceGender>,
+}
+
+impl PartialEq for SynthesisOptions {
+    fn eq(&self, other: &SynthesisOptions) -> bool {
+        ((self.pitch.unwrap_or_default() * 10.0) as usize)
+            == ((other.pitch.unwrap_or_default() * 10.0) as usize)
+            && ((self.speaking_rate.unwrap_or_default() * 10.0) as usize)
+                == ((other.speaking_rate.unwrap_or_default() * 10.0) as usize)
+            && ((self.volume_gain_db.unwrap_or_default() * 10.0) as usize)
+                == ((other.volume_gain_db.unwrap_or_default() * 10.0) as usize)
+            && self.voice_name == other.voice_name
+            && self.voice_gender == other.voice_gender
+    }
 }
 
 impl std::hash::Hash for SynthesisOptions {

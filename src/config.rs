@@ -180,16 +180,15 @@ impl PartialEq for SoundConfig {
                 == ((other.start.unwrap_or_default() * 10.0) as usize)
             && ((self.end.unwrap_or_default() * 10.0) as usize)
                 == ((other.end.unwrap_or_default() * 10.0) as usize);
-        if result == false {
-            return false;
+        if !result {
+            false
         } else {
             #[cfg(feature = "text-to-speech")]
             {
-                return self.tts_language == other.tts_language
-                    && self.tts_options == other.tts_options;
+                self.tts_language == other.tts_language && self.tts_options == other.tts_options
             }
             #[cfg(not(feature = "text-to-speech"))]
-            return result;
+            result
         }
     }
 }

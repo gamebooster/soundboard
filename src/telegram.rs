@@ -96,12 +96,9 @@ fn send_new_sound_config(
 
     let sound_config = config::SoundConfig {
         name,
-        headers: None,
-        hotkey: None,
         full_path: new_sound_path.to_str().unwrap().to_owned(),
         path: full_name,
-        start: None,
-        end: None,
+        ..config::SoundConfig::default()
     };
 
     let telegram_soundboard_index = config.soundboards.iter().position(|s| s.name == "telegram");
