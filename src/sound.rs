@@ -266,21 +266,20 @@ pub enum SoundStatus {
     Playing,
 }
 
+pub type PlayStatusVecType = Vec<(
+    SoundStatus,
+    config::SoundConfig,
+    PlayDuration,
+    Option<TotalDuration>,
+)>;
+
 #[derive(Debug, PartialEq)]
 pub enum Message {
     PlaySound(config::SoundConfig, SoundDevices),
     StopSound(config::SoundConfig),
     StopAll,
     SetVolume(f32),
-    PlayStatus(
-        Vec<(
-            SoundStatus,
-            config::SoundConfig,
-            PlayDuration,
-            Option<TotalDuration>,
-        )>,
-        f32,
-    ),
+    PlayStatus(PlayStatusVecType, f32),
     _PlaySoundDownloaded(config::SoundConfig, SoundDevices, std::path::PathBuf),
 }
 

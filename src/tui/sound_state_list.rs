@@ -1,23 +1,55 @@
 use super::super::config::SoundConfig;
 use tui::widgets::ListState;
 
-pub struct SoundStateList<SoundConfig> {
-    pub sounds: Vec<SoundConfig>,
+pub struct SoundStateList {
+    pub name: String,
+    sounds: Vec<SoundConfig>,
+    filter: String,
+    pub filtered_sounds: Vec<SoundConfig>,
     pub state: ListState,
 }
 
-impl<SoundConfig> SoundStateList<SoundConfig> {
-    pub fn new(sounds: Vec<SoundConfig>) -> SoundStateList<SoundConfig> {
-        SoundStateList {
+impl SoundStateList {
+    pub fn new(name: &str, sounds: Vec<SoundConfig>) -> Self {
+        Self {
+            name: name.to_string(),
             state: ListState::default(),
+            filter: String::new(),
+            filtered_sounds: sounds.clone(),
             sounds,
+        }
+    }
+    pub fn index(&self) -> usize {
+        match self.state.selected() {
+            Some(i) => i,
+            None => 0,
+        }
+    }
+
+    pub fn update_filter(&mut self, new_filter: &str) {
+        if self.filter == new_filter {
+            return;
+        }
+        self.filter = new_filter.to_string();
+        self.filtered_sounds = self
+            .sounds
+            .iter()
+            .filter(|s| s.name.to_lowercase().contains(&self.filter))
+            .cloned()
+            .collect();
+        if self.filtered_sounds.len() <= self.index() {
+            if !self.filtered_sounds.is_empty() {
+                self.state.select(Some(self.filtered_sounds.len() - 1))
+            } else {
+                self.state.select(Some(0));
+            }
         }
     }
 
     pub fn next(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
-                if i >= self.sounds.len() - 1 {
+                if i >= self.filtered_sounds.len() - 1 {
                     0
                 } else {
                     i + 1
@@ -32,7 +64,7 @@ impl<SoundConfig> SoundStateList<SoundConfig> {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.sounds.len() - 1
+                    self.filtered_sounds.len() - 1
                 } else {
                     i - 1
                 }
@@ -40,9 +72,5 @@ impl<SoundConfig> SoundStateList<SoundConfig> {
             None => 0,
         };
         self.state.select(Some(i));
-    }
-
-    pub fn unselect(&mut self) {
-        self.state.select(None);
     }
 }
