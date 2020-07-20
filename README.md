@@ -24,9 +24,10 @@ cross-platform desktop application to spice up your audio/video conferences
 - play local and remote sounds (http, youtube) to your microphone and output device
   - supported codecs: mp3 (rfm: mp3), flac (rfm: flac), wav (rfm: wav), vorbis (rfm: vorbis), xm (rfm: xm, non-default)
 - hotkeys
-- native user interface (rfm: gui)
+- native user interface (rfm: gui, non-default)
   - First iteration. The web user interface is slicker and performs better.
 - web user interface and http api (rfm: http)
+  - default socket addr: `127.0.0.1:8080`
 - telegram bot (rfm: telegram, non-default)
 - automatic handling of loopback device in pulse audio (rfm: auto-loop, non-default)
 
@@ -36,8 +37,7 @@ cross-platform desktop application to spice up your audio/video conferences
    or `cargo install soundboard` (compile time is a coffee break)
 2. create soundboard config directory with soundboards (see below for example config)
 3. provide virtual microphone (instructions below)
-4. (optional) copy `web` directory in soundboard config directory for webui
-5. (optional) add youtube-dl and mkvextract to PATH variable to use youtube links as source
+4. (optional) add youtube-dl and mkvextract to PATH variable to use youtube links as source
 
 ## default usage
 
@@ -90,9 +90,7 @@ $HOME/.soundboard/
 # output_device = "Speaker/HP (Realtek High Definition Audio(SST))" # optional else default device
 loopback_device = "CABLE Input (VB-Audio Virtual Cable)" # required: change to your virtual loopback output
 
-stop_hotkey = "ALT-S" # stop all sound
-http_server = true # api and webui; 3030 is the default port
-no_gui = false # no native gui
+stop_hotkey = "CTRL-ALT-E" # stop all sound
 ```
 
 </details>

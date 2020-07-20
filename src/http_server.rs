@@ -1015,7 +1015,7 @@ pub async fn run(
         if let Some(socket_addr) = &config::MainConfig::read().http_socket_addr {
             socket_addr.parse().expect("Unable to parse socket address")
         } else {
-            ([0, 0, 0, 0], 3030).into()
+            ([127, 0, 0, 1], 8080).into()
         }
     };
 
