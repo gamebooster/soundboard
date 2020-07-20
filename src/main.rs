@@ -77,10 +77,19 @@ soundboard encountered an fatal error:
 }
 
 fn try_main() -> Result<()> {
-    env_logger::builder()
-        .filter_module("soundboard", log::LevelFilter::Trace)
-        .filter_module("warp", log::LevelFilter::Info)
-        .init();
+    let wants_terminal_ui = std::env::args().any(|s| s.contains("--terminal-ui"));
+    // less logging for terminal ui
+    if wants_terminal_ui {
+        env_logger::builder()
+            .filter_module("soundboard", log::LevelFilter::Error)
+            .filter_module("warp", log::LevelFilter::Error)
+            .init();
+    } else {
+        env_logger::builder()
+            .filter_module("soundboard", log::LevelFilter::Trace)
+            .filter_module("warp", log::LevelFilter::Info)
+            .init();
+    }
 
     if config::MainConfig::read()
         .print_possible_devices
@@ -101,12 +110,6 @@ fn try_main() -> Result<()> {
     ) = crossbeam_channel::unbounded();
 
     #[cfg(feature = "autoloop")]
-    let mut null_sink_module_id: Option<u32> = None;
-
-    #[cfg(feature = "autoloop")]
-    let mut loopback_module_id: Option<u32> = None;
-
-    #[cfg(feature = "autoloop")]
     let mut loop_device_id = config::MainConfig::read().loopback_device.clone();
 
     #[cfg(feature = "autoloop")]
@@ -115,6 +118,9 @@ fn try_main() -> Result<()> {
             .auto_loop_device
             .unwrap_or_default()
         {
+            let null_sink_module_id: Option<u32>;
+            let loopback_module_id: Option<u32>;
+
             config::MainConfig::set_no_duplex_device_option(Some(true));
             let module_name = "module-null-sink";
             let module_args = "sink_name=SoundboardNullSink sink_properties=device.description=SoundboardNullSink";
@@ -138,6 +144,19 @@ fn try_main() -> Result<()> {
             };
 
             info!("autoloop: created SoundboardLoopback pulse audio module");
+
+            ctrlc::set_handler(move || {
+                if let Some(id) = null_sink_module_id {
+                    pulseauto::unload_module(id).expect("unload null sink failed");
+                }
+                info!("autoloop: unloaded SoundboardNullSink pulse audio module");
+                if let Some(id) = loopback_module_id {
+                    pulseauto::unload_module(id).expect("unload loopback sink failed");
+                }
+                info!("autoloop: unloaded SoundboardLoopback pulse audio module");
+                process::exit(0);
+            })
+            .expect("Error setting Ctrl-C handler");
         }
     }
     #[cfg(not(feature = "autoloop"))]
@@ -175,7 +194,10 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if config::MainConfig::read().http_server.unwrap_or_default() {
+        if !config::MainConfig::read()
+            .no_http_server
+            .unwrap_or_default()
+        {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -195,30 +217,15 @@ fn try_main() -> Result<()> {
         }
     }
 
-    #[cfg(feature = "autoloop")]
-    ctrlc::set_handler(move || {
-        if let Some(id) = null_sink_module_id {
-            pulseauto::unload_module(id).expect("unload null sink failed");
-        }
-        info!("autoloop: unloaded SoundboardNullSink pulse audio module");
-
-        if let Some(id) = loopback_module_id {
-            pulseauto::unload_module(id).expect("unload loopback sink failed");
-        }
-        info!("autoloop: unloaded SoundboardLoopback pulse audio module");
-
-        process::exit(0);
-    })
-    .expect("Error setting Ctrl-C handler");
-
-    if config::MainConfig::read().no_gui.unwrap_or_default() {
+    if config::MainConfig::read().no_native_gui.unwrap_or_default() {
         no_gui_routine()?;
         return Ok(());
     }
+
     #[cfg(feature = "terminal-ui")]
     {
         if config::MainConfig::read().terminal_ui.unwrap_or_default() {
-            tui::draw_terminal(gui_sender)?;
+            tui::draw_terminal(gui_sender, gui_receiver)?;
             return Ok(());
         }
     }

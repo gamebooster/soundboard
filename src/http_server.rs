@@ -245,6 +245,10 @@ fn check_sound_index() -> impl Filter<
 
 type HotkeySenders = Arc<Mutex<Vec<mpsc::UnboundedSender<HotkeyMessage>>>>;
 
+#[derive(rust_embed::RustEmbed)]
+#[folder = "$CARGO_MANIFEST_DIR/web/"]
+struct WebAsset;
+
 #[tokio::main]
 pub async fn run(
     gui_sender: crossbeam_channel::Sender<sound::Message>,
@@ -985,18 +989,27 @@ pub async fn run(
     let cors = warp::cors()
         .allow_any_origin()
         .allow_headers(vec!["content-type", "auth", "origin"])
-        .allow_methods(vec!["GET", "POST", "DELETE", "OPTIONS"]);
+        .allow_methods(vec!["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"]);
 
-    let routes = (warp::path("api").and(
-        soundboard_routes
-            .or(soundboard_sound_routes)
-            .or(sound_thread_routes)
-            .or(hotkey_routes)
-            .or(help_api),
-    ))
-    .or(warp::get().and(warp::fs::dir(web_path)))
-    .with(cors)
-    .recover(handle_rejection);
+    async fn serve_index() -> Result<impl Reply, Rejection> {
+        serve_impl("index.html")
+    }
+
+    async fn serve(path: warp::path::Tail) -> Result<impl Reply, Rejection> {
+        serve_impl(path.as_str())
+    }
+
+    fn serve_impl(path: &str) -> Result<impl Reply, Rejection> {
+        let asset = WebAsset::get(path).ok_or_else(warp::reject::not_found)?;
+        let mime = mime_guess::from_path(path).first_or_octet_stream();
+
+        let mut res = warp::reply::Response::new(asset.into());
+        res.headers_mut().insert(
+            "content-type",
+            warp::http::header::HeaderValue::from_str(mime.as_ref()).unwrap(),
+        );
+        Ok(res)
+    }
 
     let socket_addr: std::net::SocketAddr = {
         if let Some(socket_addr) = &config::MainConfig::read().http_socket_addr {
@@ -1006,6 +1019,38 @@ pub async fn run(
         }
     };
 
-    warp::serve(routes).run(socket_addr).await;
+    let routes = warp::path("api").and(
+        soundboard_routes
+            .or(soundboard_sound_routes)
+            .or(sound_thread_routes)
+            .or(hotkey_routes)
+            .or(help_api),
+    );
+    let browser_address = {
+        if socket_addr.ip().is_unspecified() {
+            ([127, 0, 0, 1], socket_addr.port()).into()
+        } else {
+            socket_addr
+        }
+    };
+    if let Err(err) = webbrowser::open(&format!("http://{}", browser_address)) {
+        error!("failed to open browser to display ui {}", err);
+    }
+
+    if config::MainConfig::read().no_embed_web.unwrap_or_default() {
+        let routes = routes.or(warp::get().and(warp::fs::dir(web_path)));
+
+        let routes = routes.with(cors).recover(handle_rejection);
+        warp::serve(routes).run(socket_addr).await;
+    } else {
+        let index_html = warp::path::end().and_then(serve_index);
+        let routes = routes.or(warp::get()
+            .and(index_html)
+            .or(warp::get().and(warp::path::tail()).and_then(serve)));
+
+        let routes = routes.with(cors).recover(handle_rejection);
+        warp::serve(routes).run(socket_addr).await;
+    }
+
     unreachable!();
 }

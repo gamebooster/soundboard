@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use clap::{crate_authors, crate_version, App, Arg};
+use clap::{crate_authors, crate_description, crate_version, App, Arg};
 use hotkey_soundboard::keys;
 use hotkey_soundboard::modifiers;
 use log::{error, info, trace, warn};
@@ -33,14 +33,15 @@ pub struct MainConfig {
     pub stop_hotkey: Option<String>,
     pub http_socket_addr: Option<String>,
 
-    pub http_server: Option<bool>,
+    pub no_http_server: Option<bool>,
     pub telegram: Option<bool>,
     pub terminal_ui: Option<bool>,
-    pub no_gui: Option<bool>,
+    pub no_native_gui: Option<bool>,
     pub auto_loop_device: Option<bool>,
     pub no_duplex_device: Option<bool>,
     pub print_possible_devices: Option<bool>,
     pub disable_simultaneous_playback: Option<bool>,
+    pub no_embed_web: Option<bool>,
 
     #[serde(skip_serializing, skip_deserializing)]
     pub soundboards: Vec<SoundboardConfig>,
@@ -57,10 +58,11 @@ fn load_and_merge_config() -> Result<MainConfig> {
     merge_option_with_args_and_env(&mut config.http_socket_addr, &arguments, "http-socket-addr");
 
     merge_flag_with_args_and_env(&mut config.auto_loop_device, &arguments, "auto-loop-device");
-    merge_flag_with_args_and_env(&mut config.http_server, &arguments, "http-server");
+    merge_flag_with_args_and_env(&mut config.no_http_server, &arguments, "no-http-server");
     merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
     merge_flag_with_args_and_env(&mut config.terminal_ui, &arguments, "terminal-ui");
-    merge_flag_with_args_and_env(&mut config.no_gui, &arguments, "no-gui");
+    merge_flag_with_args_and_env(&mut config.no_native_gui, &arguments, "no-native-gui");
+    merge_flag_with_args_and_env(&mut config.no_embed_web, &arguments, "no-embed-web");
     merge_flag_with_args_and_env(&mut config.no_duplex_device, &arguments, "no-duplex-device");
     merge_flag_with_args_and_env(
         &mut config.print_possible_devices,
@@ -687,7 +689,7 @@ fn parse_arguments() -> clap::ArgMatches {
     let matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
-        .about("play sounds over your microphone")
+        .about(crate_description!())
         .arg(
             Arg::with_name("input-device")
                 .short('i')
@@ -711,17 +713,31 @@ fn parse_arguments() -> clap::ArgMatches {
         )
         .arg(
             Arg::with_name("print-possible-devices")
+                .short('P')
                 .long("print-possible-devices")
                 .about("Print possible devices"),
+        )
+        .arg(
+            Arg::with_name("no-embed-web")
+                .long("no-embed-web")
+                .about("Do not use embed web ui files"),
         );
+
     #[cfg(feature = "autoloop")]
     let matches = matches.arg(
         Arg::with_name("auto-loop-device")
+            .short('A')
             .long("auto-loop-device")
             .about("Automatically create PulseAudio Loopback Device"),
     );
+
     #[cfg(feature = "gui")]
-    let matches = matches.arg(Arg::with_name("no-gui").long("no-gui").about("Disable GUI"));
+    let matches = matches.arg(
+        Arg::with_name("no-native-gui")
+            .long("no-native-gui")
+            .about("Disable native gui"),
+    );
+
     #[cfg(feature = "terminal-ui")]
     let matches = matches.arg(
         Arg::with_name("terminal-ui")
@@ -730,9 +746,9 @@ fn parse_arguments() -> clap::ArgMatches {
     );
     #[cfg(feature = "http")]
     let matches = matches.arg(
-        Arg::with_name("http-server")
-            .long("http-server")
-            .about("Enable http server API and web app"),
+        Arg::with_name("no-http-server")
+            .long("no-http-server")
+            .about("Disable http server api and web ui"),
     );
     #[cfg(feature = "http")]
     let matches = matches.arg(
