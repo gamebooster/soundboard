@@ -72,6 +72,10 @@ where
             let mut remove_keys = Vec::new();
             let mut unlocked = hash_map_clone.lock();
 
+            if output.format() == miniaudio::Format::Unknown {
+                panic!("unknown format for device");
+            }
+
             for (key, sources) in unlocked.iter_mut() {
                 for (source, buffer, resampler, start, end, current_duration) in sources {
                     if *start > 0.0 {
@@ -97,7 +101,7 @@ where
                         if resampler.is_none() {
                             let config = miniaudio::DataConverterConfig::new(
                                 miniaudio::Format::S16,
-                                miniaudio::Format::S16,
+                                output.format(),
                                 source.channels() as u32,
                                 output.channels(),
                                 source.sample_rate(),

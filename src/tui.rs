@@ -128,6 +128,7 @@ pub fn draw_terminal(
 ) -> Result<()> {
     execute!(stdout(), EnterAlternateScreen)?;
     execute!(stdout(), Hide)?;
+    crossterm::terminal::enable_raw_mode()?;
 
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
@@ -322,12 +323,12 @@ pub fn draw_terminal(
                             current_filter.clear();
                             filter_input_mode = true
                         }
-                        KeyCode::Char('s') => {
+                        KeyCode::Char('e') => {
                             if let Err(err) = gui_sender.send(sound::Message::StopAll) {
                                 error!("failed to send stop message {}", err);
                             };
                         }
-                        KeyCode::Right => {
+                        KeyCode::Right | KeyCode::Char('d') => {
                             let sb_count = config::MainConfig::read().soundboards.len();
                             if soundboard_state.get_index() + 1 == sb_count {
                                 soundboard_state.set_index(0);
@@ -335,7 +336,7 @@ pub fn draw_terminal(
                                 soundboard_state.set_index(soundboard_state.get_index() + 1);
                             }
                         }
-                        KeyCode::Left => {
+                        KeyCode::Left | KeyCode::Char('a') => {
                             let sb_count = config::MainConfig::read().soundboards.len();
                             if soundboard_state.get_index() == 0 {
                                 soundboard_state.set_index(sb_count - 1);
@@ -343,13 +344,13 @@ pub fn draw_terminal(
                                 soundboard_state.set_index(soundboard_state.get_index() - 1);
                             }
                         }
-                        KeyCode::Down => {
+                        KeyCode::Down | KeyCode::Char('s') => {
                             soundboard_state.sound_state_list.next();
                         }
-                        KeyCode::Up => {
+                        KeyCode::Up | KeyCode::Char('w') => {
                             soundboard_state.sound_state_list.previous();
                         }
-                        KeyCode::Enter => {
+                        KeyCode::Enter | KeyCode::Char('r') => {
                             let selected_index =
                                 soundboard_state.sound_state_list.state.selected().unwrap();
                             let sound_config = soundboard_state.sound_state_list.filtered_sounds
@@ -368,6 +369,7 @@ pub fn draw_terminal(
             }
         }
     }
+    crossterm::terminal::disable_raw_mode()?;
     execute!(stdout(), LeaveAlternateScreen)?;
     Ok(())
 }

@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Context, Result};
 use log::{error, info, trace, warn};
+use std::io::Write;
 use std::panic;
 
 #[cfg(feature = "gui")]
@@ -45,6 +46,11 @@ soundboard encountered an fatal error:
     };
   };
     panic::set_hook(Box::new(|panic_info| {
+        #[cfg(feature = "terminal-ui")]
+        let _ = crossterm::terminal::disable_raw_mode();
+        #[cfg(feature = "terminal-ui")]
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen);
+
         let mut location_info = String::new();
         if let Some(location) = panic_info.location() {
             location_info += &format!(
@@ -64,6 +70,10 @@ soundboard encountered an fatal error:
                 FATAL_ERROR_MESSAGE!(),
                 "No description location: {}", location_info
             );
+        }
+
+        if std::env::var("SB_BACKTRACE").is_ok() {
+            eprintln!("\nBacktrace:\n\n{:?}", backtrace::Backtrace::new());
         }
 
         std::process::exit(1);
