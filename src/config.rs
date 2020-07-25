@@ -1,32 +1,47 @@
+use super::hotkey;
+use super::sound;
+use super::utils;
 use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_description, crate_version, App, Arg};
-use hotkey_soundboard::keys;
-use hotkey_soundboard::modifiers;
 use log::{error, info, trace, warn};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 use serde::Serialize;
+use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::hash_map::HashMap;
 use std::fmt;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
+use ulid::Ulid;
 
-use super::sound;
-use super::utils;
+mod helpers;
 
-use once_cell::sync::Lazy;
+use helpers::*;
 
-type GlobalConfig = Lazy<parking_lot::RwLock<std::sync::Arc<MainConfig>>>;
+type GlobalAppConfig = Lazy<parking_lot::RwLock<std::sync::Arc<AppConfig>>>;
 
-static GLOBAL_CONFIG: GlobalConfig = Lazy::new(|| {
-    let config = load_and_merge_config().expect("failed to load and merge config");
-    parking_lot::RwLock::new(std::sync::Arc::new(config))
+pub type SoundboardId = Ulid;
+type SoundboardMap = HashMap<SoundboardId, Soundboard>;
+pub type SoundId = Ulid;
+type SoundMap = HashMap<SoundId, Sound>;
+type GlobalSoundboardMap = Lazy<parking_lot::RwLock<std::sync::Arc<SoundboardMap>>>;
+
+static GLOBAL_APP_CONFIG: GlobalAppConfig = Lazy::new(|| {
+    let app_config = load_and_merge_app_config().expect("failed to load and merge app config");
+    parking_lot::RwLock::new(std::sync::Arc::new(app_config))
+});
+
+static GLOBAL_SOUNDBOARD_MAP: GlobalSoundboardMap = Lazy::new(|| {
+    let soundboards = load_and_parse_soundboards().expect("failed to load soundboards");
+    parking_lot::RwLock::new(std::sync::Arc::new(soundboards))
 });
 
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
-pub struct MainConfig {
+pub struct AppConfig {
     pub input_device: Option<String>,
     pub output_device: Option<String>,
     pub loopback_device: Option<String>,
@@ -42,13 +57,10 @@ pub struct MainConfig {
     pub print_possible_devices: Option<bool>,
     pub disable_simultaneous_playback: Option<bool>,
     pub no_embed_web: Option<bool>,
-
-    #[serde(skip_serializing, skip_deserializing)]
-    pub soundboards: Vec<SoundboardConfig>,
 }
 
-fn load_and_merge_config() -> Result<MainConfig> {
-    let mut config = load_and_parse_config()?;
+fn load_and_merge_app_config() -> Result<AppConfig> {
+    let mut config = load_and_parse_app_config()?;
     let arguments = parse_arguments();
 
     merge_option_with_args_and_env(&mut config.input_device, &arguments, "input-device");
@@ -78,120 +90,328 @@ fn load_and_merge_config() -> Result<MainConfig> {
     Ok(config)
 }
 
-impl MainConfig {
-    pub fn read() -> std::sync::Arc<MainConfig> {
-        GLOBAL_CONFIG.read().clone()
-    }
+pub fn get_app_config() -> std::sync::Arc<AppConfig> {
+    GLOBAL_APP_CONFIG.read().clone()
+}
 
-    pub fn reload_from_disk() -> Result<()> {
-        *GLOBAL_CONFIG.write() = std::sync::Arc::new(load_and_merge_config()?);
-        Ok(())
-    }
+pub fn load_app_config_from_disk() -> Result<()> {
+    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(load_and_merge_app_config()?);
+    Ok(())
+}
 
-    #[cfg(feature = "autoloop")]
-    pub fn set_no_duplex_device_option(option: Option<bool>) {
-        let mut config: MainConfig = (*MainConfig::read()).clone();
-        config.no_duplex_device = option;
-        *GLOBAL_CONFIG.write() = std::sync::Arc::new(config);
-    }
+pub fn save_app_config_to_disk(config: &AppConfig) -> Result<()> {
+    save_app_config(config)?;
+    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(config.clone());
+    Ok(())
+}
 
-    #[allow(dead_code)]
-    pub fn add_soundboard(mut soundboard: SoundboardConfig) -> Result<()> {
-        save_soundboard_config(&mut soundboard, true)?;
-        let mut config: MainConfig = (*MainConfig::read()).clone();
-        let mut writer = GLOBAL_CONFIG.write();
-        config.soundboards.push(soundboard);
-        *writer = std::sync::Arc::new(config);
-        Ok(())
-    }
+pub fn get_soundboards() -> std::sync::Arc<SoundboardMap> {
+    GLOBAL_SOUNDBOARD_MAP.read().clone()
+}
 
-    pub fn change_soundboard(index: usize, mut soundboard: SoundboardConfig) -> Result<()> {
-        if MainConfig::read().soundboards.get(index).is_none() {
-            return Err(anyhow!("invalid soundboard index"));
+// pub fn get_soundboards_sorted_by_position() -> Vec<Soundboard> {
+//     let soundboards = Vec::new();
+//     for soundboard in get_soundboards().values() {
+//         soundboards.push(soundboard.clone());
+//     }
+//     soundboards.sort_by(|a, b| match (a.get_position(), b.get_position()) {
+//         (None, Some(_)) => std::cmp::Ordering::Greater,
+//         (Some(_), None) => std::cmp::Ordering::Less,
+//         (a, b) => a.cmp(b),
+//     });
+//     soundboards
+// }
+
+pub fn load_soundboards_from_disk() -> Result<()> {
+    *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(load_and_parse_soundboards()?);
+    Ok(())
+}
+
+pub fn get_sound(soundboard_id: Ulid, sound_id: Ulid) -> Option<Sound> {
+    if let Some(soundboard) = GLOBAL_SOUNDBOARD_MAP.read().clone().get(&soundboard_id) {
+        if let Some(sound) = soundboard.sounds.get(&sound_id) {
+            return Some(sound.clone());
         }
-        save_soundboard_config(&mut soundboard, false)?;
-        let mut config: MainConfig = (*MainConfig::read()).clone();
-        let mut writer = GLOBAL_CONFIG.write();
-        config.soundboards[index] = soundboard;
-        *writer = std::sync::Arc::new(config);
+    }
+
+    None
+}
+
+pub fn find_sound(sound_id: Ulid) -> Option<Sound> {
+    for soundboard in GLOBAL_SOUNDBOARD_MAP.read().values() {
+        if let Some(sound) = soundboard.get_sounds().get(&sound_id) {
+            return Some(sound.clone());
+        }
+    }
+
+    None
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Soundboard {
+    config: SoundboardConfig,
+
+    id: SoundboardId,
+    path: PathBuf,
+    last_hash: u64,
+    hotkey: Option<hotkey::Hotkey>,
+    sounds: SoundMap,
+}
+
+impl Soundboard {
+    pub fn new(name: &str, path: &str) -> Self {
+        Self {
+            config: SoundboardConfig::new(name),
+            hotkey: None,
+            sounds: SoundMap::default(),
+            id: Ulid::new(),
+            last_hash: 0,
+            path: PathBuf::from(path),
+        }
+    }
+
+    fn from_config(soundboard_path: &Path, config: SoundboardConfig) -> Result<Self> {
+        let mut sound_map = SoundMap::default();
+        if let Some(sound_configs) = config.sounds.as_ref() {
+            for sound_config in sound_configs.iter() {
+                let new_sound = Sound::from_config(sound_config.clone())?;
+                sound_map.insert(new_sound.id, new_sound);
+            }
+        }
+        let hotkey = {
+            if let Some(hotkey) = config.hotkey.as_ref() {
+                Some(hotkey::parse_hotkey(&hotkey)?)
+            } else {
+                None
+            }
+        };
+        Ok(Self {
+            last_hash: utils::calculate_hash(&config),
+            config,
+            hotkey,
+            sounds: sound_map,
+            path: PathBuf::from(soundboard_path),
+            id: Ulid::new(),
+        })
+    }
+
+    pub fn save_to_disk(&mut self) -> Result<()> {
+        let mut soundboard_map: SoundboardMap = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
+
+        if let Some(val) = soundboard_map.get_mut(&self.id) {
+            if self.last_hash == 0 {
+                panic!("should never be 0 for old soundboard");
+            }
+            save_soundboard_config(self.path.as_path(), &self.config, Some(self.last_hash))?;
+            *val = self.clone();
+            *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
+        } else {
+            if self.last_hash != 0 {
+                panic!("should never be not 0 for new soundboard");
+            }
+            save_soundboard_config(self.path.as_path(), &self.config, None)?;
+            soundboard_map.insert(self.id, self.clone());
+            *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
+        }
+        self.last_hash = utils::calculate_hash(&self.config);
         Ok(())
+    }
+
+    pub fn insert_sound(&mut self, sound: Sound) -> Option<Sound> {
+        self.sounds.insert(sound.id, sound)
+    }
+
+    pub fn get_id(&self) -> &Ulid {
+        &self.id
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.config.name
+    }
+
+    pub fn get_path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn get_sounds_path(&self) -> Result<PathBuf> {
+        get_soundboard_sound_directory(self.get_path())
+    }
+
+    pub fn get_position(&self) -> &Option<usize> {
+        &self.config.position
+    }
+
+    pub fn get_hotkey(&self) -> &Option<hotkey::Hotkey> {
+        &self.hotkey
+    }
+
+    pub fn get_sounds(&self) -> &SoundMap {
+        &self.sounds
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
-pub struct SoundboardConfig {
+#[derive(Debug, Deserialize, Clone, Serialize, Eq, PartialEq, Hash, Default)]
+struct SoundboardConfig {
     pub name: String,
     pub hotkey: Option<String>,
     pub position: Option<usize>,
     pub disabled: Option<bool>,
     #[serde(rename = "sound")]
     pub sounds: Option<Vec<SoundConfig>>,
-
-    #[serde(skip_serializing, skip_deserializing)]
-    pub path: String,
-    #[serde(skip_serializing, skip_deserializing)]
-    last_hash: u64,
 }
 
-impl PartialEq for SoundboardConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.hotkey == other.hotkey
-            && self.position == other.position
-            && self.sounds == other.sounds
-            && self.disabled == other.disabled
-    }
-}
-impl Eq for SoundboardConfig {}
-
-impl Hash for SoundboardConfig {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.hotkey.hash(state);
-        self.position.hash(state);
-        self.sounds.hash(state);
-        self.disabled.hash(state);
+impl SoundboardConfig {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_owned(),
+            ..Self::default()
+        }
     }
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, Default)]
-pub struct SoundConfig {
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Sound {
+    config: SoundConfig,
+
+    hotkey: Option<hotkey::Hotkey>,
+    id: ulid::Ulid,
+}
+
+impl Sound {
+    pub fn new(name: &str, source: Source) -> Result<Self> {
+        Ok(Self {
+            config: SoundConfig::new(name, source),
+            hotkey: None,
+            id: Ulid::new(),
+        })
+    }
+
+    fn from_config(config: SoundConfig) -> Result<Self> {
+        let hotkey = {
+            if let Some(hotkey) = config.hotkey.as_ref() {
+                Some(hotkey::parse_hotkey(&hotkey)?)
+            } else {
+                None
+            }
+        };
+        Ok(Self {
+            config,
+            hotkey,
+            id: Ulid::new(),
+        })
+    }
+
+    pub fn get_id(&self) -> &Ulid {
+        &self.id
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.config.name
+    }
+
+    pub fn set_name(&mut self, name: &str) -> Result<()> {
+        if name.is_empty() {
+            return Err(anyhow!("sound: name is empty"));
+        }
+        self.config.name = name.to_string();
+        Ok(())
+    }
+
+    pub fn get_source(&self) -> &Source {
+        &self.config.source
+    }
+
+    pub fn set_source(&mut self, source: &Source) {
+        self.config.source = source.clone();
+    }
+
+    pub fn get_hotkey(&self) -> &Option<hotkey::Hotkey> {
+        &self.hotkey
+    }
+
+    pub fn set_hotkey(&mut self, hotkey: Option<hotkey::Hotkey>) {
+        self.hotkey = hotkey.clone();
+        if let Some(hotkey) = hotkey {
+            self.config.hotkey = Some(hotkey.to_string());
+        } else {
+            self.config.hotkey = None;
+        }
+    }
+
+    pub fn get_start(&self) -> Option<f32> {
+        self.config.start
+    }
+
+    pub fn set_start(&mut self, start: Option<f32>) -> Result<()> {
+        if let Some(start) = start {
+            if start < 0.0 {
+                return Err(anyhow!("start should be positive"));
+            }
+        }
+        self.config.start = start;
+        Ok(())
+    }
+
+    pub fn get_end(&self) -> Option<f32> {
+        self.config.end
+    }
+
+    pub fn set_end(&mut self, end: Option<f32>) -> Result<()> {
+        if let Some(end) = end {
+            if end < 0.0 {
+                return Err(anyhow!("end should be positive"));
+            }
+        }
+        self.config.end = end;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Eq, Hash)]
+pub enum Source {
+    #[serde(rename = "local")]
+    Local { path: PathBuf },
+    #[serde(rename = "http")]
+    Http {
+        url: String,
+        headers: Option<Vec<HeaderConfig>>,
+    },
+    #[serde(rename = "youtube")]
+    Youtube { id: String },
+    #[serde(rename = "tts")]
+    TTS { ssml: String, lang: String },
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct SoundConfig {
     pub name: String,
-    pub path: String,
+    pub source: Source,
     pub hotkey: Option<String>,
     pub start: Option<f32>,
     pub end: Option<f32>,
-    #[serde(rename = "header")]
-    pub headers: Option<Vec<HeaderConfig>>,
-    #[cfg(feature = "text-to-speech")]
-    pub tts_language: Option<String>,
-    #[cfg(feature = "text-to-speech")]
-    pub tts_options: Option<super::download::ttsclient::SynthesisOptions>,
+}
 
-    #[serde(skip_serializing, skip_deserializing)]
-    pub full_path: String,
+impl SoundConfig {
+    pub fn new(name: &str, source: Source) -> Self {
+        Self {
+            name: name.to_string(),
+            source,
+            hotkey: None,
+            start: None,
+            end: None,
+        }
+    }
 }
 
 impl PartialEq for SoundConfig {
     fn eq(&self, other: &Self) -> bool {
-        let result = self.name == other.name
+        self.name == other.name
             && self.hotkey == other.hotkey
-            && self.path == other.path
-            && self.headers == other.headers
+            && self.source == other.source
             && ((self.start.unwrap_or_default() * 10.0) as usize)
                 == ((other.start.unwrap_or_default() * 10.0) as usize)
             && ((self.end.unwrap_or_default() * 10.0) as usize)
-                == ((other.end.unwrap_or_default() * 10.0) as usize);
-        if !result {
-            false
-        } else {
-            #[cfg(feature = "text-to-speech")]
-            {
-                self.tts_language == other.tts_language && self.tts_options == other.tts_options
-            }
-            #[cfg(not(feature = "text-to-speech"))]
-            result
-        }
+                == ((other.end.unwrap_or_default() * 10.0) as usize)
     }
 }
 impl Eq for SoundConfig {}
@@ -199,15 +419,10 @@ impl Eq for SoundConfig {}
 impl Hash for SoundConfig {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-        self.path.hash(state);
+        self.source.hash(state);
         self.hotkey.hash(state);
-        self.headers.hash(state);
         ((self.start.unwrap_or_default() * 10.0) as usize).hash(state);
         ((self.end.unwrap_or_default() * 10.0) as usize).hash(state);
-        #[cfg(feature = "text-to-speech")]
-        self.tts_language.hash(state);
-        #[cfg(feature = "text-to-speech")]
-        self.tts_options.hash(state);
     }
 }
 
@@ -217,266 +432,27 @@ pub struct HeaderConfig {
     pub value: String,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Eq)]
-pub struct Hotkey {
-    pub modifier: Vec<Modifier>,
-    pub key: Key,
-}
-
-impl Hotkey {
-    pub fn modifier_as_flag(&self) -> u32 {
-        self.modifier.iter().fold(0, |acc, x| acc | (*x as u32)) as u32
-    }
-}
-
-#[derive(
-    Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq,
-)]
-#[repr(u32)]
-pub enum Modifier {
-    ALT = modifiers::ALT,
-    CTRL = modifiers::CONTROL,
-    SHIFT = modifiers::SHIFT,
-    SUPER = modifiers::SUPER,
-}
-
-impl fmt::Display for Modifier {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[derive(
-    Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq,
-)]
-#[repr(u32)]
-pub enum Key {
-    BACKSPACE = keys::BACKSPACE,
-    TAB = keys::TAB,
-    ENTER = keys::ENTER,
-    CAPS_LOCK = keys::CAPS_LOCK,
-    ESCAPE = keys::ESCAPE,
-    SPACEBAR = keys::SPACEBAR,
-    PAGE_UP = keys::PAGE_UP,
-    PAGE_DOWN = keys::PAGE_DOWN,
-    END = keys::END,
-    HOME = keys::HOME,
-    ARROW_LEFT = keys::ARROW_LEFT,
-    ARROW_RIGHT = keys::ARROW_RIGHT,
-    ARROW_UP = keys::ARROW_UP,
-    ARROW_DOWN = keys::ARROW_DOWN,
-    PRINT_SCREEN = keys::PRINT_SCREEN,
-    INSERT = keys::INSERT,
-    DELETE = keys::DELETE,
-    #[serde(rename = "0")]
-    KEY_0 = keys::KEY_0,
-    #[serde(rename = "1")]
-    KEY_1 = keys::KEY_1,
-    #[serde(rename = "2")]
-    KEY_2 = keys::KEY_2,
-    #[serde(rename = "3")]
-    KEY_3 = keys::KEY_3,
-    #[serde(rename = "4")]
-    KEY_4 = keys::KEY_4,
-    #[serde(rename = "5")]
-    KEY_5 = keys::KEY_5,
-    #[serde(rename = "6")]
-    KEY_6 = keys::KEY_6,
-    #[serde(rename = "7")]
-    KEY_7 = keys::KEY_7,
-    #[serde(rename = "8")]
-    KEY_8 = keys::KEY_8,
-    #[serde(rename = "9")]
-    KEY_9 = keys::KEY_9,
-    A = keys::A,
-    B = keys::B,
-    C = keys::C,
-    D = keys::D,
-    E = keys::E,
-    F = keys::F,
-    G = keys::G,
-    H = keys::H,
-    I = keys::I,
-    J = keys::J,
-    K = keys::K,
-    L = keys::L,
-    M = keys::M,
-    N = keys::N,
-    O = keys::O,
-    P = keys::P,
-    Q = keys::Q,
-    R = keys::R,
-    S = keys::S,
-    T = keys::T,
-    U = keys::U,
-    V = keys::V,
-    W = keys::W,
-    X = keys::X,
-    Y = keys::Y,
-    Z = keys::Z,
-}
-
-impl fmt::Display for Key {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl fmt::Display for Hotkey {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let modifier_string: String = self.modifier.iter().fold(String::new(), |all, one| {
-            if !all.is_empty() {
-                format!("{}-{}", all, one)
-            } else {
-                one.to_string()
-            }
-        });
-        let hotkey_string = {
-            if !modifier_string.is_empty() {
-                format!("{}-{}", modifier_string, self.key.to_string())
-            } else {
-                self.key.to_string()
-            }
-        };
-        write!(f, "{}", hotkey_string)
-    }
-}
-
-static REGEX_HOTKEY_PATTERN: Lazy<regex::Regex> = Lazy::new(|| {
-    regex::Regex::new(
-        r"^(?i)(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(?:(CTRL|SHIFT|ALT|SUPER)-){0,1}(\w+)$",
-    ).unwrap()
-});
-
-pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
-    let caps: regex::Captures = REGEX_HOTKEY_PATTERN
-        .captures(hotkey_string)
-        .ok_or_else(|| anyhow!("No valid hotkey match"))?;
-    let mut modifier = Vec::new();
-    let mut key: Option<Key> = None;
-    for caps in caps.iter().skip(1) {
-        if let Some(caps) = caps {
-            let mut mat = caps.as_str().to_uppercase();
-            if mat.parse::<usize>().is_ok() {
-                mat = format!("KEY_{}", mat);
-            }
-            if let Ok(res) = Modifier::from_str(&mat) {
-                modifier.push(res);
-                continue;
-            }
-            if key.is_some() {
-                return Err(anyhow!("hotkey has alread a key specified"));
-            }
-            if let Ok(res) = Key::from_str(&mat) {
-                key = Some(res);
-            }
-        }
-    }
-    if key.is_none() {
-        return Err(anyhow!("hotkey has no key specified"));
-    }
-    Ok(Hotkey {
-        modifier,
-        key: key.unwrap(),
-    })
-}
-
-fn get_config_file_path() -> Result<Option<PathBuf>> {
-    let mut relative_from_exe = std::env::current_exe()?;
-    relative_from_exe.pop();
-    relative_from_exe.push("soundboard.toml");
-    if relative_from_exe.is_file() {
-        return Ok(Some(relative_from_exe));
-    }
-    if let Some(mut config_path) = dirs::config_dir() {
-        config_path.push("soundboard");
-        config_path.push("soundboard.toml");
-        if config_path.is_file() {
-            return Ok(Some(config_path));
-        }
-    }
-    if let Some(mut config_path) = dirs::home_dir() {
-        config_path.push(".config");
-        config_path.push("soundboard");
-        config_path.push("soundboard.toml");
-        if config_path.is_file() {
-            return Ok(Some(config_path));
-        }
-    }
-    if let Some(mut config_path) = dirs::home_dir() {
-        config_path.push(".soundboard");
-        config_path.push("soundboard.toml");
-        if config_path.is_file() {
-            return Ok(Some(config_path));
-        }
-    }
-    Ok(None)
-}
-
-pub fn get_soundboards_path() -> Result<PathBuf> {
-    let mut relative_from_exe = std::env::current_exe()?;
-    relative_from_exe.pop();
-    relative_from_exe.push("soundboards");
-    if relative_from_exe.is_dir() {
-        return Ok(relative_from_exe);
-    }
-    let mut config_dir_path1 = "$XDG_CONFIG_HOME/soundboard/soundboards/".to_owned();
-    if let Some(mut config_path) = dirs::config_dir() {
-        config_path.push("soundboard");
-        config_path.push("soundboards");
-        config_dir_path1 = config_path.to_str().unwrap().to_owned();
-        if config_path.is_dir() {
-            return Ok(config_path);
-        }
-    }
-    let mut config_dir_path2 = "$HOME/.config/soundboard/soundboards/".to_owned();
-    if let Some(mut config_path) = dirs::home_dir() {
-        config_path.push(".config");
-        config_path.push("soundboard");
-        config_path.push("soundboards");
-        config_dir_path2 = config_path.to_str().unwrap().to_owned();
-        if config_path.is_dir() {
-            return Ok(config_path);
-        }
-    }
-    let mut home_dir_path = "$HOME/.soundboard/soundboards/".to_owned();
-    if let Some(mut config_path) = dirs::home_dir() {
-        config_path.push(".soundboard");
-        config_path.push("soundboards");
-        home_dir_path = config_path.to_str().unwrap().to_owned();
-        if config_path.is_dir() {
-            return Ok(config_path);
-        }
-    }
-    Err(anyhow!(
-        r"could not find soundboards directory at one of the following locations:
-            relative_from_exe: {}
-            config_dir_path1: {}
-            config_dir_path2: {}
-            home_dir_path: {}",
-        relative_from_exe.display(),
-        config_dir_path1,
-        config_dir_path2,
-        home_dir_path
-    ))
-}
-
-fn load_and_parse_config() -> Result<MainConfig> {
+fn load_and_parse_app_config() -> Result<AppConfig> {
     let config_path = get_config_file_path().context("Failed to get config file path")?;
 
-    let mut toml_config: MainConfig = {
+    let toml_config: AppConfig = {
         if let Some(config_path) = config_path.as_ref() {
             let toml_str = fs::read_to_string(&config_path)
                 .with_context(|| format!("Failed to read_to_string {}", config_path.display()))?;
             toml::from_str(&toml_str)
                 .with_context(|| format!("Failed to parse {}", config_path.display()))?
         } else {
-            MainConfig::default()
+            AppConfig::default()
         }
     };
 
+    info!("Loaded config file from {:?}", config_path);
+    Ok(toml_config)
+}
+
+fn load_and_parse_soundboards() -> Result<SoundboardMap> {
     let soundboards_path = get_soundboards_path()?;
+    let mut soundboard_map = SoundboardMap::default();
 
     for entry in std::fs::read_dir(&soundboards_path)? {
         if entry.is_err() {
@@ -495,98 +471,30 @@ fn load_and_parse_config() -> Result<MainConfig> {
             if sb_config.disabled.unwrap_or_default() {
                 continue;
             }
-            toml_config.soundboards.push(sb_config);
+            let soundboard: Soundboard = Soundboard::from_config(&path, sb_config)?;
+            soundboard_map.insert(soundboard.id, soundboard);
         }
     }
 
-    if toml_config.soundboards.is_empty() {
+    if soundboard_map.is_empty() {
         return Err(anyhow!(
             "could not find any soundboards in {:?}",
             soundboards_path
         ));
     }
 
-    toml_config
-        .soundboards
-        .sort_by(|a, b| match (a.position, b.position) {
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (Some(_), None) => std::cmp::Ordering::Less,
-            _ => a.position.cmp(&b.position),
-        });
-
-    info!("Loaded config file from {:?}", config_path);
     info!("Loaded soundboards from {}", soundboards_path.display());
-    Ok(toml_config)
-}
-
-pub fn get_soundboard_sound_directory(soundboard_path: &Path) -> Result<PathBuf> {
-    let mut new_path = get_soundboards_path()?;
-    let stem: &str = soundboard_path
-        .file_stem()
-        .unwrap_or_default()
-        .to_str()
-        .unwrap_or_default();
-    new_path.push(stem);
-    Ok(new_path)
-}
-
-fn resolve_sound_path(soundboard_path: &Path, sound_path: &str) -> Result<String> {
-    let relative_path = Path::new(sound_path);
-    if sound_path.starts_with("http") || sound_path.contains("<speak>") {
-        return Ok(sound_path.to_string());
-    }
-    if relative_path.is_absolute() {
-        if !relative_path.exists() || !relative_path.is_file() {
-            return Err(anyhow!("expected sound file at {}", sound_path));
-        }
-        return Ok(sound_path.to_string());
-    }
-    let mut new_path = get_soundboard_sound_directory(soundboard_path)?;
-    new_path.push(relative_path);
-
-    if !new_path.exists() || !new_path.is_file() {
-        return Err(anyhow!(
-            "expected sound file at {}",
-            new_path.to_str().unwrap()
-        ));
-    }
-
-    Ok(new_path.to_str().unwrap().to_string())
+    Ok(soundboard_map)
 }
 
 fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
     let toml_str = fs::read_to_string(&soundboard_path)?;
-    let mut soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
-    if soundboard_config.sounds.is_none() {
-        return Err(anyhow!(
-            "expected sounds in {}",
-            soundboard_path.to_str().unwrap()
-        ));
-    }
-    soundboard_config.last_hash = utils::calculate_hash(&soundboard_config);
-
-    let mut sounds = soundboard_config.sounds.unwrap();
-    for sound in &mut sounds {
-        sound.full_path = resolve_sound_path(soundboard_path, &sound.path)?;
-        if sound.name.is_empty() {
-            return Err(anyhow!(
-                "load_soundboard_config: sound name empty {}",
-                sound.path
-            ));
-        }
-    }
-    soundboard_config.sounds = Some(sounds);
-    soundboard_config.path = soundboard_path
-        .as_os_str()
-        .to_os_string()
-        .into_string()
-        .unwrap();
+    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
     Ok(soundboard_config)
 }
 
-#[allow(dead_code)]
-fn save_config(config: &MainConfig, name: &str) -> Result<()> {
-    let config_path = PathBuf::from_str(name)?;
+fn save_app_config(config: &AppConfig) -> Result<()> {
+    let config_path = get_soundboards_path()?;
 
     let pretty_string = toml::to_string_pretty(&config)?;
     fs::write(&config_path, pretty_string)?;
@@ -594,28 +502,26 @@ fn save_config(config: &MainConfig, name: &str) -> Result<()> {
     Ok(())
 }
 
-fn check_soundboard_config_mutated_on_disk(
-    old_path: &Path,
-    new_config: &SoundboardConfig,
-) -> Result<bool> {
-    let toml_str = fs::read_to_string(&old_path)
-        .with_context(|| format!("Failed to read_to_string {}", old_path.display()))?;
-    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)
-        .with_context(|| format!("Failed to parse {}", old_path.display()))?;
+fn check_soundboard_config_mutated_on_disk(path: &Path, last_hash: u64) -> Result<bool> {
+    let toml_str = fs::read_to_string(&path)
+        .with_context(|| format!("Failed to read_to_string {}", path.display()))?;
+    let soundboard_config: SoundboardConfig =
+        toml::from_str(&toml_str).with_context(|| format!("Failed to parse {}", path.display()))?;
 
     let old_config_hash = utils::calculate_hash(&soundboard_config);
 
-    if old_config_hash == new_config.last_hash {
+    if old_config_hash == last_hash {
         return Ok(false);
     }
 
     Ok(true)
 }
 
-fn save_soundboard_config(config: &mut SoundboardConfig, new: bool) -> Result<()> {
-    let soundboard_config_path = PathBuf::from_str(&config.path)
-        .with_context(|| format!("Failed to parse path {}", &config.path))?;
-
+fn save_soundboard_config(
+    soundboard_config_path: &Path,
+    config: &SoundboardConfig,
+    last_hash: Option<u64>,
+) -> Result<()> {
     if soundboard_config_path.parent().is_none()
         || !soundboard_config_path.parent().unwrap().exists()
     {
@@ -625,64 +531,28 @@ fn save_soundboard_config(config: &mut SoundboardConfig, new: bool) -> Result<()
         ));
     }
 
-    if config.name.is_empty() {
-        return Err(anyhow!("save_soundboard: invalid name  {}", &config.name));
-    }
-
-    if config.sounds.is_none() {
-        return Err(anyhow!("save_soundboard: expected sounds"));
-    }
-
-    if !new && check_soundboard_config_mutated_on_disk(&soundboard_config_path, config)? {
+    if last_hash.is_some()
+        && check_soundboard_config_mutated_on_disk(&soundboard_config_path, last_hash.unwrap())?
+    {
         return Err(anyhow!(
             "save_soundboard: soundboard config file mutated on disk",
         ));
-    } else if new && soundboard_config_path.exists() {
+    } else if last_hash.is_none() && soundboard_config_path.exists() {
         return Err(anyhow!(
             "save_soundboard: soundboard config file already exists on disk",
         ));
-    }
-
-    for sound in config.sounds.as_mut().unwrap() {
-        sound.full_path = resolve_sound_path(&soundboard_config_path, &sound.path)?;
-        if sound.name.is_empty() {
-            return Err(anyhow!("save_soundboard: sound name empty {}", sound.path));
-        }
     }
 
     let pretty_string =
         toml::to_string_pretty(&config).context("failed to serialize soundboard config")?;
     fs::write(&soundboard_config_path, pretty_string)
         .with_context(|| format!("Failed to write {}", &soundboard_config_path.display()))?;
-    config.last_hash = utils::calculate_hash(&config);
-    info!("Saved config file at {}", &config.path);
+
+    info!(
+        "Saved config file at {}",
+        soundboard_config_path.to_str().unwrap()
+    );
     Ok(())
-}
-
-fn get_env_name_from_cli_name(name: &str) -> String {
-    "SB_".to_owned() + &name.to_ascii_uppercase().replace("-", "_")
-}
-
-fn merge_option_with_args_and_env<T: From<String>>(
-    config_option: &mut Option<T>,
-    args: &clap::ArgMatches,
-    name: &str,
-) {
-    if args.is_present(name) {
-        *config_option = Some(args.value_of(name).unwrap().to_owned().into())
-    } else if let Ok(value) = std::env::var(get_env_name_from_cli_name(name)) {
-        *config_option = Some(value.into());
-    }
-}
-
-fn merge_flag_with_args_and_env(
-    config_option: &mut Option<bool>,
-    args: &clap::ArgMatches,
-    name: &str,
-) {
-    if args.is_present(name) || std::env::var(get_env_name_from_cli_name(name)).is_ok() {
-        *config_option = Some(true);
-    }
 }
 
 fn parse_arguments() -> clap::ArgMatches {
@@ -758,110 +628,4 @@ fn parse_arguments() -> clap::ArgMatches {
             .takes_value(true),
     );
     matches.get_matches()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn hotkey_parse() {
-        assert_eq!(
-            parse_hotkey("CTRL-P").unwrap(),
-            Hotkey {
-                modifier: vec![Modifier::CTRL],
-                key: Key::P
-            }
-        );
-        assert_eq!(
-            parse_hotkey("CTRL-SHIFT-P").unwrap(),
-            Hotkey {
-                modifier: vec![Modifier::CTRL, Modifier::SHIFT],
-                key: Key::P
-            }
-        );
-        assert_eq!(
-            parse_hotkey("S").unwrap(),
-            Hotkey {
-                modifier: vec![],
-                key: Key::S
-            }
-        );
-        assert_eq!(
-            parse_hotkey("ALT-BACKSPACE").unwrap(),
-            Hotkey {
-                modifier: vec![Modifier::ALT],
-                key: Key::BACKSPACE
-            }
-        );
-        assert_eq!(
-            parse_hotkey("SHIFT-SUPER-A").unwrap(),
-            Hotkey {
-                modifier: vec![Modifier::SHIFT, Modifier::SUPER],
-                key: Key::A
-            }
-        );
-        assert_eq!(
-            parse_hotkey("SUPER-ARROW_RIGHT").unwrap(),
-            Hotkey {
-                modifier: vec![Modifier::SUPER],
-                key: Key::ARROW_RIGHT
-            }
-        );
-        assert_eq!(
-            parse_hotkey("SUPER-CTRL-SHIFT-ALT-9").unwrap(),
-            Hotkey {
-                modifier: vec![
-                    Modifier::SUPER,
-                    Modifier::CTRL,
-                    Modifier::SHIFT,
-                    Modifier::ALT
-                ],
-                key: Key::KEY_9
-            }
-        );
-        assert_eq!(
-            parse_hotkey("super-ctrl-SHIFT-alt-ARROW_Up").unwrap(),
-            Hotkey {
-                modifier: vec![
-                    Modifier::SUPER,
-                    Modifier::CTRL,
-                    Modifier::SHIFT,
-                    Modifier::ALT
-                ],
-                key: Key::ARROW_UP
-            }
-        );
-
-        assert_eq!(
-            parse_hotkey("5").unwrap(),
-            Hotkey {
-                modifier: vec![],
-                key: Key::KEY_5
-            }
-        );
-
-        assert_eq!(
-            parse_hotkey("KEY_5").unwrap(),
-            Hotkey {
-                modifier: vec![],
-                key: Key::KEY_5
-            }
-        );
-
-        assert_eq!(
-            parse_hotkey("5-5").unwrap_err().to_string(),
-            "No valid hotkey match"
-        );
-
-        assert_eq!(
-            parse_hotkey("CTRL-").unwrap_err().to_string(),
-            "No valid hotkey match"
-        );
-
-        assert_eq!(
-            parse_hotkey("").unwrap_err().to_string(),
-            "No valid hotkey match"
-        );
-    }
 }

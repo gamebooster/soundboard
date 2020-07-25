@@ -3,119 +3,121 @@ position = 0
 
 [[sound]]
 name = 'Krasser Kai Uwe'
-path = 'krasserKaiUwe.mp3'
+source = {local = {path = 'krasserKaiUwe.mp3'}}
 
 [[sound]]
 name = 'Ich rascht aus'
-path = 'ich-rascht-aus.flac'
+source = {local = {path = 'ich-rascht-aus.flac'}}
 
 [[sound]]
 name = 'Warteee EEEY'
-path = 'warteEYY.mp3'
+source = {local = {path = 'warteEYY.mp3'}}
 
 [[sound]]
 name = 'Woran hats gelegen'
-path = 'Worahnhatsgelegen.mp3'
+source = {local = {path = 'Worahnhatsgelegen.mp3'}}
 
 [[sound]]
 name = 'Kranplätze'
-path = 'https://alleswirdaushackgemacht.de/audio/ronny/kranplaetze.mp3'
+source = {http = {url = 'https://alleswirdaushackgemacht.de/audio/ronny/kranplaetze.mp3'}}
 
 [[sound]]
 name = 'Vollidioten'
-path = 'https://alleswirdaushackgemacht.de/audio/ronny/vollidioten.mp3'
+source = {http = {url = 'https://alleswirdaushackgemacht.de/audio/ronny/vollidioten.mp3'}}
 
 [[sound]]
 name = 'Hierhoch'
-path = 'https://alleswirdaushackgemacht.de/audio/ronny/hierhoch.mp3'
+source = {http = {url = 'https://alleswirdaushackgemacht.de/audio/ronny/hierhoch.mp3'}}
 
 [[sound]]
 name = 'wo sind die brillen'
-path = 'wo ist der latest shit.mp3'
+source = {local = {path = 'wo ist der latest shit.mp3'}}
 start = 18
 
 [[sound]]
 end = 6.7
 name = 'wo ist der latest shit'
-path = 'wo ist der latest shit.mp3'
+source = {local = {path = 'wo ist der latest shit.mp3'}}
 
 [[sound]]
 name = 'Wer wird Millionär - Showstart'
-path = 'https://www.myinstants.com//media/sounds/wer-wird-millionar-soundtracks-soundstart.mp3'
+source = {http = {url = 'https://www.myinstants.com//media/sounds/wer-wird-millionar-soundtracks-soundstart.mp3'}}
 
 [[sound]]
 name = 'Summasummarum'
-path = 'Summasummarum.mp3'
+source = {local = {path = 'Summasummarum.mp3'}}
 
 [[sound]]
 hotkey = 'CTRL-SHIFT-BACKSPACE'
 name = 'Soldier of Fortune'
-path = 'vodka/Razor1911 - Soldier Of Fortune intro.xm'
+source = {local = {path = 'vodka/Razor1911 - Soldier Of Fortune intro.xm'}}
 
 [[sound]]
 name = '''It's time to duel'''
-path = 'its-time-to-duel.ogg'
+source = {local = {path = 'its-time-to-duel.ogg'}}
 
 [[sound]]
 name = 'the one and only'
-path = 'oneandonly.wav'
+source = {local = {path = 'oneandonly.wav'}}
 
 [[sound]]
 name = 'steam incoming'
-path = 'https://www.myinstants.com/media/sounds/message_2.mp3'
+source = {http = {url = 'https://www.myinstants.com/media/sounds/message_2.mp3'}}
 
 [[sound]]
 name = 'crab rave'
-path = 'https://www.myinstants.com/media/sounds/original_zeowGW1.mp3'
+source = {http = {url = 'https://www.myinstants.com/media/sounds/original_zeowGW1.mp3'}}
 
 [[sound]]
 hotkey = 'CTRL-P'
 name = 'Nicht so tief, Rüdiger!'
-path = 'nicht-so-tief-rudiger.mp3'
+source = {local = {path = 'nicht-so-tief-rudiger.mp3'}}
 
 [[sound]]
 end = 11
 name = "Traeumaschlauma"
-path = "https://youtu.be/W3fzR5gvbIw"
+source = {youtube = {id = "W3fzR5gvbIw"}}
 
 [[sound]]
 end = 15
 name = "Oh well"
-path = "https://youtu.be/YUKeiJ3igXg"
+source = {youtube = {id = "YUKeiJ3igXg"}}
 start = 10
 
 [[sound]]
 end = 18.5
 name = "dreams"
-path = "https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+source = {youtube = {id = "ZXsQAXx_ao0"}}
 start = 14
 
 [[sound]]
 end = 58
 name = "tired"
-path = "https://www.youtube.com/watch?v=ZXsQAXx_ao0"
+source = {youtube = {id = "ZXsQAXx_ao0"}}
 start = 53
 
 [[sound]]
+name = '''Looks Like You're F'd'''
+source = {http = {url = 'https://www.soundboard.com/handler/playTrack.ashx?id=893190', headers = [{name = 'referer', value = 'https://www.soundboard.com/'}]}}
+
+[[sound]]
 name = "Baurmann"
-path = '''
+source = {tts = {ssml = '''
 <speak>
   <par>
     <media>
       <speak>Was macht <emphasis level="strong"> Baurmann </emphasis> schon wieder?</speak>
     </media>
-    <media begin="3s">
+    <media begin="4s">
       <speak><prosody rate="fast" pitch="-5st">Da könnt ich grad verrückt werden.</prosody></speak>
     </media>
-    <media begin="2s">
+    <media begin="3s">
       <speak>Absoluter Schwachsinn.</speak>
     </media>
-    <media begin="4s">
+    <media begin="5s">
       <audio
         src="https://www.myinstants.com/media/sounds/gege.mp3"/>
     </media>
   </par>
 </speak>
-'''
-tts_language = "de-DE"
-tts_options = {voice_name = "de-DE-Wavenet-B"}
+''', lang = "de-DE"}}

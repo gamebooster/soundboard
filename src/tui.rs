@@ -32,30 +32,33 @@ use super::sound;
 mod sound_state_list;
 
 fn select_soundboard(
-    index: usize,
+    id: &config::SoundboardId,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> (sound_state_list::SoundStateList, hotkey::HotkeyManager) {
-    let soundboard = &config::MainConfig::read().soundboards[index];
-    let current_sounds = soundboard.sounds.as_ref().unwrap().clone();
-    let hotkeys = register_hotkeys(&current_sounds, gui_sender);
-    let mut sound_list = sound_state_list::SoundStateList::new(&soundboard.name, current_sounds);
+    let soundboard = config::get_soundboards().get(id).unwrap().clone();
+    let current_sounds = soundboard.get_sounds();
+    let hotkeys = register_hotkeys(current_sounds.values(), gui_sender);
+    let mut sound_list = sound_state_list::SoundStateList::new(
+        &soundboard.get_name(),
+        current_sounds.values().cloned().collect(),
+    );
     sound_list.state.select(Some(0));
     (sound_list, hotkeys)
 }
 
-fn register_hotkeys(
-    sounds: &[config::SoundConfig],
+fn register_hotkeys<'a>(
+    sounds: impl Iterator<Item = &'a config::Sound>,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> hotkey::HotkeyManager {
     let mut hotkey_manager = hotkey::HotkeyManager::new();
 
     let stop_hotkey = {
-        if let Some(stop_key) = config::MainConfig::read().stop_hotkey.as_ref() {
-            config::parse_hotkey(stop_key).unwrap()
+        if let Some(stop_key) = config::get_app_config().stop_hotkey.as_ref() {
+            hotkey::parse_hotkey(stop_key).unwrap()
         } else {
-            config::Hotkey {
-                modifier: vec![config::Modifier::CTRL, config::Modifier::ALT],
-                key: config::Key::E,
+            hotkey::Hotkey {
+                modifier: vec![hotkey::Modifier::CTRL, hotkey::Modifier::ALT],
+                key: hotkey::Key::E,
             }
         }
     };
@@ -66,27 +69,26 @@ fn register_hotkeys(
         error!("register stop hotkey failed {:#}", err);
     }
 
-    for sound in sounds.iter() {
-        if sound.hotkey.is_none() {
-            continue;
+    for sound in sounds {
+        if let Some(hotkey) = sound.get_hotkey() {
+            let sound = sound.clone();
+            let tx_clone = gui_sender.clone();
+            let _result = hotkey_manager.register(hotkey.clone(), move || {
+                if let Err(err) = tx_clone.send(sound::Message::PlaySound(
+                    *sound.get_id(),
+                    sound::SoundDevices::Both,
+                )) {
+                    error!("failed to play sound {}", err);
+                };
+            });
         }
-        let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap();
-        let sound = sound.clone();
-        let tx_clone = gui_sender.clone();
-        let _result = hotkey_manager.register(hotkey, move || {
-            if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-                sound.clone(),
-                sound::SoundDevices::Both,
-            )) {
-                error!("failed to play sound {}", err);
-            };
-        });
     }
     hotkey_manager
 }
 
 struct SoundboardState {
     pub sound_state_list: sound_state_list::SoundStateList,
+    pub soundboards: Vec<(String, config::SoundboardId)>,
     hotkeys: hotkey::HotkeyManager,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     index: usize,
@@ -94,12 +96,18 @@ struct SoundboardState {
 
 impl SoundboardState {
     pub fn new(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Self {
-        let (sound_state_list, hotkeys) = select_soundboard(0, gui_sender.clone());
+        let soundboards: Vec<(String, config::SoundboardId)> = config::get_soundboards()
+            .values()
+            .map(|s| (s.get_name().to_string(), *s.get_id()))
+            .collect();
+        let (sound_state_list, hotkeys) = select_soundboard(&soundboards[0].1, gui_sender.clone());
+
         Self {
             gui_sender,
             sound_state_list,
             hotkeys,
             index: 0,
+            soundboards,
         }
     }
 
@@ -108,7 +116,7 @@ impl SoundboardState {
     }
 
     pub fn set_index(&mut self, new_index: usize) {
-        let result = select_soundboard(new_index, self.gui_sender.clone());
+        let result = select_soundboard(&self.soundboards[new_index].1, self.gui_sender.clone());
         self.sound_state_list = result.0;
         self.hotkeys = result.1;
         self.index = new_index;
@@ -133,16 +141,6 @@ pub fn draw_terminal(
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    if config::MainConfig::read().soundboards.is_empty() {
-        panic!("no soundboards");
-    }
-
-    let sb_titles: Vec<String> = config::MainConfig::read()
-        .soundboards
-        .iter()
-        .map(|s| s.name.clone())
-        .collect();
-
     let mut soundboard_state = SoundboardState::new(gui_sender.clone());
     let mut active_sounds: sound::PlayStatusVecType = sound::PlayStatusVecType::new();
     let mut current_volume = 1.0;
@@ -162,7 +160,9 @@ pub fn draw_terminal(
                 }
             }
             if last_tick.elapsed() >= tick_rate {
-                tui_sender_clone.send(TUIEvent::Tick).unwrap();
+                if let Err(err) = tui_sender_clone.send(TUIEvent::Tick) {
+                    error!("send channel error {}", err);
+                }
                 last_tick = std::time::Instant::now();
             }
         }
@@ -180,12 +180,19 @@ pub fn draw_terminal(
                 .margin(2)
                 .split(size);
 
-            let tabs = Tabs::new(sb_titles.iter().cloned().map(Spans::from).collect())
-                .block(Block::default().borders(Borders::ALL).title("soundboards"))
-                .style(Style::default().fg(Color::White))
-                .highlight_style(Style::default().fg(Color::Yellow))
-                .select(soundboard_state.get_index())
-                .divider(tui::symbols::DOT);
+            let tabs = Tabs::new(
+                soundboard_state
+                    .soundboards
+                    .iter()
+                    .cloned()
+                    .map(|x| Spans::from(x.0))
+                    .collect(),
+            )
+            .block(Block::default().borders(Borders::ALL).title("soundboards"))
+            .style(Style::default().fg(Color::White))
+            .highlight_style(Style::default().fg(Color::Yellow))
+            .select(soundboard_state.get_index())
+            .divider(tui::symbols::DOT);
 
             let horizontal_chunks = Layout::default()
                 .constraints([Constraint::Percentage(70), Constraint::Percentage(30)].as_ref())
@@ -200,15 +207,15 @@ pub fn draw_terminal(
                 .sound_state_list
                 .filtered_sounds
                 .iter()
-                .map(|sound: &config::SoundConfig| -> ListItem {
+                .map(|sound: &config::Sound| -> ListItem {
                     if active_sounds
                         .iter()
-                        .any(|active_sound| active_sound.1 == *sound)
+                        .any(|active_sound| active_sound.1 == *sound.get_id())
                     {
                         let style = Style::default().fg(Color::Green);
-                        ListItem::new(Span::styled(sound.name.as_str(), style))
+                        ListItem::new(Span::styled(sound.get_name(), style))
                     } else {
-                        ListItem::new(sound.name.as_str())
+                        ListItem::new(sound.get_name())
                     }
                 })
                 .collect::<Vec<ListItem>>();
@@ -228,8 +235,9 @@ pub fn draw_terminal(
             let active_sounds_names: Vec<String> = active_sounds
                 .iter()
                 .map(|s| {
+                    let sound = config::find_sound(s.1).unwrap();
                     if s.0 == sound::SoundStatus::Downloading {
-                        return format!("{}\n  downloading", s.1.name);
+                        return format!("{}\n  downloading", sound.get_name());
                     }
                     let play_seconds = s.2.as_secs() % 60;
                     let play_minutes = (s.2.as_secs() / 60) % 60;
@@ -238,10 +246,14 @@ pub fn draw_terminal(
                         let total_minutes = (dur.as_secs() / 60) % 60;
                         format!(
                             "{}\n  {}:{}/{}:{}",
-                            s.1.name, play_minutes, play_seconds, total_minutes, total_seconds
+                            sound.get_name(),
+                            play_minutes,
+                            play_seconds,
+                            total_minutes,
+                            total_seconds
                         )
                     } else {
-                        format!("{}\n  {}:{}", s.1.name, play_minutes, play_seconds)
+                        format!("{}\n  {}:{}", sound.get_name(), play_minutes, play_seconds)
                     }
                 })
                 .collect();
@@ -329,7 +341,7 @@ pub fn draw_terminal(
                             };
                         }
                         KeyCode::Right | KeyCode::Char('d') => {
-                            let sb_count = config::MainConfig::read().soundboards.len();
+                            let sb_count = config::get_soundboards().len();
                             if soundboard_state.get_index() + 1 == sb_count {
                                 soundboard_state.set_index(0);
                             } else {
@@ -337,7 +349,7 @@ pub fn draw_terminal(
                             }
                         }
                         KeyCode::Left | KeyCode::Char('a') => {
-                            let sb_count = config::MainConfig::read().soundboards.len();
+                            let sb_count = config::get_soundboards().len();
                             if soundboard_state.get_index() == 0 {
                                 soundboard_state.set_index(sb_count - 1);
                             } else {
@@ -353,11 +365,11 @@ pub fn draw_terminal(
                         KeyCode::Enter | KeyCode::Char('r') => {
                             let selected_index =
                                 soundboard_state.sound_state_list.state.selected().unwrap();
-                            let sound_config = soundboard_state.sound_state_list.filtered_sounds
+                            let sound_id = soundboard_state.sound_state_list.filtered_sounds
                                 [selected_index]
-                                .clone();
+                                .get_id();
                             if let Err(err) = gui_sender.send(sound::Message::PlaySound(
-                                sound_config,
+                                *sound_id,
                                 sound::SoundDevices::Both,
                             )) {
                                 error!("failed to send play message {}", err);
