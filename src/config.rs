@@ -109,22 +109,36 @@ pub fn get_soundboards() -> std::sync::Arc<SoundboardMap> {
     GLOBAL_SOUNDBOARD_MAP.read().clone()
 }
 
-// pub fn get_soundboards_sorted_by_position() -> Vec<Soundboard> {
-//     let soundboards = Vec::new();
-//     for soundboard in get_soundboards().values() {
-//         soundboards.push(soundboard.clone());
-//     }
-//     soundboards.sort_by(|a, b| match (a.get_position(), b.get_position()) {
-//         (None, Some(_)) => std::cmp::Ordering::Greater,
-//         (Some(_), None) => std::cmp::Ordering::Less,
-//         (a, b) => a.cmp(b),
-//     });
-//     soundboards
-// }
-
 pub fn load_soundboards_from_disk() -> Result<()> {
     *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(load_and_parse_soundboards()?);
     Ok(())
+}
+
+pub fn get_soundboard(
+    id: Ulid,
+) -> Result<owning_ref::OwningRef<std::sync::Arc<SoundboardMap>, Soundboard>> {
+    owning_ref::OwningRef::new(get_soundboards()).try_map(|f| {
+        f.get(&id)
+            .ok_or_else(|| anyhow!("no soundboard with specified id"))
+    })
+}
+
+pub fn soundboard_position_sorter(a: &Option<usize>, b: &Option<usize>) -> std::cmp::Ordering {
+    match (a, b) {
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (a, b) => a.cmp(b),
+    }
+}
+
+pub fn get_soundboard_ids_sorted_by_position() -> Vec<Ulid> {
+    let soundboards = get_soundboards();
+    let mut soundboard_positions = Vec::new();
+    for soundboard in soundboards.iter() {
+        soundboard_positions.push((soundboard.0, soundboard.1.get_position()))
+    }
+    soundboard_positions.sort_by(|a, b| soundboard_position_sorter(a.1, b.1));
+    soundboard_positions.iter().map(|x| *x.0).collect()
 }
 
 pub fn get_sound(soundboard_id: Ulid, sound_id: Ulid) -> Option<Sound> {
