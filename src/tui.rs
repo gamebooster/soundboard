@@ -88,7 +88,7 @@ fn register_hotkeys<'a>(
 
 struct SoundboardState {
     pub sound_state_list: sound_state_list::SoundStateList,
-    pub soundboards: Vec<(String, config::SoundboardId)>,
+    pub soundboards: Vec<(String, config::SoundboardId, Option<usize>)>,
     hotkeys: hotkey::HotkeyManager,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     index: usize,
@@ -96,10 +96,12 @@ struct SoundboardState {
 
 impl SoundboardState {
     pub fn new(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Self {
-        let soundboards: Vec<(String, config::SoundboardId)> = config::get_soundboards()
-            .values()
-            .map(|s| (s.get_name().to_string(), *s.get_id()))
-            .collect();
+        let mut soundboards: Vec<(String, config::SoundboardId, Option<usize>)> =
+            config::get_soundboards()
+                .values()
+                .map(|s| (s.get_name().to_string(), *s.get_id(), *s.get_position()))
+                .collect();
+        soundboards.sort_by(|a, b| config::soundboard_position_sorter(&a.2, &b.2));
         let (sound_state_list, hotkeys) = select_soundboard(&soundboards[0].1, gui_sender.clone());
 
         Self {
