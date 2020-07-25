@@ -101,7 +101,7 @@ fn try_main() -> Result<()> {
             .init();
     }
 
-    if config::MainConfig::read()
+    if config::get_app_config()
         .print_possible_devices
         .unwrap_or_default()
     {
@@ -120,11 +120,11 @@ fn try_main() -> Result<()> {
     ) = crossbeam_channel::unbounded();
 
     #[cfg(feature = "autoloop")]
-    let mut loop_device_id = config::MainConfig::read().loopback_device.clone();
+    let mut loop_device_id = config::get_app_config().loopback_device.clone();
 
     #[cfg(feature = "autoloop")]
     {
-        if config::MainConfig::read()
+        if config::get_app_config()
             .auto_loop_device
             .unwrap_or_default()
         {
@@ -170,7 +170,7 @@ fn try_main() -> Result<()> {
         }
     }
     #[cfg(not(feature = "autoloop"))]
-    let loop_device_id = config::MainConfig::read().loopback_device.clone();
+    let loop_device_id = config::get_app_config().loopback_device.clone();
 
     let loop_device_id = loop_device_id.ok_or_else(|| {
         anyhow!(
@@ -181,8 +181,8 @@ fn try_main() -> Result<()> {
     })?;
 
     let gui_sender_clone = gui_sender.clone();
-    let input_device_id_clone = config::MainConfig::read().input_device.clone();
-    let output_device_id_clone = config::MainConfig::read().output_device.clone();
+    let input_device_id_clone = config::get_app_config().input_device.clone();
+    let output_device_id_clone = config::get_app_config().output_device.clone();
     let _sound_thread_handle = std::thread::spawn(move || {
         sound::run_sound_loop(
             sound_receiver,
@@ -204,10 +204,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if !config::MainConfig::read()
-            .no_http_server
-            .unwrap_or_default()
-        {
+        if !config::get_app_config().no_http_server.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -218,7 +215,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "telegram")]
     {
-        if config::MainConfig::read().telegram.unwrap_or_default() {
+        if config::get_app_config().telegram.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -227,14 +224,14 @@ fn try_main() -> Result<()> {
         }
     }
 
-    if config::MainConfig::read().no_native_gui.unwrap_or_default() {
+    if config::get_app_config().no_native_gui.unwrap_or_default() {
         no_gui_routine()?;
         return Ok(());
     }
 
     #[cfg(feature = "terminal-ui")]
     {
-        if config::MainConfig::read().terminal_ui.unwrap_or_default() {
+        if config::get_app_config().terminal_ui.unwrap_or_default() {
             tui::draw_terminal(gui_sender, gui_receiver)?;
             return Ok(());
         }

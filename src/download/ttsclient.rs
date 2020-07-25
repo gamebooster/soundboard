@@ -103,19 +103,19 @@ impl TTSClient {
 
     pub fn synthesize_speech(
         &mut self,
-        ssml: String,
-        language_code: String,
+        ssml: &str,
+        language_code: &str,
         options: Option<SynthesisOptions>,
     ) -> Result<Vec<u8>> {
         let mut request = SynthesizeSpeechRequest::default();
         let options = options.unwrap_or_default();
 
         let mut input = SynthesisInput::default();
-        input.input_source = Some(InputSource::Ssml(ssml));
+        input.input_source = Some(InputSource::Ssml(ssml.to_owned()));
         request.input = Some(input);
 
         let mut voice_selection = VoiceSelectionParams::default();
-        voice_selection.language_code = language_code;
+        voice_selection.language_code = language_code.to_owned();
         if let Some(voice_name) = options.voice_name {
             voice_selection.name = voice_name;
         }

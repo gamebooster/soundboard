@@ -1,16 +1,16 @@
-use super::super::config::SoundConfig;
+use super::super::config::Sound;
 use tui::widgets::ListState;
 
 pub struct SoundStateList {
     pub name: String,
-    sounds: Vec<SoundConfig>,
+    sounds: Vec<Sound>,
     filter: String,
-    pub filtered_sounds: Vec<SoundConfig>,
+    pub filtered_sounds: Vec<Sound>,
     pub state: ListState,
 }
 
 impl SoundStateList {
-    pub fn new(name: &str, sounds: Vec<SoundConfig>) -> Self {
+    pub fn new(name: &str, sounds: Vec<Sound>) -> Self {
         Self {
             name: name.to_string(),
             state: ListState::default(),
@@ -34,7 +34,7 @@ impl SoundStateList {
         self.filtered_sounds = self
             .sounds
             .iter()
-            .filter(|s| s.name.to_lowercase().contains(&self.filter))
+            .filter(|s| s.get_name().to_lowercase().contains(&self.filter))
             .cloned()
             .collect();
         if self.filtered_sounds.len() <= self.index() {

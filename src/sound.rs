@@ -167,7 +167,7 @@ pub fn run_sound_loop(
     );
 
     let loop_back_device = {
-        if !config::MainConfig::read()
+        if !config::get_app_config()
             .no_duplex_device
             .unwrap_or_default()
         {
@@ -192,53 +192,8 @@ pub fn run_sound_loop(
     );
 }
 
-#[derive(Debug, Clone, Default)]
-struct SoundKey(pub config::SoundConfig);
-
-impl From<config::SoundConfig> for SoundKey {
-    fn from(sound_config: config::SoundConfig) -> Self {
-        SoundKey(sound_config)
-    }
-}
-
-impl PartialEq for SoundKey {
-    fn eq(&self, other: &Self) -> bool {
-        let result = self.0.path == other.0.path
-            && self.0.headers == other.0.headers
-            && (self.0.start.unwrap_or_default() * 10.0) as usize
-                == (other.0.start.unwrap_or_default() * 10.0) as usize
-            && (self.0.end.unwrap_or_default() * 10.0) as usize
-                == (other.0.end.unwrap_or_default() * 10.0) as usize;
-        if !result {
-            false
-        } else {
-            #[cfg(feature = "text-to-speech")]
-            {
-                self.0.tts_language == other.0.tts_language
-                    && self.0.tts_options == other.0.tts_options
-            }
-            #[cfg(not(feature = "text-to-speech"))]
-            result
-        }
-    }
-}
-impl Eq for SoundKey {}
-
-impl std::hash::Hash for SoundKey {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.path.hash(state);
-        self.0.headers.hash(state);
-        ((self.0.start.unwrap_or_default() * 10.0) as usize).hash(state);
-        ((self.0.end.unwrap_or_default() * 10.0) as usize).hash(state);
-        #[cfg(feature = "text-to-speech")]
-        self.0.tts_language.hash(state);
-        #[cfg(feature = "text-to-speech")]
-        self.0.tts_options.hash(state);
-    }
-}
-
 type StartedTime = std::time::Instant;
-type SoundMap = HashMap<SoundKey, (SoundStatus, StartedTime, Option<TotalDuration>)>;
+type SoundMap = HashMap<config::SoundId, (SoundStatus, StartedTime, Option<TotalDuration>)>;
 
 #[derive(
     Debug,
@@ -268,26 +223,26 @@ pub enum SoundStatus {
 
 pub type PlayStatusVecType = Vec<(
     SoundStatus,
-    config::SoundConfig,
+    config::SoundId,
     PlayDuration,
     Option<TotalDuration>,
 )>;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    PlaySound(config::SoundConfig, SoundDevices),
-    StopSound(config::SoundConfig),
+    PlaySound(config::SoundId, SoundDevices),
+    StopSound(config::SoundId),
     StopAll,
     SetVolume(f32),
     PlayStatus(PlayStatusVecType, f32),
-    _PlaySoundDownloaded(config::SoundConfig, SoundDevices, std::path::PathBuf),
+    _PlaySoundDownloaded(config::SoundId, SoundDevices, std::path::PathBuf),
 }
 
 fn insert_sink_with_config(
     path: &std::path::Path,
     device: Option<miniaudio::DeviceIdAndName>,
     sink: &mut SinkDecoder,
-    sound_config: config::SoundConfig,
+    sound: &config::Sound,
     sinks: &mut SoundMap,
 ) -> Result<()> {
     let device_name = {
@@ -299,16 +254,17 @@ fn insert_sink_with_config(
     };
     info!(
         "Playing sound config: {:?} on device: {}",
-        sound_config, device_name
+        sound.get_name(),
+        device_name
     );
 
-    if let Some(start) = sound_config.start {
+    if let Some(start) = sound.get_start() {
         if start < 0.0 {
             return Err(anyhow!("error: start timestamp is negative {}", start));
         }
     }
 
-    if let Some(end) = sound_config.end {
+    if let Some(end) = sound.get_end() {
         if end < 0.0 {
             return Err(anyhow!("error: end timestamp is negative {}", end));
         }
@@ -318,7 +274,7 @@ fn insert_sink_with_config(
     let mut decoder = Decoder::new(reader)?;
     let mut reader = std::io::BufReader::with_capacity(1000 * 50, std::fs::File::open(path)?);
     let total_duration = decoder.total_duration_mut(&mut reader);
-    let total_duration = match (total_duration, sound_config.start, sound_config.end) {
+    let total_duration = match (total_duration, sound.get_start(), sound.get_end()) {
         (Some(total_duration), Some(start), None) => {
             if let Some(duration) = total_duration.checked_sub(Duration::from_secs_f32(start)) {
                 Some(duration)
@@ -355,14 +311,9 @@ fn insert_sink_with_config(
         }
         (None, _, None) => None,
     };
-    sink.play(
-        sound_config.clone().into(),
-        decoder,
-        sound_config.start,
-        sound_config.end,
-    )?;
+    sink.play(*sound.get_id(), decoder, sound.get_start(), sound.get_end())?;
 
-    match sinks.entry(sound_config.into()) {
+    match sinks.entry(*sound.get_id()) {
         std::collections::hash_map::Entry::Occupied(mut entry) => {
             let entry = entry.get_mut();
             entry.0 = SoundStatus::Playing;
@@ -380,7 +331,7 @@ fn insert_sink_with_config(
     Ok(())
 }
 
-type SinkDecoder = Sink<SoundKey, Decoder<std::io::BufReader<std::fs::File>>>;
+type SinkDecoder = Sink<config::SoundId, Decoder<std::io::BufReader<std::fs::File>>>;
 
 fn run_sound_message_loop(
     context: Context,
@@ -415,9 +366,17 @@ fn run_sound_message_loop(
     loop {
         match sound_receiver.recv() {
             Ok(message) => match message {
-                Message::PlaySound(sound_config, sound_devices) => {
+                Message::PlaySound(sound_id, sound_devices) => {
+                    let sound = {
+                        let sound = config::find_sound(sound_id);
+                        if sound.is_none() {
+                            error!("unknown sound_id");
+                            continue;
+                        }
+                        sound.unwrap()
+                    };
                     let maybe_path = {
-                        let result = download::local_path_for_sound_config_exists(&sound_config);
+                        let result = download::local_path_for_sound_config_exists(&sound);
                         if let Err(err) = result {
                             error!("local_path_for_sound_config_exists error {}", err);
                             continue;
@@ -425,7 +384,7 @@ fn run_sound_message_loop(
                         result.unwrap()
                     };
 
-                    if config::MainConfig::read()
+                    if config::get_app_config()
                         .disable_simultaneous_playback
                         .unwrap_or_default()
                     {
@@ -436,14 +395,10 @@ fn run_sound_message_loop(
 
                     if let Some(path) = maybe_path {
                         gui_sender
-                            .send(Message::_PlaySoundDownloaded(
-                                sound_config,
-                                sound_devices,
-                                path,
-                            ))
+                            .send(Message::_PlaySoundDownloaded(sound_id, sound_devices, path))
                             .expect("sound channel send error");
                     } else {
-                        match sinks.entry(sound_config.clone().into()) {
+                        match sinks.entry(sound_id) {
                             std::collections::hash_map::Entry::Occupied(_) => {
                                 panic!("sink should not be occupied");
                             }
@@ -457,12 +412,11 @@ fn run_sound_message_loop(
                         }
                         let gui_sender_clone = gui_sender.clone();
                         std::thread::spawn(
-                            move || match download::get_local_path_from_sound_config(&sound_config)
-                            {
+                            move || match download::get_local_path_from_sound_config(&sound) {
                                 Ok(path) => {
                                     gui_sender_clone
                                         .send(Message::_PlaySoundDownloaded(
-                                            sound_config,
+                                            sound_id,
                                             sound_devices,
                                             path,
                                         ))
@@ -470,7 +424,7 @@ fn run_sound_message_loop(
                                 }
                                 Err(err) => {
                                     gui_sender_clone
-                                        .send(Message::StopSound(sound_config))
+                                        .send(Message::StopSound(sound_id))
                                         .expect("sound channel error");
                                     error!("get_local_path_from_sound_config failed: {:#}", err)
                                 }
@@ -478,14 +432,22 @@ fn run_sound_message_loop(
                         );
                     }
                 }
-                Message::_PlaySoundDownloaded(sound_config, sound_devices, path) => {
+                Message::_PlaySoundDownloaded(sound_id, sound_devices, path) => {
+                    let sound = {
+                        let sound = config::find_sound(sound_id);
+                        if sound.is_none() {
+                            error!("unknown sound_id");
+                            continue;
+                        }
+                        sound.unwrap()
+                    };
                     if sound_devices == SoundDevices::Both || sound_devices == SoundDevices::Output
                     {
                         match insert_sink_with_config(
                             &path,
                             output_device.clone(),
                             &mut output_sink,
-                            sound_config.clone(),
+                            &sound,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -500,7 +462,7 @@ fn run_sound_message_loop(
                             &path,
                             Some(loop_device.clone()),
                             &mut loopback_sink,
-                            sound_config,
+                            &sound,
                             &mut sinks,
                         ) {
                             Ok(path) => path,
@@ -511,10 +473,10 @@ fn run_sound_message_loop(
                         };
                     }
                 }
-                Message::StopSound(sound_handle) => {
-                    if let Some((_, _, _)) = sinks.remove(&sound_handle.clone().into()) {
-                        output_sink.remove(&sound_handle.clone().into());
-                        loopback_sink.remove(&sound_handle.into());
+                Message::StopSound(sound_id) => {
+                    if let Some((_, _, _)) = sinks.remove(&sound_id) {
+                        output_sink.remove(&sound_id);
+                        loopback_sink.remove(&sound_id);
                     };
                 }
                 Message::StopAll => {
@@ -535,7 +497,7 @@ fn run_sound_message_loop(
                 Message::PlayStatus(_, _) => {
                     let mut sounds = Vec::new();
                     for (id, (status, instant, total_duration)) in sinks.iter() {
-                        sounds.push((*status, id.0.clone(), instant.elapsed(), *total_duration));
+                        sounds.push((*status, *id, instant.elapsed(), *total_duration));
                     }
                     sound_sender
                         .send(Message::PlayStatus(sounds, volume))
