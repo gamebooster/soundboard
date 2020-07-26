@@ -212,20 +212,38 @@ pub fn draw_terminal(
             soundboard_state
                 .sound_state_list
                 .update_filter(&current_filter);
+
             let items = soundboard_state
                 .sound_state_list
                 .filtered_sounds
                 .iter()
                 .map(|sound: &soundboards::Sound| -> ListItem {
-                    if active_sounds
-                        .iter()
-                        .any(|active_sound| active_sound.1 == *sound.get_id())
-                    {
-                        let style = Style::default().fg(Color::Green);
-                        ListItem::new(Span::styled(sound.get_name(), style))
-                    } else {
-                        ListItem::new(sound.get_name())
-                    }
+                    let active_sound = {
+                        active_sounds
+                            .iter()
+                            .any(|active_sound| active_sound.1 == *sound.get_id())
+                    };
+                    let style = {
+                        if active_sound {
+                            Style::default().fg(Color::Green)
+                        } else {
+                            Style::default().fg(Color::White)
+                        }
+                    };
+                    let sound_spans = {
+                        if let Some(ref hotkey) = sound.get_hotkey() {
+                            Spans::from(vec![
+                                Span::styled(sound.get_name(), style),
+                                Span::raw(" ("),
+                                Span::raw(hotkey.to_string()),
+                                Span::raw(")"),
+                            ])
+                        } else {
+                            Spans::from(vec![Span::styled(sound.get_name(), style)])
+                        }
+                    };
+
+                    ListItem::new(sound_spans)
                 })
                 .collect::<Vec<ListItem>>();
 
