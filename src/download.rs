@@ -6,13 +6,13 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
-use super::config;
+use super::soundboards;
 use super::utils;
 
 #[cfg(feature = "text-to-speech")]
 pub mod ttsclient;
 
-fn resolve_local_sound_path(sound: &config::Sound, sound_path: PathBuf) -> Result<PathBuf> {
+fn resolve_local_sound_path(sound: &soundboards::Sound, sound_path: PathBuf) -> Result<PathBuf> {
     if sound_path.is_absolute() {
         if !sound_path.exists() || !sound_path.is_file() {
             return Err(anyhow!(
@@ -22,7 +22,7 @@ fn resolve_local_sound_path(sound: &config::Sound, sound_path: PathBuf) -> Resul
         }
         return Ok(sound_path);
     }
-    let parent_board_sounds_path = config::get_soundboards()
+    let parent_board_sounds_path = soundboards::get_soundboards()
         .values()
         .find(|sb| sb.get_sounds().get(&sound.get_id()).is_some())
         .ok_or_else(|| anyhow!("unknown sound id"))?
@@ -38,9 +38,9 @@ fn resolve_local_sound_path(sound: &config::Sound, sound_path: PathBuf) -> Resul
     Ok(new_path)
 }
 
-pub fn local_path_for_sound_config_exists(sound: &config::Sound) -> Result<Option<PathBuf>> {
+pub fn local_path_for_sound_config_exists(sound: &soundboards::Sound) -> Result<Option<PathBuf>> {
     match sound.get_source() {
-        config::Source::Http { url, headers } => {
+        soundboards::Source::Http { url, headers } => {
             let mut headers_tuple = Vec::new();
             if let Some(headers) = &headers {
                 for header in headers {
@@ -56,10 +56,10 @@ pub fn local_path_for_sound_config_exists(sound: &config::Sound) -> Result<Optio
                 Ok(None)
             }
         }
-        config::Source::Local { path } => {
+        soundboards::Source::Local { path } => {
             Ok(Some(resolve_local_sound_path(sound, path.to_path_buf())?))
         }
-        config::Source::Youtube { id } => {
+        soundboards::Source::Youtube { id } => {
             let string_hash = utils::calculate_hash(&id).to_string();
             let mut file_path = std::env::temp_dir();
             file_path.push(string_hash);
@@ -70,7 +70,7 @@ pub fn local_path_for_sound_config_exists(sound: &config::Sound) -> Result<Optio
             }
         }
         #[cfg(feature = "text-to-speech")]
-        config::Source::TTS { ssml, lang } => {
+        soundboards::Source::TTS { ssml, lang } => {
             let string_hash = utils::calculate_hash(&(&ssml, lang)).to_string();
             let mut file_path = std::env::temp_dir();
             file_path.push(string_hash);
@@ -81,17 +81,17 @@ pub fn local_path_for_sound_config_exists(sound: &config::Sound) -> Result<Optio
             }
         }
         #[cfg(not(feature = "text-to-speech"))]
-        config::Source::TTS { ssml: _, lang: _ } => {
+        soundboards::Source::TTS { ssml: _, lang: _ } => {
             Err(anyhow!("text-to-speech feature not compiled in binary"))
         }
     }
 }
 
-pub fn get_local_path_from_sound_config(sound: &config::Sound) -> Result<PathBuf> {
+pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<PathBuf> {
     use std::io::{self, Write};
 
     match sound.get_source() {
-        config::Source::Http { url, headers } => {
+        soundboards::Source::Http { url, headers } => {
             let mut headers_tuple = Vec::new();
             if let Some(headers) = &headers {
                 for header in headers {
@@ -100,8 +100,8 @@ pub fn get_local_path_from_sound_config(sound: &config::Sound) -> Result<PathBuf
             }
             download_file_if_needed(&url, headers_tuple)
         }
-        config::Source::Local { path } => resolve_local_sound_path(sound, path.to_path_buf()),
-        config::Source::Youtube { id } => {
+        soundboards::Source::Local { path } => resolve_local_sound_path(sound, path.to_path_buf()),
+        soundboards::Source::Youtube { id } => {
             let string_hash = utils::calculate_hash(&id).to_string();
             let mut file_path = std::env::temp_dir();
             file_path.push(string_hash);
@@ -148,7 +148,7 @@ pub fn get_local_path_from_sound_config(sound: &config::Sound) -> Result<PathBuf
             }
         }
         #[cfg(feature = "text-to-speech")]
-        config::Source::TTS { ssml, lang } => {
+        soundboards::Source::TTS { ssml, lang } => {
             let string_hash = utils::calculate_hash(&(&ssml, &lang)).to_string();
             let mut file_path = std::env::temp_dir();
             file_path.push(string_hash);
@@ -170,7 +170,7 @@ pub fn get_local_path_from_sound_config(sound: &config::Sound) -> Result<PathBuf
         }
 
         #[cfg(not(feature = "text-to-speech"))]
-        config::Source::TTS { ssml: _, lang: _ } => {
+        soundboards::Source::TTS { ssml: _, lang: _ } => {
             Err(anyhow!("text-to-speech feature not compiled in binary"))
         }
     }

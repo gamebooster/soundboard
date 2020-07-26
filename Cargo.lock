@@ -3467,6 +3467,7 @@ dependencies = [
  "hound",
  "iced",
  "iced_native",
+ "indexmap",
  "lewton",
  "libpulse-binding",
  "libxm-soundboard",

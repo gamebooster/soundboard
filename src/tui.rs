@@ -10,6 +10,8 @@ use crossterm::{
     ExecutableCommand,
 };
 use log::{error, info, trace, warn};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{
     error::Error,
     io::{stdout, Write},
@@ -25,17 +27,18 @@ use tui::{
     Terminal,
 };
 
-use super::config;
+use super::app_config;
 use super::hotkey;
 use super::sound;
+use super::soundboards;
 
 mod sound_state_list;
 
 fn select_soundboard(
-    id: &config::SoundboardId,
+    id: &soundboards::SoundboardId,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> (sound_state_list::SoundStateList, hotkey::HotkeyManager) {
-    let soundboard = config::get_soundboards().get(id).unwrap().clone();
+    let soundboard = soundboards::get_soundboards().get(id).unwrap().clone();
     let current_sounds = soundboard.get_sounds();
     let hotkeys = register_hotkeys(current_sounds.values(), gui_sender);
     let mut sound_list = sound_state_list::SoundStateList::new(
@@ -47,13 +50,13 @@ fn select_soundboard(
 }
 
 fn register_hotkeys<'a>(
-    sounds: impl Iterator<Item = &'a config::Sound>,
+    sounds: impl Iterator<Item = &'a soundboards::Sound>,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> hotkey::HotkeyManager {
     let mut hotkey_manager = hotkey::HotkeyManager::new();
 
     let stop_hotkey = {
-        if let Some(stop_key) = config::get_app_config().stop_hotkey.as_ref() {
+        if let Some(stop_key) = app_config::get_app_config().stop_hotkey.as_ref() {
             hotkey::parse_hotkey(stop_key).unwrap()
         } else {
             hotkey::Hotkey {
@@ -88,7 +91,7 @@ fn register_hotkeys<'a>(
 
 struct SoundboardState {
     pub sound_state_list: sound_state_list::SoundStateList,
-    pub soundboards: Vec<(String, config::SoundboardId, Option<usize>)>,
+    pub soundboards: Vec<(String, soundboards::SoundboardId)>,
     hotkeys: hotkey::HotkeyManager,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
     index: usize,
@@ -96,12 +99,11 @@ struct SoundboardState {
 
 impl SoundboardState {
     pub fn new(gui_sender: crossbeam_channel::Sender<sound::Message>) -> Self {
-        let mut soundboards: Vec<(String, config::SoundboardId, Option<usize>)> =
-            config::get_soundboards()
-                .values()
-                .map(|s| (s.get_name().to_string(), *s.get_id(), *s.get_position()))
-                .collect();
-        soundboards.sort_by(|a, b| config::soundboard_position_sorter(&a.2, &b.2));
+        let soundboards: Vec<(String, soundboards::SoundboardId)> = soundboards::get_soundboards()
+            .values()
+            .map(|s| (s.get_name().to_string(), *s.get_id()))
+            .collect();
+
         let (sound_state_list, hotkeys) = select_soundboard(&soundboards[0].1, gui_sender.clone());
 
         Self {
@@ -152,6 +154,8 @@ pub fn draw_terminal(
 
     let tick_rate = std::time::Duration::from_millis(TICK_RATE_MS);
     let tui_sender_clone = tui_sender.clone();
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let shutdown_clone = shutdown.clone();
     std::thread::spawn(move || {
         let mut last_tick = std::time::Instant::now();
         loop {
@@ -163,6 +167,9 @@ pub fn draw_terminal(
             }
             if last_tick.elapsed() >= tick_rate {
                 if let Err(err) = tui_sender_clone.send(TUIEvent::Tick) {
+                    if shutdown_clone.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
+                    }
                     error!("send channel error {}", err);
                 }
                 last_tick = std::time::Instant::now();
@@ -209,7 +216,7 @@ pub fn draw_terminal(
                 .sound_state_list
                 .filtered_sounds
                 .iter()
-                .map(|sound: &config::Sound| -> ListItem {
+                .map(|sound: &soundboards::Sound| -> ListItem {
                     if active_sounds
                         .iter()
                         .any(|active_sound| active_sound.1 == *sound.get_id())
@@ -237,7 +244,7 @@ pub fn draw_terminal(
             let active_sounds_names: Vec<String> = active_sounds
                 .iter()
                 .map(|s| {
-                    let sound = config::find_sound(s.1).unwrap();
+                    let sound = soundboards::find_sound(s.1).unwrap();
                     if s.0 == sound::SoundStatus::Downloading {
                         return format!("{}\n  downloading", sound.get_name());
                     }
@@ -343,7 +350,7 @@ pub fn draw_terminal(
                             };
                         }
                         KeyCode::Right | KeyCode::Char('d') => {
-                            let sb_count = config::get_soundboards().len();
+                            let sb_count = soundboards::get_soundboards().len();
                             if soundboard_state.get_index() + 1 == sb_count {
                                 soundboard_state.set_index(0);
                             } else {
@@ -351,7 +358,7 @@ pub fn draw_terminal(
                             }
                         }
                         KeyCode::Left | KeyCode::Char('a') => {
-                            let sb_count = config::get_soundboards().len();
+                            let sb_count = soundboards::get_soundboards().len();
                             if soundboard_state.get_index() == 0 {
                                 soundboard_state.set_index(sb_count - 1);
                             } else {
@@ -383,6 +390,7 @@ pub fn draw_terminal(
             }
         }
     }
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
     crossterm::terminal::disable_raw_mode()?;
     execute!(stdout(), LeaveAlternateScreen)?;
     Ok(())
