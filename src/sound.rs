@@ -8,8 +8,9 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use super::config;
+use super::app_config;
 use super::download;
+use super::soundboards;
 use super::utils;
 
 mod decoder;
@@ -167,7 +168,7 @@ pub fn run_sound_loop(
     );
 
     let loop_back_device = {
-        if !config::get_app_config()
+        if !app_config::get_app_config()
             .no_duplex_device
             .unwrap_or_default()
         {
@@ -193,7 +194,7 @@ pub fn run_sound_loop(
 }
 
 type StartedTime = std::time::Instant;
-type SoundMap = HashMap<config::SoundId, (SoundStatus, StartedTime, Option<TotalDuration>)>;
+type SoundMap = HashMap<soundboards::SoundId, (SoundStatus, StartedTime, Option<TotalDuration>)>;
 
 #[derive(
     Debug,
@@ -223,26 +224,26 @@ pub enum SoundStatus {
 
 pub type PlayStatusVecType = Vec<(
     SoundStatus,
-    config::SoundId,
+    soundboards::SoundId,
     PlayDuration,
     Option<TotalDuration>,
 )>;
 
 #[derive(Debug, PartialEq)]
 pub enum Message {
-    PlaySound(config::SoundId, SoundDevices),
-    StopSound(config::SoundId),
+    PlaySound(soundboards::SoundId, SoundDevices),
+    StopSound(soundboards::SoundId),
     StopAll,
     SetVolume(f32),
     PlayStatus(PlayStatusVecType, f32),
-    _PlaySoundDownloaded(config::SoundId, SoundDevices, std::path::PathBuf),
+    _PlaySoundDownloaded(soundboards::SoundId, SoundDevices, std::path::PathBuf),
 }
 
 fn insert_sink_with_config(
     path: &std::path::Path,
     device: Option<miniaudio::DeviceIdAndName>,
     sink: &mut SinkDecoder,
-    sound: &config::Sound,
+    sound: &soundboards::Sound,
     sinks: &mut SoundMap,
 ) -> Result<()> {
     let device_name = {
@@ -331,7 +332,7 @@ fn insert_sink_with_config(
     Ok(())
 }
 
-type SinkDecoder = Sink<config::SoundId, Decoder<std::io::BufReader<std::fs::File>>>;
+type SinkDecoder = Sink<soundboards::SoundId, Decoder<std::io::BufReader<std::fs::File>>>;
 
 fn run_sound_message_loop(
     context: Context,
@@ -368,7 +369,7 @@ fn run_sound_message_loop(
             Ok(message) => match message {
                 Message::PlaySound(sound_id, sound_devices) => {
                     let sound = {
-                        let sound = config::find_sound(sound_id);
+                        let sound = soundboards::find_sound(sound_id);
                         if sound.is_none() {
                             error!("unknown sound_id");
                             continue;
@@ -384,7 +385,7 @@ fn run_sound_message_loop(
                         result.unwrap()
                     };
 
-                    if config::get_app_config()
+                    if app_config::get_app_config()
                         .disable_simultaneous_playback
                         .unwrap_or_default()
                     {
@@ -434,7 +435,7 @@ fn run_sound_message_loop(
                 }
                 Message::_PlaySoundDownloaded(sound_id, sound_devices, path) => {
                     let sound = {
-                        let sound = config::find_sound(sound_id);
+                        let sound = soundboards::find_sound(sound_id);
                         if sound.is_none() {
                             error!("unknown sound_id");
                             continue;

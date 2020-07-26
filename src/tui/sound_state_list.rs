@@ -1,4 +1,4 @@
-use super::super::config::Sound;
+use super::super::soundboards::Sound;
 use tui::widgets::ListState;
 
 pub struct SoundStateList {
