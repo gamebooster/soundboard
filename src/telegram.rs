@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use super::download;
-use super::{config, sound};
+use super::{app_config, sound, soundboards};
 use anyhow::{anyhow, Context, Result};
 use crossbeam_channel::{Receiver, Sender};
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -70,12 +70,9 @@ async fn download_file(api: &Api, file_id: &str, file_name: &str) -> Result<Path
     Ok(temp_path)
 }
 
-fn send_sound_config(
-    sender: &Sender<sound::Message>,
-    sound_config: config::SoundConfig,
-) -> Result<()> {
+fn play_sound(sender: &Sender<sound::Message>, sound_id: soundboards::SoundId) -> Result<()> {
     Ok(sender.send(sound::Message::PlaySound(
-        sound_config,
+        sound_id,
         sound::SoundDevices::Both,
     ))?)
 }
@@ -86,75 +83,48 @@ fn send_new_sound_config(
     ext: String,
     path: String,
 ) -> Result<()> {
-    let mut new_sound_path = config::get_soundboards_path()?;
-    new_sound_path.push("telegram");
+    let soundboards = soundboards::get_soundboards();
+    let telegram_soundboard = soundboards.values().find(|s| s.get_name() == "telegram");
+
     let full_name = name.clone() + &ext;
-    new_sound_path.push(&full_name);
+    let new_source = soundboards::Source::Local { path: full_name };
+    let send_sound_id;
 
-    info!("new path for incoming sound {}", &new_sound_path.display());
-    let config = config::MainConfig::read();
-
-    let sound_config = config::SoundConfig {
-        name,
-        full_path: new_sound_path.to_str().unwrap().to_owned(),
-        path: full_name,
-        ..config::SoundConfig::default()
-    };
-
-    let telegram_soundboard_index = config.soundboards.iter().position(|s| s.name == "telegram");
-
-    let mut sound_exists = false;
-    if let Some(telegram_soundboard_index) = telegram_soundboard_index {
-        let telegram_soundboard = &config.soundboards[telegram_soundboard_index];
-        let maybe_sound = telegram_soundboard
-            .sounds
-            .as_ref()
-            .unwrap()
-            .iter()
-            .find(|s| s.full_path == new_sound_path.to_str().unwrap());
-        if maybe_sound.is_some() {
-            sound_exists = true;
-        }
-    }
-
-    if !sound_exists {
-        let mut telegram_sounds_dir = config::get_soundboards_path()?;
-        telegram_sounds_dir.push("telegram");
-        if !telegram_sounds_dir.exists() {
-            std::fs::create_dir(telegram_sounds_dir)?;
-        }
-        std::fs::copy(&path, &new_sound_path).with_context(|| {
-            format!(
-                "cant copy file from {} to {}",
-                &path,
-                &new_sound_path.display()
-            )
-        })?;
-
-        if let Some(telegram_soundboard_index) = telegram_soundboard_index {
-            let mut telegram_soundboard = config.soundboards[telegram_soundboard_index].clone();
-            telegram_soundboard
-                .sounds
-                .as_mut()
-                .unwrap()
-                .push(sound_config.clone());
-            config::MainConfig::change_soundboard(telegram_soundboard_index, telegram_soundboard)?;
+    if let Some(telegram_soundboard) = telegram_soundboard {
+        let sound = telegram_soundboard
+            .get_sounds()
+            .values()
+            .find(|s| *s.get_source() == new_source);
+        if let Some(sound) = sound {
+            send_sound_id = *sound.get_id();
         } else {
-            let mut sb = config::SoundboardConfig::default();
-            sb.name = "telegram".to_string();
-            let mut new_path = config::get_soundboards_path()?;
-            new_path.push("telegram.toml");
-            sb.path = new_path.to_str().unwrap().to_owned();
-            sb.sounds = Some(Vec::new());
-            sb.sounds.as_mut().unwrap().push(sound_config.clone());
-            config::MainConfig::add_soundboard(sb)?;
+            let mut telegram_soundboard = telegram_soundboard.clone();
+            let new_sound = soundboards::Sound::new(&name, new_source)?;
+            send_sound_id = *new_sound.get_id();
+            let pathbuf = PathBuf::from(path);
+            if let Err(err) =
+                telegram_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf)
+            {
+                warn!("local sound file already exists {}", err);
+                telegram_soundboard.add_sound(new_sound)?;
+            }
+            telegram_soundboard.save_to_disk()?;
+            soundboards::update_soundboards(telegram_soundboard)?;
         }
+    } else {
+        let mut new_soundboard = soundboards::Soundboard::new("telegram")?;
+        let new_sound = soundboards::Sound::new(&name, new_source)?;
+        send_sound_id = *new_sound.get_id();
+        let pathbuf = PathBuf::from(path);
+        if let Err(err) = new_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf) {
+            warn!("local sound file already exists {}", err);
+            new_soundboard.add_sound(new_sound)?;
+        }
+        new_soundboard.save_to_disk()?;
+        soundboards::update_soundboards(new_soundboard)?;
     }
 
-    Ok(sender.send(sound::Message::PlaySound(
-        sound_config,
-        sound::SoundDevices::Both,
-    ))?)
+    play_sound(sender, send_sound_id)
 }
 
 async fn handle_audio(api: &Api, sender: &Sender<sound::Message>, audio: &Audio) -> Result<String> {
@@ -278,13 +248,13 @@ async fn handle_sound_command(
         return;
     }
 
-    let mut possible_matches: Vec<(i64, config::SoundConfig)> = Vec::new();
+    let mut possible_matches: Vec<(i64, soundboards::Sound)> = Vec::new();
     let matcher = SkimMatcherV2::default();
     let max_matches = 8;
 
-    for soundboard in &config::MainConfig::read().soundboards {
-        for sound in soundboard.sounds.as_ref().unwrap() {
-            if let Some(score) = matcher.fuzzy_match(&sound.name, &raw_args) {
+    for soundboard in soundboards::get_soundboards().values() {
+        for sound in soundboard.get_sounds().values() {
+            if let Some(score) = matcher.fuzzy_match(sound.get_name(), &raw_args) {
                 if possible_matches.len() < max_matches {
                     possible_matches.push((score, sound.clone()));
                     possible_matches.sort_unstable_by_key(|e| std::cmp::Reverse(e.0));
@@ -310,7 +280,7 @@ async fn handle_sound_command(
             acc.push(
                 InlineKeyboardButton::with_callback_data_struct(
                     acc.len().to_string(),
-                    &CallbackSoundSelectionData::new(method, elem.1.name.clone()),
+                    &CallbackSoundSelectionData::new(method, elem.1.get_name()),
                 )
                 .unwrap(),
             );
@@ -319,7 +289,7 @@ async fn handle_sound_command(
 
         let mut index: usize = 0;
         let all_matches_string = possible_matches.iter().fold(String::new(), |acc, elem| {
-            let res = format!("{} \n {}. {} ({})", acc, index, elem.1.name.clone(), elem.0);
+            let res = format!("{} \n {}. {} ({})", acc, index, elem.1.get_name(), elem.0);
             index += 1;
             res
         });
@@ -343,10 +313,10 @@ async fn handle_sound_command(
 }
 
 fn play_sound_with_name(sender: &Sender<sound::Message>, name: &str) {
-    for soundboard in &config::MainConfig::read().soundboards {
-        for sound in soundboard.sounds.as_ref().unwrap() {
-            if sound.name == name {
-                send_sound_config(sender, sound.clone()).expect("sound channel error");
+    for soundboard in soundboards::get_soundboards().values() {
+        for sound in soundboard.get_sounds().values() {
+            if sound.get_name() == name {
+                play_sound(sender, *sound.get_id()).expect("sound channel error");
             }
         }
     }
@@ -354,9 +324,9 @@ fn play_sound_with_name(sender: &Sender<sound::Message>, name: &str) {
 
 async fn send_sound_with_name(api: &Api, message: Message, name: &str) -> Result<()> {
     let mut maybe_sound = None;
-    for soundboard in &config::MainConfig::read().soundboards {
-        for sound in soundboard.sounds.as_ref().unwrap() {
-            if sound.name == name {
+    for soundboard in soundboards::get_soundboards().values() {
+        for sound in soundboard.get_sounds().values() {
+            if sound.get_name() == name {
                 maybe_sound = Some(sound.clone());
             }
         }
@@ -364,18 +334,21 @@ async fn send_sound_with_name(api: &Api, message: Message, name: &str) -> Result
 
     if let Some(sound) = maybe_sound {
         let sound_clone = sound.clone();
-        let local_path = download::get_local_path_from_sound_config_async(&sound_clone).await?;
+        let local_path =
+            task::spawn_blocking(move || download::get_local_path_from_sound_config(&sound_clone))
+                .await??;
         let file = tgbot::types::InputFile::path(local_path.as_path())
             .await
             .unwrap();
-        let method = tgbot::methods::SendAudio::new(message.get_chat_id(), file).title(&sound.name);
+        let method =
+            tgbot::methods::SendAudio::new(message.get_chat_id(), file).title(sound.get_name());
         if let Err(err) = api.execute(method).await {
             error!("telegram api error: {}", err);
             let file = tgbot::types::InputFile::path(local_path.as_path())
                 .await
                 .unwrap();
-            let method =
-                tgbot::methods::SendDocument::new(message.get_chat_id(), file).caption(&sound.name);
+            let method = tgbot::methods::SendDocument::new(message.get_chat_id(), file)
+                .caption(sound.get_name());
             if let Err(err) = api.execute(method).await {
                 error!("telegram api error: {}", err);
             }

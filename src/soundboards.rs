@@ -48,6 +48,20 @@ pub fn reload_soundboards_from_disk() -> Result<()> {
     Ok(())
 }
 
+// pub fn save_soundboards_to_disk() -> Result<()> {
+//     for soundboard in get_soundboards().values() {
+//         soundboard.clone().save_to_disk();
+//     }
+//     Ok(())
+// }
+
+pub fn update_soundboards(soundboard: Soundboard) -> Result<()> {
+    let mut cloned_map = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
+    cloned_map.insert(soundboard.id, soundboard);
+    *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(cloned_map);
+    Ok(())
+}
+
 /// Returns the soundboard with the specified id
 pub fn get_soundboard(
     id: Ulid,
@@ -93,21 +107,29 @@ pub struct Soundboard {
 
     id: SoundboardId,
     path: PathBuf,
-    last_hash: u64,
+    last_hash: Option<u64>,
 }
 
 impl Soundboard {
-    pub fn new(name: &str, path: &str) -> Self {
-        Self {
+    pub fn new(name: &str) -> Result<Self> {
+        let mut path = helpers::get_soundboards_path().unwrap();
+        path.push(name);
+        path = path.with_extension("json");
+
+        if path.exists() {
+            return Err(anyhow!("soundboard path already exists {}", name));
+        }
+
+        Ok(Self {
             name: name.to_owned(),
             hotkey: None,
             position: None,
             sounds: SoundMap::default(),
             sound_positions: Vec::new(),
             id: Ulid::new(),
-            path: PathBuf::from(path),
-            last_hash: 0,
-        }
+            path,
+            last_hash: None,
+        })
     }
 
     fn from_config(soundboard_path: &Path, config: SoundboardConfig) -> Result<Self> {
@@ -129,7 +151,7 @@ impl Soundboard {
             }
         };
         Ok(Self {
-            last_hash: hash,
+            last_hash: Some(hash),
             name: config.name,
             position: config.position,
             hotkey,
@@ -143,33 +165,77 @@ impl Soundboard {
     /// Save soundboard to disk
     ///
     /// fails if soundboard on disk was modified from our last load from disk
-    // pub fn save_to_disk(&mut self) -> Result<()> {
-    //     let mut soundboard_map: SoundboardMap = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
-    //     let mut config = SoundboardConfig::new(self.name.as_str());
+    pub fn save_to_disk(&mut self) -> Result<()> {
+        let mut config = SoundboardConfig::new(self.name.as_str());
 
-    //     if let Some(val) = soundboard_map.get_mut(&self.id) {
-    //         if self.last_hash == 0 {
-    //             panic!("should never be 0 for old soundboard");
-    //         }
-    //         save_soundboard_config(self.path.as_path(), &config, Some(self.last_hash))?;
-    //         *val = self.clone();
-    //         *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
-    //     } else {
-    //         if self.last_hash != 0 {
-    //             panic!("should never be not 0 for new soundboard");
-    //         }
-    //         save_soundboard_config(self.path.as_path(), &config, None)?;
-    //         soundboard_map.insert(self.id, self.clone());
-    //         *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
-    //     }
-    //     self.last_hash = utils::calculate_hash(&config);
-    //     Ok(())
-    // }
+        if let Some(hotkey) = self.get_hotkey() {
+            config.hotkey = Some(hotkey.to_string());
+        }
+
+        config.position = *self.get_position();
+        config.sounds = Some(
+            self.iter()
+                .map(|s| SoundConfig::from(s))
+                .collect::<Vec<SoundConfig>>(),
+        );
+
+        save_soundboard_config(self.path.as_path(), &config, self.last_hash)?;
+
+        self.last_hash = Some(utils::calculate_hash(&config));
+        Ok(())
+    }
 
     /// Add sound to soundboard
-    pub fn insert_sound(&mut self, sound: Sound) -> Option<Sound> {
+    pub fn add_sound(&mut self, sound: Sound) -> Result<()> {
+        if let Source::Local { path } = sound.get_source() {
+            let path = PathBuf::from(path);
+            if path.is_absolute() && !path.exists() {
+                return Err(anyhow!(
+                    "local sound file does not exist: {}",
+                    path.display()
+                ));
+            } else {
+                let mut sound_path = self.get_sounds_path()?;
+                sound_path.push(path);
+                if !sound_path.exists() {
+                    return Err(anyhow!(
+                        "local sound file does not exist: {}",
+                        sound_path.display()
+                    ));
+                }
+            }
+        }
         self.sound_positions.push(sound.id);
-        self.sounds.insert(sound.id, sound)
+        self.sounds.insert(sound.id, sound);
+        Ok(())
+    }
+
+    pub fn add_sound_with_file_path(&mut self, sound: Sound, source_path: &Path) -> Result<()> {
+        if let Source::Local { path } = sound.get_source() {
+            let mut sound_path = self.get_sounds_path()?;
+            sound_path.push(path);
+            if sound_path.exists() {
+                return Err(anyhow!(
+                    "local sound file already exists: {}",
+                    sound_path.display()
+                ));
+            }
+            let new_sounds_path = get_soundboard_sound_directory(self.get_path())?;
+
+            if !new_sounds_path.exists() {
+                std::fs::create_dir(new_sounds_path)?;
+            }
+            std::fs::copy(source_path, &sound_path).with_context(|| {
+                format!(
+                    "cant copy file from {} to {}",
+                    source_path.display(),
+                    &sound_path.display()
+                )
+            })?;
+            self.add_sound(sound)
+        } else {
+            Err(anyhow!("not a local source sound"))
+        }
     }
 
     pub fn get_id(&self) -> &Ulid {
@@ -207,7 +273,7 @@ impl Soundboard {
         &self.sound_positions
     }
 
-    pub fn iter<'a>(&self) -> SoundIterator {
+    pub fn iter(&self) -> SoundIterator {
         SoundIterator::new(&self)
     }
 }
@@ -341,10 +407,14 @@ impl Sound {
 #[derive(Debug, Deserialize, Clone, Serialize, Eq, PartialEq, Hash, Default)]
 struct SoundboardConfig {
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hotkey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub position: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<bool>,
     #[serde(rename = "sound")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sounds: Option<Vec<SoundConfig>>,
 }
 
@@ -361,18 +431,22 @@ impl SoundboardConfig {
 struct SoundConfig {
     pub name: String,
     pub source: Source,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hotkey: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub start: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub end: Option<f32>,
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Eq, Hash)]
 pub enum Source {
     #[serde(rename = "local")]
-    Local { path: PathBuf },
+    Local { path: String },
     #[serde(rename = "http")]
     Http {
         url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
         headers: Option<Vec<HeaderConfig>>,
     },
     #[serde(rename = "youtube")]
@@ -395,6 +469,23 @@ impl SoundConfig {
             hotkey: None,
             start: None,
             end: None,
+        }
+    }
+
+    pub fn from(sound: &Sound) -> Self {
+        let hotkey = {
+            if let Some(hotkey) = sound.get_hotkey() {
+                Some(hotkey.to_string())
+            } else {
+                None
+            }
+        };
+        Self {
+            name: sound.get_name().to_string(),
+            source: sound.get_source().clone(),
+            hotkey,
+            start: sound.get_start(),
+            end: sound.get_end(),
         }
     }
 }
@@ -439,13 +530,9 @@ fn load_and_parse_soundboards() -> Result<SoundboardMap> {
             continue;
         }
         let path = entry.unwrap().path();
-        let extension: &str = path
-            .extension()
-            .unwrap_or_default()
-            .to_str()
-            .unwrap_or_default();
+        let extension = path.extension().unwrap_or_default().to_string_lossy();
 
-        if extension == "toml" {
+        if extension == "toml" || extension == "json" {
             let sb_config = load_soundboard_config(&path)
                 .with_context(|| format!("Failed to load soundboard {}", path.display()))?;
             if sb_config.disabled.unwrap_or_default() {
@@ -471,16 +558,39 @@ fn load_and_parse_soundboards() -> Result<SoundboardMap> {
 }
 
 fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
-    let toml_str = fs::read_to_string(&soundboard_path)?;
-    let soundboard_config: SoundboardConfig = toml::from_str(&toml_str)?;
+    let file_str = fs::read_to_string(&soundboard_path)?;
+    let soundboard_config: SoundboardConfig;
+
+    if PathBuf::from(soundboard_path)
+        .extension()
+        .unwrap_or_default()
+        .to_string_lossy()
+        == "toml"
+    {
+        soundboard_config = toml::from_str(&file_str)?;
+    } else {
+        soundboard_config = serde_json::from_str(&file_str)?;
+    }
     Ok(soundboard_config)
 }
 
 fn check_soundboard_config_mutated_on_disk(path: &Path, last_hash: u64) -> Result<bool> {
-    let toml_str = fs::read_to_string(&path)
+    let file_str = fs::read_to_string(&path)
         .with_context(|| format!("Failed to read_to_string {}", path.display()))?;
-    let soundboard_config: SoundboardConfig =
-        toml::from_str(&toml_str).with_context(|| format!("Failed to parse {}", path.display()))?;
+
+    let soundboard_config: SoundboardConfig;
+    if PathBuf::from(path)
+        .extension()
+        .unwrap_or_default()
+        .to_string_lossy()
+        == "toml"
+    {
+        soundboard_config = toml::from_str(&file_str)
+            .with_context(|| format!("Failed to parse {}", path.display()))?;
+    } else {
+        soundboard_config = serde_json::from_str(&file_str)
+            .with_context(|| format!("Failed to parse {}", path.display()))?;
+    }
 
     let old_config_hash = utils::calculate_hash(&soundboard_config);
 
@@ -517,14 +627,35 @@ fn save_soundboard_config(
         ));
     }
 
-    let pretty_string =
-        toml::to_string_pretty(&config).context("failed to serialize soundboard config")?;
-    fs::write(&soundboard_config_path, pretty_string)
+    let soundboard_json_path = PathBuf::from(soundboard_config_path).with_extension("json");
+
+    let pretty_json_string =
+        serde_json::to_string_pretty(&config).context("failed to serialize soundboard config")?;
+    fs::write(&soundboard_json_path, pretty_json_string)
         .with_context(|| format!("Failed to write {}", &soundboard_config_path.display()))?;
+
+    if soundboard_config_path.exists()
+        && soundboard_config_path
+            .extension()
+            .unwrap_or_default()
+            .to_string_lossy()
+            == "toml"
+    {
+        fs::rename(
+            soundboard_config_path,
+            PathBuf::from(soundboard_config_path).with_extension("toml_disabled_oldformat"),
+        )
+        .unwrap();
+    }
+
+    // let pretty_string =
+    //     toml::to_string_pretty(&config).context("failed to serialize soundboard config")?;
+    // fs::write(&soundboard_config_path, pretty_string)
+    //     .with_context(|| format!("Failed to write {}", &soundboard_config_path.display()))?;
 
     info!(
         "Saved config file at {}",
-        soundboard_config_path.to_str().unwrap()
+        soundboard_json_path.to_str().unwrap()
     );
     Ok(())
 }
