@@ -33,15 +33,22 @@ static GLOBAL_SOUNDBOARD_MAP: GlobalSoundboardMap = Lazy::new(|| {
     parking_lot::RwLock::new(std::sync::Arc::new(soundboards))
 });
 
+/// Returns all soundboards
+///
+/// Lazily initialized
 pub fn get_soundboards() -> std::sync::Arc<SoundboardMap> {
     GLOBAL_SOUNDBOARD_MAP.read().clone()
 }
 
-pub fn load_soundboards_from_disk() -> Result<()> {
+/// Reloads all soundboards from disk
+///
+/// Expensive
+pub fn reload_soundboards_from_disk() -> Result<()> {
     *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(load_and_parse_soundboards()?);
     Ok(())
 }
 
+/// Returns the soundboard with the specified id
 pub fn get_soundboard(
     id: Ulid,
 ) -> Result<owning_ref::OwningRef<std::sync::Arc<SoundboardMap>, Soundboard>> {
@@ -51,6 +58,7 @@ pub fn get_soundboard(
     })
 }
 
+/// Returns the sound with specified id for the specified soundboard
 pub fn get_sound(soundboard_id: Ulid, sound_id: Ulid) -> Option<Sound> {
     if let Some(soundboard) = GLOBAL_SOUNDBOARD_MAP.read().clone().get(&soundboard_id) {
         if let Some(sound) = soundboard.sounds.get(&sound_id) {
@@ -61,6 +69,7 @@ pub fn get_sound(soundboard_id: Ulid, sound_id: Ulid) -> Option<Sound> {
     None
 }
 
+/// Iterates through all soundboards and checks for the specified sound_id
 pub fn find_sound(sound_id: Ulid) -> Option<Sound> {
     for soundboard in GLOBAL_SOUNDBOARD_MAP.read().values() {
         if let Some(sound) = soundboard.get_sounds().get(&sound_id) {
@@ -71,6 +80,7 @@ pub fn find_sound(sound_id: Ulid) -> Option<Sound> {
     None
 }
 
+/// Soundboard
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Soundboard {
     config: SoundboardConfig,
@@ -119,6 +129,9 @@ impl Soundboard {
         })
     }
 
+    /// Save soundboard to disk
+    ///
+    /// fails if soundboard on disk was modified from our last load from disk
     pub fn save_to_disk(&mut self) -> Result<()> {
         let mut soundboard_map: SoundboardMap = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
 
@@ -141,6 +154,7 @@ impl Soundboard {
         Ok(())
     }
 
+    /// Add sound to soundboard
     pub fn insert_sound(&mut self, sound: Sound) -> Option<Sound> {
         self.sounds.insert(sound.id, sound)
     }
@@ -157,6 +171,9 @@ impl Soundboard {
         &self.path
     }
 
+    /// Returns the local sounds directory for the soundboard
+    ///
+    /// name: soundboard file name without .toml
     pub fn get_sounds_path(&self) -> Result<PathBuf> {
         get_soundboard_sound_directory(self.get_path())
     }
@@ -171,25 +188,6 @@ impl Soundboard {
 
     pub fn get_sounds(&self) -> &SoundMap {
         &self.sounds
-    }
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize, Eq, PartialEq, Hash, Default)]
-struct SoundboardConfig {
-    pub name: String,
-    pub hotkey: Option<String>,
-    pub position: Option<usize>,
-    pub disabled: Option<bool>,
-    #[serde(rename = "sound")]
-    pub sounds: Option<Vec<SoundConfig>>,
-}
-
-impl SoundboardConfig {
-    pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_owned(),
-            ..Self::default()
-        }
     }
 }
 
@@ -291,6 +289,34 @@ impl Sound {
     }
 }
 
+#[derive(Debug, Deserialize, Clone, Serialize, Eq, PartialEq, Hash, Default)]
+struct SoundboardConfig {
+    pub name: String,
+    pub hotkey: Option<String>,
+    pub position: Option<usize>,
+    pub disabled: Option<bool>,
+    #[serde(rename = "sound")]
+    pub sounds: Option<Vec<SoundConfig>>,
+}
+
+impl SoundboardConfig {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_owned(),
+            ..Self::default()
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone, Serialize)]
+struct SoundConfig {
+    pub name: String,
+    pub source: Source,
+    pub hotkey: Option<String>,
+    pub start: Option<f32>,
+    pub end: Option<f32>,
+}
+
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Eq, Hash)]
 pub enum Source {
     #[serde(rename = "local")]
@@ -306,13 +332,10 @@ pub enum Source {
     TTS { ssml: String, lang: String },
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
-struct SoundConfig {
+#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Default, Eq)]
+pub struct HeaderConfig {
     pub name: String,
-    pub source: Source,
-    pub hotkey: Option<String>,
-    pub start: Option<f32>,
-    pub end: Option<f32>,
+    pub value: String,
 }
 
 impl SoundConfig {
@@ -348,12 +371,6 @@ impl Hash for SoundConfig {
         ((self.start.unwrap_or_default() * 10.0) as usize).hash(state);
         ((self.end.unwrap_or_default() * 10.0) as usize).hash(state);
     }
-}
-
-#[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Default, Eq)]
-pub struct HeaderConfig {
-    pub name: String,
-    pub value: String,
 }
 
 fn soundboard_position_sorter(a: &Option<usize>, b: &Option<usize>) -> std::cmp::Ordering {
