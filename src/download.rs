@@ -57,7 +57,7 @@ pub fn local_path_for_sound_config_exists(sound: &soundboards::Sound) -> Result<
             }
         }
         soundboards::Source::Local { path } => {
-            Ok(Some(resolve_local_sound_path(sound, path.to_path_buf())?))
+            Ok(Some(resolve_local_sound_path(sound, PathBuf::from(path))?))
         }
         soundboards::Source::Youtube { id } => {
             let string_hash = utils::calculate_hash(&id).to_string();
@@ -100,7 +100,7 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
             }
             download_file_if_needed(&url, headers_tuple)
         }
-        soundboards::Source::Local { path } => resolve_local_sound_path(sound, path.to_path_buf()),
+        soundboards::Source::Local { path } => resolve_local_sound_path(sound, PathBuf::from(path)),
         soundboards::Source::Youtube { id } => {
             let string_hash = utils::calculate_hash(&id).to_string();
             let mut file_path = std::env::temp_dir();
