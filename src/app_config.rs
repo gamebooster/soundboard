@@ -29,6 +29,9 @@ static GLOBAL_APP_CONFIG: GlobalAppConfig = Lazy::new(|| {
     parking_lot::RwLock::new(std::sync::Arc::new(app_config))
 });
 
+/// AppConfig
+///
+/// to preserve changes you need to call save_app_config_to_disk
 #[derive(Debug, Deserialize, Default, Clone, Serialize)]
 pub struct AppConfig {
     pub input_device: Option<String>,
@@ -48,6 +51,26 @@ pub struct AppConfig {
     pub no_embed_web: Option<bool>,
 }
 
+/// Returns the global app config
+///
+/// Lazily initialized and merged from command line args, enviroment args and if existing a config file
+pub fn get_app_config() -> std::sync::Arc<AppConfig> {
+    GLOBAL_APP_CONFIG.read().clone()
+}
+
+/// Reload the app config from a possibly changed config file
+pub fn reload_app_config_from_disk() -> Result<()> {
+    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(load_and_merge_app_config()?);
+    Ok(())
+}
+
+fn save_app_config_to_disk(config: &AppConfig) -> Result<()> {
+    save_app_config(config)?;
+    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(config.clone());
+    Ok(())
+}
+
+/// Merges the file config with command line args and enviroment args
 fn load_and_merge_app_config() -> Result<AppConfig> {
     let mut config = load_and_parse_app_config()?;
     let arguments = parse_arguments();
@@ -79,21 +102,7 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     Ok(config)
 }
 
-pub fn get_app_config() -> std::sync::Arc<AppConfig> {
-    GLOBAL_APP_CONFIG.read().clone()
-}
-
-pub fn load_app_config_from_disk() -> Result<()> {
-    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(load_and_merge_app_config()?);
-    Ok(())
-}
-
-pub fn save_app_config_to_disk(config: &AppConfig) -> Result<()> {
-    save_app_config(config)?;
-    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(config.clone());
-    Ok(())
-}
-
+/// Finds the config file and try to parse it
 fn load_and_parse_app_config() -> Result<AppConfig> {
     let config_path = get_config_file_path().context("Failed to get config file path")?;
 
