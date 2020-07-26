@@ -39,11 +39,11 @@ fn select_soundboard(
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> (sound_state_list::SoundStateList, hotkey::HotkeyManager) {
     let soundboard = soundboards::get_soundboards().get(id).unwrap().clone();
-    let current_sounds = soundboard.get_sounds();
-    let hotkeys = register_hotkeys(current_sounds.values(), gui_sender);
+    let current_sounds = soundboard.iter();
+    let hotkeys = register_hotkeys(current_sounds, gui_sender);
     let mut sound_list = sound_state_list::SoundStateList::new(
         &soundboard.get_name(),
-        current_sounds.values().cloned().collect(),
+        current_sounds.cloned().collect(),
     );
     sound_list.state.select(Some(0));
     (sound_list, hotkeys)

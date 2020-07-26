@@ -80,35 +80,44 @@ pub fn find_sound(sound_id: Ulid) -> Option<Sound> {
     None
 }
 
+type SoundPositions = Vec<SoundId>;
+
 /// Soundboard
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Soundboard {
-    config: SoundboardConfig,
+    name: String,
+    hotkey: Option<hotkey::Hotkey>,
+    position: Option<usize>,
+    sounds: SoundMap,
+    sound_positions: SoundPositions,
 
     id: SoundboardId,
     path: PathBuf,
     last_hash: u64,
-    hotkey: Option<hotkey::Hotkey>,
-    sounds: SoundMap,
 }
 
 impl Soundboard {
     pub fn new(name: &str, path: &str) -> Self {
         Self {
-            config: SoundboardConfig::new(name),
+            name: name.to_owned(),
             hotkey: None,
+            position: None,
             sounds: SoundMap::default(),
+            sound_positions: Vec::new(),
             id: Ulid::new(),
-            last_hash: 0,
             path: PathBuf::from(path),
+            last_hash: 0,
         }
     }
 
     fn from_config(soundboard_path: &Path, config: SoundboardConfig) -> Result<Self> {
         let mut sound_map = SoundMap::default();
-        if let Some(sound_configs) = config.sounds.as_ref() {
-            for sound_config in sound_configs.iter() {
-                let new_sound = Sound::from_config(sound_config.clone())?;
+        let hash = utils::calculate_hash(&config);
+        let mut sound_positions = Vec::new();
+        if let Some(sound_configs) = config.sounds {
+            for sound_config in sound_configs {
+                let new_sound = Sound::from_config(sound_config)?;
+                sound_positions.push(new_sound.id);
                 sound_map.insert(new_sound.id, new_sound);
             }
         }
@@ -120,10 +129,12 @@ impl Soundboard {
             }
         };
         Ok(Self {
-            last_hash: utils::calculate_hash(&config),
-            config,
+            last_hash: hash,
+            name: config.name,
+            position: config.position,
             hotkey,
             sounds: sound_map,
+            sound_positions,
             path: PathBuf::from(soundboard_path),
             id: Ulid::new(),
         })
@@ -132,30 +143,32 @@ impl Soundboard {
     /// Save soundboard to disk
     ///
     /// fails if soundboard on disk was modified from our last load from disk
-    pub fn save_to_disk(&mut self) -> Result<()> {
-        let mut soundboard_map: SoundboardMap = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
+    // pub fn save_to_disk(&mut self) -> Result<()> {
+    //     let mut soundboard_map: SoundboardMap = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
+    //     let mut config = SoundboardConfig::new(self.name.as_str());
 
-        if let Some(val) = soundboard_map.get_mut(&self.id) {
-            if self.last_hash == 0 {
-                panic!("should never be 0 for old soundboard");
-            }
-            save_soundboard_config(self.path.as_path(), &self.config, Some(self.last_hash))?;
-            *val = self.clone();
-            *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
-        } else {
-            if self.last_hash != 0 {
-                panic!("should never be not 0 for new soundboard");
-            }
-            save_soundboard_config(self.path.as_path(), &self.config, None)?;
-            soundboard_map.insert(self.id, self.clone());
-            *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
-        }
-        self.last_hash = utils::calculate_hash(&self.config);
-        Ok(())
-    }
+    //     if let Some(val) = soundboard_map.get_mut(&self.id) {
+    //         if self.last_hash == 0 {
+    //             panic!("should never be 0 for old soundboard");
+    //         }
+    //         save_soundboard_config(self.path.as_path(), &config, Some(self.last_hash))?;
+    //         *val = self.clone();
+    //         *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
+    //     } else {
+    //         if self.last_hash != 0 {
+    //             panic!("should never be not 0 for new soundboard");
+    //         }
+    //         save_soundboard_config(self.path.as_path(), &config, None)?;
+    //         soundboard_map.insert(self.id, self.clone());
+    //         *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(soundboard_map);
+    //     }
+    //     self.last_hash = utils::calculate_hash(&config);
+    //     Ok(())
+    // }
 
     /// Add sound to soundboard
     pub fn insert_sound(&mut self, sound: Sound) -> Option<Sound> {
+        self.sound_positions.push(sound.id);
         self.sounds.insert(sound.id, sound)
     }
 
@@ -164,7 +177,7 @@ impl Soundboard {
     }
 
     pub fn get_name(&self) -> &str {
-        &self.config.name
+        &self.name
     }
 
     pub fn get_path(&self) -> &Path {
@@ -179,7 +192,7 @@ impl Soundboard {
     }
 
     pub fn get_position(&self) -> &Option<usize> {
-        &self.config.position
+        &self.position
     }
 
     pub fn get_hotkey(&self) -> &Option<hotkey::Hotkey> {
@@ -188,6 +201,42 @@ impl Soundboard {
 
     pub fn get_sounds(&self) -> &SoundMap {
         &self.sounds
+    }
+
+    pub fn get_sound_positions(&self) -> &SoundPositions {
+        &self.sound_positions
+    }
+
+    pub fn iter<'a>(&self) -> SoundIterator {
+        SoundIterator::new(&self)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SoundIterator<'a> {
+    curr: usize,
+    soundboard: &'a Soundboard,
+}
+
+impl<'a> SoundIterator<'a> {
+    pub fn new(soundboard: &'a Soundboard) -> Self {
+        Self {
+            curr: 0,
+            soundboard,
+        }
+    }
+}
+
+impl<'a> Iterator for SoundIterator<'a> {
+    type Item = &'a Sound;
+
+    fn next(&mut self) -> Option<&'a Sound> {
+        if let Some(id) = self.soundboard.get_sound_positions().get(self.curr) {
+            self.curr += 1;
+            self.soundboard.get_sounds().get(id)
+        } else {
+            None
+        }
     }
 }
 
