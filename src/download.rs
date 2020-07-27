@@ -84,6 +84,21 @@ pub fn local_path_for_sound_config_exists(sound: &soundboards::Sound) -> Result<
         soundboards::Source::TTS { ssml: _, lang: _ } => {
             Err(anyhow!("text-to-speech feature not compiled in binary"))
         }
+        #[cfg(feature = "spotify")]
+        soundboards::Source::Spotify { id } => {
+            let string_hash = utils::calculate_hash(&id).to_string();
+            let mut file_path = std::env::temp_dir();
+            file_path.push(string_hash);
+            if file_path.exists() {
+                Ok(Some(file_path))
+            } else {
+                Ok(None)
+            }
+        }
+        #[cfg(not(feature = "spotify"))]
+        soundboards::Source::Spotify { id: _ } => {
+            Err(anyhow!("spotify feature not compiled in binary"))
+        }
     }
 }
 
@@ -173,6 +188,22 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
         soundboards::Source::TTS { ssml: _, lang: _ } => {
             Err(anyhow!("text-to-speech feature not compiled in binary"))
         }
+
+        #[cfg(feature = "spotify")]
+        soundboards::Source::Spotify { id } => {
+            let string_hash = utils::calculate_hash(&id).to_string();
+            let mut file_path = std::env::temp_dir();
+            file_path.push(string_hash);
+            if file_path.exists() {
+                return Ok(file_path);
+            }
+
+            download_from_spotify(file_path, id)
+        }
+        #[cfg(not(feature = "spotify"))]
+        soundboards::Source::Spotify { id: _ } => {
+            Err(anyhow!("spotify feature not compiled in binary"))
+        }
     }
 }
 
@@ -200,4 +231,112 @@ pub fn download_file_if_needed(url: &str, headers: Vec<(String, String)>) -> Res
     } else {
         Err(anyhow!("request failed"))
     }
+}
+
+// TODO: wait for libspotify to get tokio 0.2 support
+#[cfg(feature = "spotify")]
+fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
+    Err(anyhow!("spotify feature not ready: upstream slow"))
+
+    // use futures::{future, Future};
+    // use librespot::audio::{AudioDecrypt, AudioFile, StreamLoaderController};
+    // use librespot::core::authentication::Credentials;
+    // use librespot::core::config::SessionConfig;
+    // use librespot::core::session::Session;
+    // use librespot::core::spotify_id::SpotifyId;
+    // use librespot::metadata::{AudioItem, FileFormat};
+    // use librespot::playback::config::PlayerConfig;
+    // use std::io::{Read, Seek, SeekFrom};
+    // use tokio::runtime::{Builder, Runtime};
+
+    // let mut runtime = Builder::new()
+    //     .basic_scheduler()
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
+    // let handle = runtime.handle();
+
+    // let session_config = SessionConfig::default();
+
+    // let credentials = Credentials::with_password(
+    //     std::env::var("SB_SPOTIFY_USER").unwrap(),
+    //     std::env::var("SB_SPOTIFY_PASS").unwrap(),
+    // );
+
+    // let track = SpotifyId::from_base62(&id).unwrap();
+
+    // println!("Connecting ..");
+    // let session = runtime
+    //     .block_on(Session::connect(session_config, credentials, None, handle))
+    //     .unwrap();
+
+    // let audio = match runtime.block_on(AudioItem::get_audio_item(&session, track)) {
+    //     Ok(audio) => audio,
+    //     Err(err) => {
+    //         return Err(anyhow!("Unable to load audio item. {}", err));
+    //     }
+    // };
+
+    // info!("Loading <{}> with Spotify URI <{}>", audio.name, audio.uri);
+
+    // let duration_ms = audio.duration as u32;
+
+    // // (Most) podcasts seem to support only 96 bit Vorbis, so fall back to it
+    // let formats = [
+    //     FileFormat::OGG_VORBIS_96,
+    //     FileFormat::OGG_VORBIS_160,
+    //     FileFormat::OGG_VORBIS_320,
+    // ];
+    // let format = formats
+    //     .iter()
+    //     .find(|format| audio.files.contains_key(format))
+    //     .unwrap();
+
+    // let file_id = match audio.files.get(&format) {
+    //     Some(&file_id) => file_id,
+    //     None => {
+    //         return Err(anyhow!(
+    //             "<{}> in not available in format {:?}",
+    //             audio.name,
+    //             format
+    //         ));
+    //     }
+    // };
+
+    // const bytes_per_second: usize = 64 * 1024;
+    // let play_from_beginning = true;
+
+    // let key = session.audio_key().request(track, file_id);
+    // let encrypted_file = AudioFile::open(&session, file_id, bytes_per_second, play_from_beginning);
+
+    // let encrypted_file = match runtime.block_on(encrypted_file) {
+    //     Ok(encrypted_file) => encrypted_file,
+    //     Err(err) => {
+    //         return Err(anyhow!("Unable to load encrypted file. {}", err));
+    //     }
+    // };
+
+    // let mut stream_loader_controller = encrypted_file.get_stream_loader_controller();
+
+    // stream_loader_controller.set_stream_mode();
+
+    // let key = match runtime.block_on(key) {
+    //     Ok(key) => key,
+    //     Err(err) => {
+    //         return Err(anyhow!("Unable to load decryption key. {}", err));
+    //     }
+    // };
+
+    // let mut decrypted_file = AudioDecrypt::new(key, encrypted_file);
+
+    // println!("<{}> ({} ms) loaded", audio.name, audio.duration);
+
+    // let mut buffer = Vec::new();
+
+    // decrypted_file.seek(std::io::SeekFrom::Start(0xa7));
+    // decrypted_file.read_to_end(&mut buffer)?;
+
+    // std::fs::write(file_path, buffer)?;
+
+    // Ok(file_path)
 }

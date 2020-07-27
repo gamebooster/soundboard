@@ -453,6 +453,8 @@ pub enum Source {
     Youtube { id: String },
     #[serde(rename = "tts")]
     TTS { ssml: String, lang: String },
+    #[serde(rename = "spotify")]
+    Spotify { id: String },
 }
 
 #[derive(Debug, Deserialize, Clone, Serialize, PartialEq, Hash, Default, Eq)]
