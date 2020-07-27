@@ -4321,6 +4321,7 @@ dependencies = [
  "tgbot",
  "thiserror",
  "tokio 0.2.22",
+ "tokio-core",
  "toml",
  "tonic",
  "tui",
