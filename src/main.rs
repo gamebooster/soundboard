@@ -94,11 +94,13 @@ fn try_main() -> Result<()> {
         env_logger::builder()
             .filter_module("soundboard", log::LevelFilter::Error)
             .filter_module("warp", log::LevelFilter::Error)
+            .filter_module("librespot", log::LevelFilter::Error)
             .init();
     } else {
         env_logger::builder()
             .filter_module("soundboard", log::LevelFilter::Trace)
             .filter_module("warp", log::LevelFilter::Info)
+            .filter_module("librespot", log::LevelFilter::Trace)
             .init();
     }
 
