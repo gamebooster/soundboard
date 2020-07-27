@@ -55,6 +55,37 @@ pub(super) fn merge_option_with_args_and_env<T: From<String>>(
     }
 }
 
+pub(super) fn merge_bool_option_with_args_and_env(
+    config_option: &mut Option<bool>,
+    args: &clap::ArgMatches,
+    name: &str,
+) -> Result<()> {
+    let mut value = None;
+    if args.is_present(name) {
+        value = Some(args.value_of(name).unwrap().to_owned());
+    } else if let Ok(new_value) = std::env::var(get_env_name_from_cli_name(name)) {
+        value = Some(new_value);
+    }
+
+    if value.is_none() {
+        return Ok(());
+    }
+
+    match value.unwrap_or_default().as_str() {
+        "true" => *config_option = Some(true),
+        "false" => *config_option = Some(false),
+        value => {
+            return Err(anyhow!(
+                "Unsupported value for boolean option {} = {}",
+                name,
+                value
+            ))
+        }
+    }
+
+    Ok(())
+}
+
 pub(super) fn merge_flag_with_args_and_env(
     config_option: &mut Option<bool>,
     args: &clap::ArgMatches,

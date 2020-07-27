@@ -168,8 +168,8 @@ pub fn run_sound_loop(
     );
 
     let loop_back_device = {
-        if !app_config::get_app_config()
-            .no_duplex_device
+        if app_config::get_app_config()
+            .stream_input_to_loop
             .unwrap_or_default()
         {
             let ms_loop_device_clone = ms_loop_device.clone();
@@ -385,8 +385,8 @@ fn run_sound_message_loop(
                         result.unwrap()
                     };
 
-                    if app_config::get_app_config()
-                        .disable_simultaneous_playback
+                    if !app_config::get_app_config()
+                        .simultaneous_playback
                         .unwrap_or_default()
                     {
                         gui_sender

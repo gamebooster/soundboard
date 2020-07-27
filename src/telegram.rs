@@ -515,7 +515,11 @@ impl UpdateHandler for Handler {
 
 #[tokio::main]
 pub async fn run(sender: Sender<sound::Message>, receiver: Receiver<sound::Message>) {
-    let token = env::var("SB_TELEGRAM_TOKEN").expect("SB_TELEGRAM_TOKEN is not set");
+    let token = app_config::get_app_config()
+        .telegram_token
+        .as_ref()
+        .unwrap()
+        .clone();
     let api = Api::new(Config::new(token)).expect("Failed to create API");
     api.execute(tgbot::methods::SetMyCommands::new(vec![
         tgbot::types::BotCommand::new("play", "play the sound with the provided name (fuzzy)")

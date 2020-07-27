@@ -12,7 +12,7 @@ use iced::Settings;
 #[cfg(feature = "gui")]
 mod gui;
 
-#[cfg(feature = "terminal-ui")]
+#[cfg(feature = "textui")]
 mod tui;
 
 use std::process;
@@ -20,7 +20,7 @@ use std::process;
 #[cfg(feature = "http")]
 mod http_server;
 
-#[cfg(feature = "telegram")]
+#[cfg(feature = "telegram-bot")]
 mod telegram;
 
 #[cfg(feature = "autoloop")]
@@ -47,9 +47,9 @@ soundboard encountered an fatal error:
     };
   };
     panic::set_hook(Box::new(|panic_info| {
-        #[cfg(feature = "terminal-ui")]
+        #[cfg(feature = "textui")]
         let _ = crossterm::terminal::disable_raw_mode();
-        #[cfg(feature = "terminal-ui")]
+        #[cfg(feature = "textui")]
         let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen);
 
         let mut location_info = String::new();
@@ -88,7 +88,7 @@ soundboard encountered an fatal error:
 }
 
 fn try_main() -> Result<()> {
-    let wants_terminal_ui = std::env::args().any(|s| s.contains("--terminal-ui"));
+    let wants_terminal_ui = std::env::args().any(|s| s.contains("--tui=true"));
     // less logging for terminal ui
     if wants_terminal_ui {
         env_logger::builder()
@@ -207,10 +207,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if !app_config::get_app_config()
-            .no_http_server
-            .unwrap_or_default()
-        {
+        if !app_config::get_app_config().http_server.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -219,9 +216,14 @@ fn try_main() -> Result<()> {
         }
     }
 
-    #[cfg(feature = "telegram")]
+    #[cfg(feature = "telegram-bot")]
     {
-        if app_config::get_app_config().telegram.unwrap_or_default() {
+        if !app_config::get_app_config()
+            .telegram_token
+            .clone()
+            .unwrap_or_default()
+            .is_empty()
+        {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {
@@ -230,17 +232,9 @@ fn try_main() -> Result<()> {
         }
     }
 
-    if app_config::get_app_config()
-        .no_native_gui
-        .unwrap_or_default()
+    #[cfg(feature = "textui")]
     {
-        no_gui_routine()?;
-        return Ok(());
-    }
-
-    #[cfg(feature = "terminal-ui")]
-    {
-        if app_config::get_app_config().terminal_ui.unwrap_or_default() {
+        if app_config::get_app_config().tui.unwrap_or_default() {
             tui::draw_terminal(gui_sender, gui_receiver)?;
             return Ok(());
         }
@@ -248,9 +242,11 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "gui")]
     {
-        let mut settings = Settings::with_flags((gui_sender, gui_receiver));
-        settings.window.size = (500, 350);
-        gui::Soundboard::run(settings);
+        if app_config::get_app_config().gui.unwrap_or_default() {
+            let mut settings = Settings::with_flags((gui_sender, gui_receiver));
+            settings.window.size = (500, 350);
+            gui::Soundboard::run(settings);
+        }
     }
 
     no_gui_routine()
