@@ -39,16 +39,30 @@ pub struct AppConfig {
     pub loopback_device: Option<String>,
     pub stop_hotkey: Option<String>,
     pub http_socket_addr: Option<String>,
+    pub telegram_token: Option<String>,
+    pub spotify_user: Option<String>,
+    pub spotify_pass: Option<String>,
 
-    pub no_http_server: Option<bool>,
-    pub telegram: Option<bool>,
-    pub terminal_ui: Option<bool>,
-    pub no_native_gui: Option<bool>,
-    pub auto_loop_device: Option<bool>,
-    pub no_duplex_device: Option<bool>,
     pub print_possible_devices: Option<bool>,
-    pub disable_simultaneous_playback: Option<bool>,
-    pub no_embed_web: Option<bool>,
+
+    #[serde(default = "option_true")]
+    pub http_server: Option<bool>,
+    #[serde(default = "option_true")]
+    pub tui: Option<bool>,
+
+    pub gui: Option<bool>,
+    pub auto_loop_device: Option<bool>,
+    #[serde(default = "option_true")]
+    pub stream_input_to_loop: Option<bool>,
+    #[serde(default = "option_true")]
+    pub simultaneous_playback: Option<bool>,
+    /// use embed web ui html,js,css resources
+    #[serde(default = "option_true")]
+    pub embed_web: Option<bool>,
+}
+
+fn option_true() -> Option<bool> {
+    Some(true)
 }
 
 /// Returns the global app config
@@ -80,23 +94,34 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     merge_option_with_args_and_env(&mut config.loopback_device, &arguments, "loopback-device");
     merge_option_with_args_and_env(&mut config.stop_hotkey, &arguments, "stop-hotkey");
     merge_option_with_args_and_env(&mut config.http_socket_addr, &arguments, "http-socket-addr");
+    merge_option_with_args_and_env(&mut config.telegram_token, &arguments, "telegram-token");
+    merge_option_with_args_and_env(&mut config.spotify_user, &arguments, "spotify-user");
+    merge_option_with_args_and_env(&mut config.spotify_pass, &arguments, "spotify-pass");
 
-    merge_flag_with_args_and_env(&mut config.auto_loop_device, &arguments, "auto-loop-device");
-    merge_flag_with_args_and_env(&mut config.no_http_server, &arguments, "no-http-server");
-    merge_flag_with_args_and_env(&mut config.telegram, &arguments, "telegram");
-    merge_flag_with_args_and_env(&mut config.terminal_ui, &arguments, "terminal-ui");
-    merge_flag_with_args_and_env(&mut config.no_native_gui, &arguments, "no-native-gui");
-    merge_flag_with_args_and_env(&mut config.no_embed_web, &arguments, "no-embed-web");
-    merge_flag_with_args_and_env(&mut config.no_duplex_device, &arguments, "no-duplex-device");
+    merge_bool_option_with_args_and_env(
+        &mut config.auto_loop_device,
+        &arguments,
+        "auto-loop-device",
+    )?;
+    merge_bool_option_with_args_and_env(&mut config.http_server, &arguments, "http-server")?;
+    merge_bool_option_with_args_and_env(&mut config.tui, &arguments, "tui")?;
+    merge_bool_option_with_args_and_env(&mut config.gui, &arguments, "gui")?;
+    merge_bool_option_with_args_and_env(&mut config.embed_web, &arguments, "embed-web")?;
+    merge_bool_option_with_args_and_env(
+        &mut config.stream_input_to_loop,
+        &arguments,
+        "stream-input-to-loop",
+    )?;
+    merge_bool_option_with_args_and_env(
+        &mut config.simultaneous_playback,
+        &arguments,
+        "simultaneous-playback",
+    )?;
+
     merge_flag_with_args_and_env(
         &mut config.print_possible_devices,
         &arguments,
         "print-possible-devices",
-    );
-    merge_flag_with_args_and_env(
-        &mut config.disable_simultaneous_playback,
-        &arguments,
-        "disable-simultaneous-playback",
     );
 
     Ok(config)
@@ -165,15 +190,42 @@ fn parse_arguments() -> clap::ArgMatches {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("spotify-user")
+                .long("spotify-user")
+                .about("Sets the spotify user name to use spotify as source")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("spotify-pass")
+                .long("spotify-pass")
+                .about("Sets the spotify passowrd to use spotify as source")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("stop-hotkey")
+                .long("stop-hotkey")
+                .about("Sets the stop hotkey to stop all sounds")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("print-possible-devices")
                 .short('P')
                 .long("print-possible-devices")
                 .about("Print possible devices"),
         )
         .arg(
-            Arg::with_name("no-embed-web")
-                .long("no-embed-web")
-                .about("Do not use embed web ui files"),
+            Arg::with_name("simultaneous-playback")
+                .long("simultaneous-playback")
+                .takes_value(true)
+                .possible_values(&["true", "false"])
+                .about("Enable/disable simultaneous-playback of sounds"),
+        )
+        .arg(
+            Arg::with_name("stream-input-to-loop")
+                .long("stream-input-to-loop")
+                .takes_value(true)
+                .possible_values(&["true", "false"])
+                .about("Enable/disable to stream audio from input device to loopback device"),
         );
 
     #[cfg(feature = "autoloop")]
@@ -181,33 +233,56 @@ fn parse_arguments() -> clap::ArgMatches {
         Arg::with_name("auto-loop-device")
             .short('A')
             .long("auto-loop-device")
-            .about("Automatically create PulseAudio Loopback Device"),
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .about("Enable/disable the automatic creation of a PulseAudio loopback device"),
     );
 
     #[cfg(feature = "gui")]
     let matches = matches.arg(
-        Arg::with_name("no-native-gui")
-            .long("no-native-gui")
-            .about("Disable native gui"),
+        Arg::with_name("gui")
+            .long("gui")
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .about("Enable/disable the graphical user interface"),
     );
 
-    #[cfg(feature = "terminal-ui")]
+    #[cfg(feature = "textui")]
     let matches = matches.arg(
-        Arg::with_name("terminal-ui")
-            .long("terminal-ui")
-            .about("Enable terminal-ui"),
+        Arg::with_name("tui")
+            .long("tui")
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .about("Enable/disable the text user interface"),
     );
     #[cfg(feature = "http")]
     let matches = matches.arg(
-        Arg::with_name("no-http-server")
-            .long("no-http-server")
-            .about("Disable http server api and web ui"),
+        Arg::with_name("http-server")
+            .long("http-server")
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .about("Enable/disable the http server api and web user interface"),
     );
     #[cfg(feature = "http")]
     let matches = matches.arg(
         Arg::with_name("http-socket-addr")
             .long("http-socket-addr")
             .about("Specify the socket addr for http server")
+            .takes_value(true),
+    );
+    #[cfg(feature = "http")]
+    let matches = matches.arg(
+        Arg::with_name("embed-web")
+            .long("embed-web")
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .about("Enable/disable the usage of the embed web ui resource files."),
+    );
+    #[cfg(feature = "telegram-bot")]
+    let matches = matches.arg(
+        Arg::with_name("telegram-token")
+            .long("telegram-token")
+            .about("Set the telegram token for the telegram bot")
             .takes_value(true),
     );
     matches.get_matches()

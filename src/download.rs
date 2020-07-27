@@ -263,7 +263,6 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
         }
     };
 
-    println!("Connecting ..");
     let session = core.run(Session::connect(session_config, credentials, None, handle))?;
 
     let mut audio = match core.run(AudioItem::get_audio_item(&session, track)) {
@@ -292,12 +291,10 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
             {
                 audio
             } else {
-                Err(anyhow!("audio <{}> is not available", audio.uri))
+                return Err(anyhow!("audio <{}> is not available", audio.uri));
             }
         };
     }
-
-    let duration_ms = audio.duration as u32;
 
     // (Most) podcasts seem to support only 96 bit Vorbis, so fall back to it
     let formats = [
@@ -321,11 +318,11 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
         }
     };
 
-    const bytes_per_second: usize = 64 * 1024;
+    const BYTES_PER_SECOND: usize = 64 * 1024;
     let play_from_beginning = true;
 
     let key = session.audio_key().request(track, file_id);
-    let encrypted_file = AudioFile::open(&session, file_id, bytes_per_second, play_from_beginning);
+    let encrypted_file = AudioFile::open(&session, file_id, BYTES_PER_SECOND, play_from_beginning);
 
     let encrypted_file = match core.run(encrypted_file) {
         Ok(encrypted_file) => encrypted_file,
