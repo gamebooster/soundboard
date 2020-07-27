@@ -74,6 +74,16 @@ name = 'Nicht so tief, Rüdiger!'
 source = {local = {path = 'nicht-so-tief-rudiger.mp3'}}
 
 [[sound]]
+end = 10.5
+name = "Sound of Silence"
+source = {spotify = {id = "5y788ya4NvwhBznoDIcXwK"}}
+start = 2
+
+[[sound]]
+name = "Ameno"
+source = {spotify = {id = "7gov7ugWx71Oi6OQoxGLfS"}}
+
+[[sound]]
 end = 11
 name = "Traeumaschlauma"
 source = {youtube = {id = "W3fzR5gvbIw"}}

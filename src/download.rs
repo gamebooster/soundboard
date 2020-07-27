@@ -236,7 +236,153 @@ pub fn download_file_if_needed(url: &str, headers: Vec<(String, String)>) -> Res
 // TODO: wait for libspotify to get tokio 0.2 support
 #[cfg(feature = "spotify")]
 fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
-    Err(anyhow!("spotify feature not ready: upstream slow"))
+    use librespot::audio::{AudioDecrypt, AudioFile, StreamLoaderController};
+    use librespot::core::authentication::Credentials;
+    use librespot::core::config::SessionConfig;
+    use librespot::core::session::Session;
+    use librespot::core::spotify_id::SpotifyId;
+    use librespot::metadata::{AudioItem, FileFormat};
+    use librespot::playback::config::PlayerConfig;
+    use std::io::{Read, Seek, SeekFrom};
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use tokio_core::reactor::Core;
+
+    let session_config = SessionConfig::default();
+    let mut core = Core::new()?;
+    let handle = core.handle();
+
+    let credentials = Credentials::with_password(
+        std::env::var("SB_SPOTIFY_USER")?,
+        std::env::var("SB_SPOTIFY_PASS")?,
+    );
+
+    let track = match SpotifyId::from_base62(&id) {
+        Ok(track) => track,
+        Err(err) => {
+            return Err(anyhow!("Unable to parse spotify id {:?}", err));
+        }
+    };
+
+    println!("Connecting ..");
+    let session = core.run(Session::connect(session_config, credentials, None, handle))?;
+
+    let mut audio = match core.run(AudioItem::get_audio_item(&session, track)) {
+        Ok(audio) => audio,
+        Err(err) => {
+            return Err(anyhow!("Unable to load audio item. {:?}", err));
+        }
+    };
+
+    info!("Loading <{}> with Spotify URI <{}>", audio.name, audio.uri);
+
+    if !audio.available {
+        audio = {
+            if let Some(audio) = audio
+                .alternatives
+                .unwrap_or_default()
+                .iter()
+                .find_map(|alt| {
+                    if let Ok(audio) = core.run(AudioItem::get_audio_item(&session, *alt)) {
+                        if audio.available {
+                            return Some(audio.clone());
+                        }
+                    }
+                    return None;
+                })
+            {
+                audio
+            } else {
+                Err(anyhow!("audio <{}> is not available", audio.uri))
+            }
+        };
+    }
+
+    let duration_ms = audio.duration as u32;
+
+    // (Most) podcasts seem to support only 96 bit Vorbis, so fall back to it
+    let formats = [
+        FileFormat::OGG_VORBIS_96,
+        FileFormat::OGG_VORBIS_160,
+        FileFormat::OGG_VORBIS_320,
+    ];
+    let format = formats
+        .iter()
+        .find(|format| audio.files.contains_key(format))
+        .unwrap();
+
+    let file_id = match audio.files.get(&format) {
+        Some(&file_id) => file_id,
+        None => {
+            return Err(anyhow!(
+                "<{}> in not available in format {:?}",
+                audio.name,
+                format
+            ));
+        }
+    };
+
+    const bytes_per_second: usize = 64 * 1024;
+    let play_from_beginning = true;
+
+    let key = session.audio_key().request(track, file_id);
+    let encrypted_file = AudioFile::open(&session, file_id, bytes_per_second, play_from_beginning);
+
+    let encrypted_file = match core.run(encrypted_file) {
+        Ok(encrypted_file) => encrypted_file,
+        Err(err) => {
+            return Err(anyhow!("Unable to load encrypted file. {:?}", err));
+        }
+    };
+
+    let mut stream_loader_controller = encrypted_file.get_stream_loader_controller();
+
+    stream_loader_controller.set_stream_mode();
+
+    let key = match core.run(key) {
+        Ok(key) => key,
+        Err(err) => {
+            return Err(anyhow!("Unable to load decryption key. {:?}", err));
+        }
+    };
+
+    let mut decrypted_file = AudioDecrypt::new(key, encrypted_file);
+
+    println!("<{}> ({} ms) loaded", audio.name, audio.duration);
+
+    let mut buffer = Vec::new();
+
+    let finished = std::sync::Arc::new(AtomicBool::new(false));
+    let finished_clone = finished.clone();
+    let file_path_clone = file_path.clone();
+    std::thread::spawn(move || {
+        if let Err(err) = decrypted_file.seek(std::io::SeekFrom::Start(0xa7)) {
+            finished_clone.store(true, Ordering::Relaxed);
+            error!("Unable to seek file. {}", err);
+            return;
+        }
+        if let Err(err) = decrypted_file.read_to_end(&mut buffer) {
+            finished_clone.store(true, Ordering::Relaxed);
+            error!("Unable to read file. {}", err);
+            return;
+        }
+        if let Err(err) = std::fs::write(&file_path_clone, &buffer) {
+            error!("Unable to write file. {}", err);
+        }
+        finished_clone.store(true, Ordering::Relaxed);
+    });
+
+    loop {
+        core.turn(Some(std::time::Duration::from_millis(50)));
+        if finished.load(Ordering::Relaxed) {
+            break;
+        }
+    }
+
+    if file_path.exists() {
+        Ok(file_path)
+    } else {
+        return Err(anyhow!("Unknown spotify error"));
+    }
 
     // use futures::{future, Future};
     // use librespot::audio::{AudioDecrypt, AudioFile, StreamLoaderController};
