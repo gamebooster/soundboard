@@ -48,7 +48,7 @@ pub(super) fn merge_option_with_args_and_env<T: From<String>>(
     args: &clap::ArgMatches,
     name: &str,
 ) {
-    if args.is_present(name) {
+    if args.occurrences_of(name) > 0 {
         *config_option = Some(args.value_of(name).unwrap().to_owned().into())
     } else if let Ok(value) = std::env::var(get_env_name_from_cli_name(name)) {
         *config_option = Some(value.into());
@@ -61,7 +61,7 @@ pub(super) fn merge_bool_option_with_args_and_env(
     name: &str,
 ) -> Result<()> {
     let mut value = None;
-    if args.is_present(name) {
+    if args.occurrences_of(name) > 0 {
         value = Some(args.value_of(name).unwrap().to_owned());
     } else if let Ok(new_value) = std::env::var(get_env_name_from_cli_name(name)) {
         value = Some(new_value);
@@ -91,7 +91,7 @@ pub(super) fn merge_flag_with_args_and_env(
     args: &clap::ArgMatches,
     name: &str,
 ) {
-    if args.is_present(name) || std::env::var(get_env_name_from_cli_name(name)).is_ok() {
+    if args.occurrences_of(name) > 0 || std::env::var(get_env_name_from_cli_name(name)).is_ok() {
         *config_option = Some(true);
     }
 }
