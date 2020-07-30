@@ -38,7 +38,10 @@ fn select_soundboard(
     id: &soundboards::SoundboardId,
     gui_sender: crossbeam_channel::Sender<sound::Message>,
 ) -> (sound_state_list::SoundStateList, hotkey::HotkeyManager) {
-    let soundboard = soundboards::get_soundboards().get(id).unwrap().clone();
+    let soundboard = soundboards::get_soundboards()
+        .get(id)
+        .expect(&format!("soundboard id not found {}", id))
+        .clone();
     let current_sounds = soundboard.iter();
     let hotkeys = register_hotkeys(current_sounds, gui_sender);
     let mut sound_list = sound_state_list::SoundStateList::new(
@@ -119,11 +122,30 @@ impl SoundboardState {
         self.index
     }
 
-    pub fn set_index(&mut self, new_index: usize) {
-        let result = select_soundboard(&self.soundboards[new_index].1, self.gui_sender.clone());
-        self.sound_state_list = result.0;
-        self.hotkeys = result.1;
-        self.index = new_index;
+    pub fn reload_soundboards(&mut self) {
+        let soundboards: Vec<(String, soundboards::SoundboardId)> = soundboards::get_soundboards()
+            .values()
+            .map(|s| (s.get_name().to_string(), *s.get_id()))
+            .collect();
+
+        self.soundboards = soundboards;
+    }
+
+    pub fn set_index(&mut self, mut new_index: usize) {
+        if !soundboards::get_soundboards().contains_key(&self.soundboards[new_index].1) {
+            self.reload_soundboards();
+        }
+        if self.soundboards.len() > 0 {
+            if new_index >= self.soundboards.len() {
+                new_index = self.soundboards.len() - 1;
+            }
+            let result = select_soundboard(&self.soundboards[new_index].1, self.gui_sender.clone());
+            self.sound_state_list = result.0;
+            self.hotkeys = result.1;
+            self.index = new_index;
+        } else {
+            self.index = 0;
+        }
     }
 }
 
@@ -262,25 +284,32 @@ pub fn draw_terminal(
             let active_sounds_names: Vec<String> = active_sounds
                 .iter()
                 .map(|s| {
-                    let sound = soundboards::find_sound(s.1).unwrap();
-                    if s.0 == sound::SoundStatus::Downloading {
-                        return format!("{}\n  downloading", sound.get_name());
-                    }
                     let play_seconds = s.2.as_secs() % 60;
                     let play_minutes = (s.2.as_secs() / 60) % 60;
-                    if let Some(dur) = s.3 {
-                        let total_seconds = dur.as_secs() % 60;
-                        let total_minutes = (dur.as_secs() / 60) % 60;
-                        format!(
-                            "{}\n  {}:{}/{}:{}",
-                            sound.get_name(),
-                            play_minutes,
-                            play_seconds,
-                            total_minutes,
-                            total_seconds
-                        )
+                    if let Some(sound) = soundboards::find_sound(s.1) {
+                        if s.0 == sound::SoundStatus::Downloading {
+                            return format!("{}\n  downloading", sound.get_name());
+                        }
+                        if let Some(dur) = s.3 {
+                            let total_seconds = dur.as_secs() % 60;
+                            let total_minutes = (dur.as_secs() / 60) % 60;
+                            format!(
+                                "{}\n  {}:{}/{}:{}",
+                                sound.get_name(),
+                                play_minutes,
+                                play_seconds,
+                                total_minutes,
+                                total_seconds
+                            )
+                        } else {
+                            format!("{}\n  {}:{}", sound.get_name(), play_minutes, play_seconds)
+                        }
                     } else {
-                        format!("{}\n  {}:{}", sound.get_name(), play_minutes, play_seconds)
+                        if s.0 == sound::SoundStatus::Downloading {
+                            format!("<error: unknown id>\n  downloading")
+                        } else {
+                            format!("<error: unknown id>\n  {}:{}", play_minutes, play_seconds)
+                        }
                     }
                 })
                 .collect();

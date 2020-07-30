@@ -235,8 +235,13 @@ fn try_main() -> Result<()> {
     #[cfg(feature = "textui")]
     {
         if app_config::get_app_config().tui.unwrap_or_default() {
-            tui::draw_terminal(gui_sender, gui_receiver)?;
-            return Ok(());
+            let gui_sender_clone = gui_sender.clone();
+            let gui_receiver_clone = gui_receiver.clone();
+            std::thread::spawn(move || {
+                tui::draw_terminal(gui_sender_clone, gui_receiver_clone)
+                    .expect("failed to run textui");
+                std::process::exit(0);
+            });
         }
     }
 
