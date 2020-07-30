@@ -68,10 +68,10 @@ tonic = {version = "0.3.0", features = ["prost", "tls", "tls-roots"], optional =
 fuzzy-matcher = {version = "0.3", optional = true}
 tgbot = {version = "0.10", optional = true}
 
-librespot = {version = "0.1.2", optional = true, default-features = false}
+librespot = {version = "0.1.3", optional = true, default-features = false}
 tokio-core = {version = "0.1", optional = true}
 
-ctrlc = {version = "3.1.5", features = ["termination"], optional = true}
+ctrlc = {version = "3.1.6", features = ["termination"], optional = true}
 libpulse-binding = {version = "2.16", features = ["pa_latest_common"], optional = true}
 
 iced = {version = "0.1", optional = true, features = ["tokio"]}

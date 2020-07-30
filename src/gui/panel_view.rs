@@ -4,62 +4,77 @@ use iced::{
     Space, Subscription, Text, VerticalAlignment,
 };
 
-use super::config;
 use super::sound;
+use super::soundboards;
 use super::style;
 use log::{error, info, trace, warn};
 
 pub struct PanelView {
     panes: pane_grid::State<PanelButtonView>,
-    pub active_sounds: Vec<(
-        sound::SoundStatus,
-        config::SoundConfig,
-        std::time::Duration,
-        Option<std::time::Duration>,
-    )>,
+    pub active_sounds: sound::PlayStatusVecType,
 }
 
 #[derive(Debug, Clone)]
 pub enum PanelViewMessage {
     Dragged(pane_grid::DragEvent),
     Resized(pane_grid::ResizeEvent),
-    PlaySound(config::SoundConfig),
-    StopSound(config::SoundConfig),
+    PlaySound(soundboards::SoundId),
+    StopSound(soundboards::SoundId),
 }
 
 impl PanelView {
-    pub fn new(sounds: &[config::SoundConfig]) -> Self {
-        let (mut pane_state, first) =
-            pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton::default()));
-        let mut panels: Vec<pane_grid::Pane> = Vec::new();
-        panels.push(first);
-        sounds.iter().for_each(|sound| {
-            let power = 2;
-            let power2_less = (panels.len() as f64).log(power as f64) as usize;
-            let index = { panels.len() - (power as usize).pow(power2_less as u32) };
-            let best_axis = {
-                if power2_less % power == 0 {
-                    pane_grid::Axis::Horizontal
-                } else {
-                    pane_grid::Axis::Vertical
-                }
-            };
-            let new_panel = pane_state
-                .split(
-                    best_axis,
-                    &panels[index],
-                    PanelButtonView::new(SoundButton {
-                        state: button::State::new(),
-                        config: sound.clone(),
-                    }),
-                )
-                .unwrap();
-            panels.push(new_panel);
-        });
-        pane_state.close(&first);
-        PanelView {
-            panes: pane_state,
-            active_sounds: Vec::new(),
+    pub fn new(sounds: &[soundboards::Sound]) -> Self {
+        if sounds.len() > 0 {
+            let (mut pane_state, first) =
+                pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton {
+                    state: button::State::new(),
+                    sound: sounds[0].clone(),
+                }));
+            let mut panels: Vec<pane_grid::Pane> = Vec::new();
+            panels.push(first);
+            sounds.iter().skip(1).for_each(|sound| {
+                let power = 2;
+                let power2_less = (panels.len() as f64).log(power as f64) as usize;
+                let index = { panels.len() - (power as usize).pow(power2_less as u32) };
+                let best_axis = {
+                    if power2_less % power == 0 {
+                        pane_grid::Axis::Horizontal
+                    } else {
+                        pane_grid::Axis::Vertical
+                    }
+                };
+                let new_panel = pane_state
+                    .split(
+                        best_axis,
+                        &panels[index],
+                        PanelButtonView::new(SoundButton {
+                            state: button::State::new(),
+                            sound: sound.clone(),
+                        }),
+                    )
+                    .unwrap();
+                panels.push(new_panel);
+            });
+            PanelView {
+                panes: pane_state,
+                active_sounds: Vec::new(),
+            }
+        } else {
+            let (mut pane_state, first) =
+                pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton {
+                    state: button::State::new(),
+                    sound: soundboards::Sound::new(
+                        "invalid",
+                        soundboards::Source::Youtube {
+                            id: "invalid".to_string(),
+                        },
+                    )
+                    .unwrap(),
+                }));
+            PanelView {
+                panes: pane_state,
+                active_sounds: Vec::new(),
+            }
         }
     }
 
@@ -84,7 +99,7 @@ impl PanelView {
         self.panes.iter_mut().for_each(|(_, state)| {
             if let Some(sound) = sounds
                 .iter()
-                .find(|(_, s, _, _)| *s == state.sound_button.config)
+                .find(|(_, s, _, _)| s == state.sound_button.sound.get_id())
             {
                 state.playing = true;
                 state.status = sound.0;
@@ -107,10 +122,10 @@ impl PanelView {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct SoundButton {
     state: button::State,
-    config: config::SoundConfig,
+    sound: soundboards::Sound,
 }
 
 struct PanelButtonView {
@@ -142,25 +157,26 @@ impl PanelButtonView {
         _pane: pane_grid::Pane,
         _focus: Option<pane_grid::Focus>,
     ) -> Element<PanelViewMessage> {
+        let hotkey_text = {
+            if let Some(hotkey) = self.sound_button.sound.get_hotkey() {
+                hotkey.to_string()
+            } else {
+                String::new()
+            }
+        };
         let column = Column::new()
             .spacing(5)
             .align_items(Align::Center)
             .width(Length::Fill)
             .push(
-                Text::new(&self.sound_button.config.name)
+                Text::new(self.sound_button.sound.get_name())
                     .size(18)
                     .vertical_alignment(VerticalAlignment::Center),
             )
             .push(
-                Text::new(
-                    self.sound_button
-                        .config
-                        .hotkey
-                        .as_ref()
-                        .unwrap_or(&String::new()),
-                )
-                .size(14)
-                .vertical_alignment(VerticalAlignment::Center),
+                Text::new(&hotkey_text)
+                    .size(14)
+                    .vertical_alignment(VerticalAlignment::Center),
             );
 
         let cont = Container::new(column)
@@ -172,7 +188,7 @@ impl PanelButtonView {
         if !self.playing {
             Button::new(&mut self.sound_button.state, cont)
                 .on_press(PanelViewMessage::PlaySound(
-                    self.sound_button.config.clone(),
+                    *self.sound_button.sound.get_id(),
                 ))
                 .width(Length::Fill)
                 .height(Length::Fill)
@@ -181,7 +197,7 @@ impl PanelButtonView {
         } else {
             let button_play = Button::new(&mut self.sound_button.state, cont)
                 .on_press(PanelViewMessage::PlaySound(
-                    self.sound_button.config.clone(),
+                    *self.sound_button.sound.get_id(),
                 ))
                 .width(Length::Fill)
                 .height(Length::FillPortion(10))
@@ -215,7 +231,7 @@ impl PanelButtonView {
                         Text::new("Stop").horizontal_alignment(iced::HorizontalAlignment::Center),
                     )
                     .on_press(PanelViewMessage::StopSound(
-                        self.sound_button.config.clone(),
+                        *self.sound_button.sound.get_id(),
                     ))
                     .width(Length::Fill)
                     .height(Length::FillPortion(3))

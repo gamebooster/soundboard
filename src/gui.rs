@@ -1,22 +1,21 @@
+use super::app_config;
+use super::hotkey;
+use super::sound;
+use super::soundboards;
+use anyhow::{anyhow, Context, Result};
 use iced::{
     button, executor, futures, keyboard, pane_grid, scrollable, slider, Align, Application, Button,
     Column, Command, Container, Element, Length, PaneGrid, ProgressBar, Row, Scrollable, Settings,
     Slider, Space, Subscription, Text, VerticalAlignment,
 };
-
 use log::{error, info, trace, warn};
-use std::path::{Path, PathBuf};
-
-use super::config;
-use super::download;
-use super::sound;
 use std::fmt;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
 mod list_view;
 mod panel_view;
 mod style;
-use super::hotkey;
-use anyhow::{anyhow, Context, Result};
-use std::time::{Duration, Instant};
 
 static UI_SOUNDS_LIMIT: usize = 128;
 
@@ -54,13 +53,13 @@ pub struct Soundboard {
     soundboard_button_states: Vec<SoundboardButton>,
     hotkey_manager: hotkey::HotkeyManager,
     current_state: SoundboardState,
-    current_sounds: Vec<config::SoundConfig>,
+    current_sounds: Vec<soundboards::Sound>,
 }
 
 #[derive(Debug, Clone)]
 pub enum SoundboardMessage {
-    PlaySound(config::SoundConfig),
-    StopSound(config::SoundConfig),
+    PlaySound(soundboards::SoundId),
+    StopSound(soundboards::SoundId),
     StopAllSound,
     VolumeChanged(f32),
     HandlePanelViewMessage(panel_view::PanelViewMessage),
@@ -73,7 +72,8 @@ pub enum SoundboardMessage {
 }
 
 async fn load_config() -> Result<(), String> {
-    config::MainConfig::reload_from_disk().map_err(|e| format!("reload from disk error: {}", e))?;
+    soundboards::reload_soundboards_from_disk()
+        .map_err(|e| format!("reload from disk error: {}", e))?;
     Ok(())
 }
 
@@ -126,19 +126,16 @@ impl Application for Soundboard {
                     self.current_volume = volume;
                 }
             }
-            SoundboardMessage::PlaySound(sound_config) => {
+            SoundboardMessage::PlaySound(sound_id) => {
                 if let Err(err) = self.sound_sender.send(sound::Message::PlaySound(
-                    sound_config,
+                    sound_id,
                     sound::SoundDevices::Both,
                 )) {
                     error!("failed to play sound {}", err);
                 };
             }
-            SoundboardMessage::StopSound(sound_config) => {
-                if let Err(err) = self
-                    .sound_sender
-                    .send(sound::Message::StopSound(sound_config))
-                {
+            SoundboardMessage::StopSound(sound_id) => {
+                if let Err(err) = self.sound_sender.send(sound::Message::StopSound(sound_id)) {
                     error!("failed to stop sound {}", err);
                 };
             }
@@ -171,21 +168,26 @@ impl Application for Soundboard {
             }
             SoundboardMessage::LoadedData(result) => match result {
                 Ok(()) => {
-                    let mut soundboard_buttons = config::MainConfig::read()
-                        .soundboards
-                        .iter()
-                        .fold(Vec::<SoundboardButton>::new(), |mut buttons, soundboard| {
+                    let mut soundboard_buttons = soundboards::get_soundboards().values().fold(
+                        Vec::<SoundboardButton>::new(),
+                        |mut buttons, soundboard| {
                             buttons.push(SoundboardButton {
                                 state: button::State::new(),
-                                name: soundboard.name.clone(),
+                                name: soundboard.get_name().to_string(),
                                 selected: false,
                             });
                             buttons
-                        });
+                        },
+                    );
                     soundboard_buttons[0].selected = true;
                     self.soundboard_button_states = soundboard_buttons;
                     self.update(SoundboardMessage::ShowSoundboard(
-                        config::MainConfig::read().soundboards[0].name.clone(),
+                        soundboards::get_soundboards()
+                            .values()
+                            .next()
+                            .unwrap()
+                            .get_name()
+                            .to_string(),
                     ));
                     self.current_state = SoundboardState::Loaded;
                 }
@@ -204,12 +206,12 @@ impl Application for Soundboard {
                 }
 
                 let stop_hotkey = {
-                    if let Some(stop_key) = config::MainConfig::read().stop_hotkey.as_ref() {
-                        config::parse_hotkey(stop_key).unwrap()
+                    if let Some(stop_key) = app_config::get_app_config().stop_hotkey.as_ref() {
+                        hotkey::parse_hotkey(stop_key).unwrap()
                     } else {
-                        config::Hotkey {
-                            modifier: vec![config::Modifier::ALT],
-                            key: config::Key::S,
+                        hotkey::Hotkey {
+                            modifier: vec![hotkey::Modifier::CTRL, hotkey::Modifier::ALT],
+                            key: hotkey::Key::E,
                         }
                     }
                 };
@@ -220,26 +222,24 @@ impl Application for Soundboard {
                     error!("register hotkey failed {:#}", err);
                 }
                 let tx_clone = self.sound_sender.clone();
-                self.current_sounds = config::MainConfig::read()
-                    .soundboards
+                self.current_sounds = soundboards::get_soundboards()
+                    .values()
+                    .find(|s| s.get_name() == name)
+                    .unwrap()
                     .iter()
-                    .find(|s| s.name == name)
-                    .unwrap()
-                    .sounds
-                    .as_ref()
-                    .unwrap()
-                    .clone();
+                    .cloned()
+                    .collect();
 
                 for sound in &self.current_sounds {
-                    if sound.hotkey.is_none() {
+                    if sound.get_hotkey().is_none() {
                         continue;
                     }
-                    let hotkey = config::parse_hotkey(&sound.hotkey.as_ref().unwrap()).unwrap();
+                    let hotkey = sound.get_hotkey().as_ref().unwrap();
                     let tx_clone = tx_clone.clone();
                     let sound = sound.clone();
-                    let _result = self.hotkey_manager.register(hotkey, move || {
+                    let _result = self.hotkey_manager.register(hotkey.clone(), move || {
                         if let Err(err) = tx_clone.send(sound::Message::PlaySound(
-                            sound.clone(),
+                            *sound.get_id(),
                             sound::SoundDevices::Both,
                         )) {
                             error!("failed to play sound {}", err);

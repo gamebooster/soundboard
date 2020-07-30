@@ -2081,9 +2081,9 @@ dependencies = [
 
 [[package]]
 name = "librespot"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f3c7c56563ff2f4cc3def24a890125711eb404bc5808f876498bef13a57fee2"
+checksum = "c9de5f3110cf89c5b9ac715a895a0b2274d8dc449a93998d548714dae9b7290e"
 dependencies = [
  "base64 0.10.1",
  "env_logger 0.6.2",
@@ -2112,9 +2112,9 @@ dependencies = [
 
 [[package]]
 name = "librespot-audio"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db841c9b07e7e407dd61f8583518e0189c2bfc6e72e65267ff55104f45ef579"
+checksum = "1bb21228db5a87fdc2774cd4b3fe32e898a4a1f4957c82e9faa196cca71bf839"
 dependencies = [
  "aes-ctr",
  "bit-set",
@@ -2131,9 +2131,9 @@ dependencies = [
 
 [[package]]
 name = "librespot-connect"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678038fe8fee52fe71d10509b69306067524113bd708ec7dc14584fea2a0c6cd"
+checksum = "4f4bf51df1c33e4faa1cf558b075c175704b53362d90f819ed86e89463c34ed2"
 dependencies = [
  "aes-ctr",
  "base64 0.10.1",
@@ -2159,9 +2159,9 @@ dependencies = [
 
 [[package]]
 name = "librespot-core"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6b4f2c5c17bdd0fda444a8239fe6f907a2965c7068664ba44b3e4126885428c"
+checksum = "2c8bd9161067ffcae878cd9224562b8c8d0ca254f15db255eabe58df4ba258d0"
 dependencies = [
  "aes",
  "base64 0.10.1",
@@ -2197,9 +2197,9 @@ dependencies = [
 
 [[package]]
 name = "librespot-metadata"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f6d56f2bc75407174678a82a9c7b5044ef37755d5af4b7d6cdf9f199f2987fa"
+checksum = "0553a4be36640aba59cc40ce1f34c87f70203b87209beebebea4c5253c8dba13"
 dependencies = [
  "byteorder",
  "futures 0.1.29",
@@ -2212,9 +2212,9 @@ dependencies = [
 
 [[package]]
 name = "librespot-playback"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57436730bbb8f210c981edd3cdbc7d2e2b70a1bf81fdb02f92be32e0005a6a9e"
+checksum = "56df0417db5f1b5932c2443d853fd79bdbd509f6dfb399af9c8ce57bb6065c76"
 dependencies = [
  "byteorder",
  "futures 0.1.29",
@@ -2227,10 +2227,11 @@ dependencies = [
 
 [[package]]
 name = "librespot-protocol"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfb0eb2559ed0c325b8484455b995eafaa69c690bf604187a3e92a307d0eed43"
+checksum = "40c202de42b184e368250648602fddacddcc675bb2699aae1b59f07170157e01"
 dependencies = [
+ "glob",
  "protobuf",
  "protobuf-codegen",
  "protobuf-codegen-pure",
