@@ -4,41 +4,36 @@ use iced::{
     Space, Subscription, Text, VerticalAlignment,
 };
 
-use super::config;
 use super::sound;
+use super::soundboards;
 use super::style;
 use log::{error, info, trace, warn};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 struct SoundButton {
     state: button::State,
-    config: config::SoundConfig,
+    sound: soundboards::Sound,
 }
 
 pub struct ListView {
     scroll_state: scrollable::State,
     buttons: Vec<SoundButton>,
-    pub active_sounds: Vec<(
-        sound::SoundStatus,
-        config::SoundConfig,
-        std::time::Duration,
-        Option<std::time::Duration>,
-    )>,
+    pub active_sounds: sound::PlayStatusVecType,
 }
 
 #[derive(Debug, Clone)]
 pub enum ListViewMessage {
-    PlaySound(config::SoundConfig),
+    PlaySound(soundboards::SoundId),
 }
 
 impl ListView {
-    pub fn new(sounds: &[config::SoundConfig]) -> Self {
+    pub fn new(sounds: &[soundboards::Sound]) -> Self {
         let buttons = sounds
             .iter()
             .fold(Vec::<SoundButton>::new(), |mut buttons, sound| {
                 buttons.push(SoundButton {
                     state: button::State::new(),
-                    config: sound.clone(),
+                    sound: sound.clone(),
                 });
                 buttons
             });
@@ -66,17 +61,22 @@ impl ListView {
                 .height(Length::FillPortion(18))
                 .align_items(Align::Start),
             |column, button| {
+                let hotkey_text = {
+                    if let Some(hotkey) = button.sound.get_hotkey() {
+                        hotkey.to_string()
+                    } else {
+                        String::new()
+                    }
+                };
                 let row_contents = Row::new()
                     .padding(10)
                     .spacing(20)
                     .align_items(Align::Center)
-                    .push(Text::new(&button.config.name))
-                    .push(Text::new(
-                        button.config.hotkey.as_ref().unwrap_or(&String::new()),
-                    ))
+                    .push(Text::new(button.sound.get_name()))
+                    .push(Text::new(&hotkey_text))
                     .push(
                         Button::new(&mut button.state, Text::new("Play"))
-                            .on_press(ListViewMessage::PlaySound(button.config.clone()))
+                            .on_press(ListViewMessage::PlaySound(*button.sound.get_id()))
                             .style(style::Button::Constructive(iced::Color::from_rgb(
                                 0.2, 0.8, 0.2,
                             ))),
