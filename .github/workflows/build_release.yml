@@ -21,8 +21,8 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install autoconf
-        run: sudo apt-get install autoconf libtool automake
+      - name: Install autoconf and pulseaudio
+        run: sudo apt-get install autoconf libtool automake libpulse0
       - name: Build soundboard binary
         run: cargo build --verbose --release --features full,autoloop
       - name: Archive soundboard binary
