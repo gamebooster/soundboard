@@ -20,6 +20,7 @@ lto = "fat"
 autoloop = ["libpulse-binding", "ctrlc"]
 default = ["mp3", "flac", "vorbis", "wav", "http", "opus"]
 flac = ["claxon"]
+full = ["default", "spotify", "telegram-bot", "xm", "textui", "gui", "text-to-speech"]
 gui = ["iced", "iced_native"]
 http = ["warp", "futures"]
 mp3 = ["minimp3", "mp3-duration"]

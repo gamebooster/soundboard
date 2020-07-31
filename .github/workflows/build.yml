@@ -21,9 +21,9 @@ jobs:
       - name: Install autoconf
         run: sudo apt-get install autoconf libtool automake
       - name: Build debug soundboard binary
-        run: cargo build --verbose
+        run: cargo build --verbose --features full,autoloop
       - name: Run tests
-        run: cargo test
+        run: cargo test --features full,autoloop
 
   windows:
     runs-on: windows-latest
@@ -51,11 +51,11 @@ jobs:
       - name: Build debug soundboard binary
         env:
           LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
-        run: cargo build --verbose
+        run: cargo build --verbose --features full
       - name: Run tests
         env:
           LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
-        run: cargo test
+        run: cargo test --features full
 
   macos:
     runs-on: macos-latest
@@ -86,11 +86,11 @@ jobs:
           OPUS_STATIC: 1
           OPUS_NO_PKG: 1
           OPUS_LIB_DIR: "/usr/local/lib"
-        run: cargo build --verbose
+        run: cargo build --verbose --features full
       - name: Run tests
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
           OPUS_STATIC: 1
           OPUS_NO_PKG: 1
           OPUS_LIB_DIR: "/usr/local/lib"
-        run: cargo test
+        run: cargo test --features full
