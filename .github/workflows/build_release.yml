@@ -24,7 +24,7 @@ jobs:
       - name: Install autoconf
         run: sudo apt-get install autoconf libtool automake
       - name: Build soundboard binary
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release --features full,autoloop
       - name: Archive soundboard binary
         uses: actions/upload-artifact@v2
         with:
@@ -57,7 +57,7 @@ jobs:
       - name: Build soundboard binary
         env:
           LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release --features full
       - name: Archive soundboard binary
         uses: actions/upload-artifact@v2
         with:
@@ -93,7 +93,7 @@ jobs:
           OPUS_STATIC: 1
           OPUS_NO_PKG: 1
           OPUS_LIB_DIR: "/usr/local/lib"
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release --features full
       - name: Archive soundboard binary
         uses: actions/upload-artifact@v2
         with:
