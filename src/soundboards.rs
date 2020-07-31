@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::hotkey;
 use super::sound;
 use super::utils;
@@ -21,6 +23,8 @@ use ulid::Ulid;
 mod helpers;
 
 use helpers::*;
+
+pub use helpers::get_soundboards_path;
 
 pub type SoundboardId = Ulid;
 type SoundboardMap = indexmap::IndexMap<SoundboardId, Soundboard>;
@@ -55,7 +59,8 @@ pub fn reload_soundboards_from_disk() -> Result<()> {
 //     Ok(())
 // }
 
-pub fn update_soundboards(soundboard: Soundboard) -> Result<()> {
+pub fn update_soundboards(mut soundboard: Soundboard) -> Result<()> {
+    soundboard.save_to_disk()?;
     let mut cloned_map = (**GLOBAL_SOUNDBOARD_MAP.read()).clone();
     cloned_map.insert(soundboard.id, soundboard);
     *GLOBAL_SOUNDBOARD_MAP.write() = std::sync::Arc::new(cloned_map);
@@ -65,11 +70,15 @@ pub fn update_soundboards(soundboard: Soundboard) -> Result<()> {
 /// Returns the soundboard with the specified id
 pub fn get_soundboard(
     id: Ulid,
-) -> Result<owning_ref::OwningRef<std::sync::Arc<SoundboardMap>, Soundboard>> {
-    owning_ref::OwningRef::new(get_soundboards()).try_map(|f| {
+) -> Option<owning_ref::OwningRef<std::sync::Arc<SoundboardMap>, Soundboard>> {
+    if let Ok(owning) = owning_ref::OwningRef::new(get_soundboards()).try_map(|f| {
         f.get(&id)
             .ok_or_else(|| anyhow!("no soundboard with specified id"))
-    })
+    }) {
+        Some(owning)
+    } else {
+        None
+    }
 }
 
 /// Returns the sound with specified id for the specified soundboard
@@ -181,7 +190,25 @@ impl Soundboard {
 
         save_soundboard_config(self.path.as_path(), &config, self.last_hash)?;
 
+        self.path.set_extension("json");
+
         self.last_hash = Some(utils::calculate_hash(&config));
+        Ok(())
+    }
+
+    pub fn remove_sound(&mut self, sound: &Sound) -> Result<()> {
+        self.sounds
+            .remove(&sound.id)
+            .ok_or_else(|| anyhow!("no sound found with specified id"))?;
+        if let Some(position) = self
+            .sound_positions
+            .iter()
+            .position(|id| id == sound.get_id())
+        {
+            self.sound_positions.remove(position);
+        } else {
+            panic!("inconsistent soundboard state");
+        }
         Ok(())
     }
 
@@ -210,11 +237,36 @@ impl Soundboard {
         Ok(())
     }
 
-    pub fn add_sound_with_file_path(&mut self, sound: Sound, source_path: &Path) -> Result<()> {
+    pub fn copy_sound_from_another_soundboard(
+        &mut self,
+        soundboard: &Soundboard,
+        sound: &Sound,
+    ) -> Result<SoundId> {
+        let new_sound = Sound::new(sound.get_name(), sound.get_source().clone())?;
+        let new_sound_id = *new_sound.get_id();
+        if let Source::Local { path } = sound.get_source() {
+            let mut old_path = soundboard.get_sounds_path().unwrap();
+            old_path.push(&path);
+            self.add_sound_with_file_path(new_sound, &old_path, true)?;
+        } else {
+            self.add_sound(new_sound)?;
+        }
+        Ok(new_sound_id)
+    }
+
+    pub fn add_sound_with_reader<R: ?Sized>(
+        &mut self,
+        sound: Sound,
+        reader: &mut R,
+        overwrite: bool,
+    ) -> Result<()>
+    where
+        R: std::io::Read,
+    {
         if let Source::Local { path } = sound.get_source() {
             let mut sound_path = self.get_sounds_path()?;
             sound_path.push(path);
-            if sound_path.exists() {
+            if sound_path.exists() && !overwrite {
                 return Err(anyhow!(
                     "local sound file already exists: {}",
                     sound_path.display()
@@ -225,17 +277,38 @@ impl Soundboard {
             if !new_sounds_path.exists() {
                 std::fs::create_dir(new_sounds_path)?;
             }
-            std::fs::copy(source_path, &sound_path).with_context(|| {
-                format!(
-                    "cant copy file from {} to {}",
-                    source_path.display(),
-                    &sound_path.display()
-                )
-            })?;
+            let mut file = std::fs::File::create(&sound_path)?;
+            std::io::copy(reader, &mut file)
+                .with_context(|| format!("cant copy file to {}", &sound_path.display()))?;
             self.add_sound(sound)
         } else {
             Err(anyhow!("not a local source sound"))
         }
+    }
+
+    pub fn add_sound_with_file_path(
+        &mut self,
+        sound: Sound,
+        source_path: &Path,
+        overwrite: bool,
+    ) -> Result<()> {
+        let mut file = std::fs::File::open(source_path)?;
+        self.add_sound_with_reader(sound, &mut file, overwrite)
+    }
+
+    pub fn change_sound_position(&mut self, target: SoundId, after: SoundId) -> Result<()> {
+        let target_position = match self.sound_positions.iter().position(|s| s == &target) {
+            Some(pos) => pos,
+            None => return Err(anyhow!("unknown target sound")),
+        };
+        let after_position = match self.sound_positions.iter().position(|s| s == &after) {
+            Some(pos) => pos,
+            None => return Err(anyhow!("unknown after sound")),
+        };
+
+        self.sound_positions.remove(target_position);
+        self.sound_positions.insert(after_position + 1, target);
+        Ok(())
     }
 
     pub fn get_id(&self) -> &Ulid {
@@ -244,6 +317,10 @@ impl Soundboard {
 
     pub fn get_name(&self) -> &str {
         &self.name
+    }
+
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_owned();
     }
 
     pub fn get_path(&self) -> &Path {
@@ -261,12 +338,32 @@ impl Soundboard {
         &self.position
     }
 
+    pub fn set_position(&mut self, position: Option<usize>) {
+        self.position = position;
+    }
+
     pub fn get_hotkey(&self) -> &Option<hotkey::Hotkey> {
         &self.hotkey
     }
 
+    pub fn set_hotkey(&mut self, hotkey: Option<hotkey::Hotkey>) {
+        self.hotkey = hotkey;
+    }
+
+    pub fn get_hotkey_string_or_none(&self) -> Option<String> {
+        if let Some(hotkey) = self.get_hotkey() {
+            Some(hotkey.to_string())
+        } else {
+            None
+        }
+    }
+
     pub fn get_sounds(&self) -> &SoundMap {
         &self.sounds
+    }
+
+    pub fn get_sounds_mut(&mut self) -> &mut SoundMap {
+        &mut self.sounds
     }
 
     pub fn get_sound_positions(&self) -> &SoundPositions {
@@ -358,12 +455,24 @@ impl Sound {
         &self.config.source
     }
 
-    pub fn set_source(&mut self, source: &Source) {
-        self.config.source = source.clone();
+    pub fn set_source(&mut self, source: Source) -> Result<()> {
+        if let Source::Local { path: _ } = source {
+            return Err(anyhow!("sound: source cant change to local"));
+        }
+        self.config.source = source;
+        Ok(())
     }
 
     pub fn get_hotkey(&self) -> &Option<hotkey::Hotkey> {
         &self.hotkey
+    }
+
+    pub fn get_hotkey_string_or_none(&self) -> Option<String> {
+        if let Some(hotkey) = self.get_hotkey() {
+            Some(hotkey.to_string())
+        } else {
+            None
+        }
     }
 
     pub fn set_hotkey(&mut self, hotkey: Option<hotkey::Hotkey>) {

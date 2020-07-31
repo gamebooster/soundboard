@@ -103,12 +103,11 @@ fn send_new_sound_config(
             send_sound_id = *new_sound.get_id();
             let pathbuf = PathBuf::from(path);
             if let Err(err) =
-                telegram_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf)
+                telegram_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf, true)
             {
                 warn!("local sound file already exists {}", err);
                 telegram_soundboard.add_sound(new_sound)?;
             }
-            telegram_soundboard.save_to_disk()?;
             soundboards::update_soundboards(telegram_soundboard)?;
         }
     } else {
@@ -116,11 +115,11 @@ fn send_new_sound_config(
         let new_sound = soundboards::Sound::new(&name, new_source)?;
         send_sound_id = *new_sound.get_id();
         let pathbuf = PathBuf::from(path);
-        if let Err(err) = new_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf) {
+        if let Err(err) = new_soundboard.add_sound_with_file_path(new_sound.clone(), &pathbuf, true)
+        {
             warn!("local sound file already exists {}", err);
             new_soundboard.add_sound(new_sound)?;
         }
-        new_soundboard.save_to_disk()?;
         soundboards::update_soundboards(new_soundboard)?;
     }
 

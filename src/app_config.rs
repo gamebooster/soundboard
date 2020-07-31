@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::hotkey;
 use super::sound;
 use super::utils;
@@ -110,7 +112,7 @@ make_config!(AppConfig {
     stream_input_to_loop: true,
     simultaneous_playback: true,
     auto_loop_device: false,
-    embed_web: false,
+    embed_web: true,
 });
 
 /// Returns the global app config
@@ -120,8 +122,14 @@ pub fn get_app_config() -> std::sync::Arc<AppConfig> {
     GLOBAL_APP_CONFIG.read().clone()
 }
 
+pub fn set_stream_input_to_loop_option(option: Option<bool>) {
+    let mut config = (*get_app_config()).clone();
+    config.stream_input_to_loop = option;
+    *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(config);
+}
+
 /// Reload the app config from a possibly changed config file
-pub fn reload_app_config_from_disk() -> Result<()> {
+fn reload_app_config_from_disk() -> Result<()> {
     *GLOBAL_APP_CONFIG.write() = std::sync::Arc::new(load_and_merge_app_config()?);
     Ok(())
 }
