@@ -13,8 +13,8 @@ cross-platform desktop application to spice up your audio/video conferences
   <summary>More screenshots</summary>
 
 <p float="left">
-  <img alt="webui" src="https://i.imgur.com/4AD4DNp.png" width="55%" />
-  <img alt="telegram" src="https://i.imgur.com/o9WByEN.jpg" width="44%" /><img alt="textui" src="https://i.imgur.com/5R3kHlM.png"> <img alt="gui" src="https://i.imgur.com/RvVZrzn.png"> <figcaption>webui, telegram-bot, textui and gui</figcaption>
+  <img alt="webui" title="webui" src="https://i.imgur.com/4AD4DNp.png" width="55%" />
+  <img alt="telegram" title="telegram" src="https://i.imgur.com/o9WByEN.jpg" width="44%" /><img alt="textui" title="textui" src="https://i.imgur.com/5R3kHlM.png"> <img alt="gui" title="gui" src="https://i.imgur.com/RvVZrzn.png"> <figcaption>webui, telegram-bot, textui and gui</figcaption>
 </p>
 
 </details>
