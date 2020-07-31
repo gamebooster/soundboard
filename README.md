@@ -21,15 +21,36 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ### features (rust feature name: rfm)
 
-- play local and remote sounds (http, youtube) to your microphone and output device
-  - supported codecs: mp3 (rfm: mp3), flac (rfm: flac), wav (rfm: wav), vorbis (rfm: vorbis), xm (rfm: xm, non-default)
-- hotkeys
-- native user interface (rfm: gui, non-default)
-  - First iteration. The web user interface is slicker and performs better.
+- play local and remote sounds to your microphone and output device
+  - supported codecs
+    - mp3 (rfm: mp3)
+    - flac (rfm: flac)
+    - wav (rfm: wav)
+    - vorbis (rfm: vorbis)
+    - opus (rfm: opus)
+    - xm (rfm: xm, non-default)
+  - supported sources (config example at the bottom):
+    - local (files)
+    - http
+    - tts (rfm: text-to-speech)
+    - spotify (rfm: spotify)
+    - youtube
+- global hotkeys
+  - default `stop-hotkey` for all sounds is `CTRL-ALT-E`
 - web user interface and http api (rfm: http)
   - default socket addr: `127.0.0.1:8080`
+- text user interface (rfm: textui)
+- native graphical user interface (rfm: gui, non-default)
+  - First iteration. The web user interface is slicker and performs better.
 - telegram bot (rfm: telegram, non-default)
+  - you need to create a bot and then specify your `telegram-token`
 - automatic handling of loopback device in pulse audio (rfm: auto-loop, non-default)
+
+### config, env and command line options
+
+- you can provide all options via the config file `soundboard.toml`, env variables `SB_<option>` or via the command line `--<option>`
+  - example: `gui = true` or `SB_GUI=true` or `--gui=true`
+- use `--help` to see all options
 
 ### install
 
@@ -37,7 +58,8 @@ cross-platform desktop application to spice up your audio/video conferences
    or `cargo install soundboard` (compile time is a coffee break)
 2. create soundboard config directory with soundboards (see below for example config)
 3. provide virtual microphone (instructions below)
-4. (optional) add youtube-dl and mkvextract to PATH variable to use youtube links as source
+4. (optional) add `youtube-dl` and `mkvextract` to PATH variable to use youtube as source
+5. (optional) provide `spotify-user` and `spotify-pass` via args, config, or env to use spotify as source. You need a premium account.
 
 ## default usage
 
@@ -100,12 +122,51 @@ stop_hotkey = "CTRL-ALT-E" # stop all sound
 
 ```
 name = 'favorites'
-position = 0
+position = 0 # always position ahead of other soundboards
 
 [[sound]]
-name = 'Nicht so tief, Rüdiger!'
-path = 'nicht-so-tief-rudiger.mp3'
+hotkey = 'CTRL-SHIFT-BACKSPACE'
+name = 'Soldier of Fortune'
+source = {local = {path = 'vodka/Razor1911 - Soldier Of Fortune intro.xm'}}
+
+[[sound]]
+name = 'steam incoming'
+source = {http = {url = 'https://www.myinstants.com/media/sounds/message_2.mp3'}}
+
+[[sound]]
 hotkey = 'CTRL-P'
+name = 'Nicht so tief, Rüdiger!'
+source = {local = {path = 'nicht-so-tief-rudiger.mp3'}}
+
+[[sound]]
+end = 10.5 # end sound timestamp, supported for all sources
+name = "Sound of Silence"
+source = {spotify = {id = "5y788ya4NvwhBznoDIcXwK"}}
+start = 2 # start sound timestamp, supported for all sources
+
+[[sound]]
+end = 18.5
+name = "dreams"
+source = {youtube = {id = "ZXsQAXx_ao0"}}
+start = 14
+
+[[sound]]
+end = 58
+name = "tired"
+source = {youtube = {id = "ZXsQAXx_ao0"}}
+start = 53
+
+[[sound]]
+name = '''Looks Like You're F'd'''
+source = {http = {url = 'https://www.soundboard.com/handler/playTrack.ashx?id=893190', headers = [{name = 'referer', value = 'https://www.soundboard.com/'}]}}
+
+[[sound]]
+name = "Hello World"
+source = {tts = {ssml = '''
+<speak>
+Hello World!
+</speak>
+''', lang = "en-GB"}}
 ```
 
 </details>
@@ -117,12 +178,12 @@ hotkey = 'CTRL-P'
 name = "Myinstants.com"
 
 [[sound]]
-name="Sad Trombone"
-path="https://www.myinstants.com//media/sounds/sadtrombone.swf.mp3"
+name = 'Falcon Punch'
+source = {http = {url = 'https://www.myinstants.com//media/sounds/falconpunch.swf.mp3'}}
 
 [[sound]]
-name="Dramatic Chipmunk"
-path="https://www.myinstants.com//media/sounds/dramatic.swf.mp3"
+name = 'Knaller'
+source = {http = {url = 'https://www.myinstants.com//media/sounds/videoplayback-2-online-audio-converter.mp3'}}
 ```
 
 </details>
