@@ -292,6 +292,16 @@ impl Soundboard {
         source_path: &Path,
         overwrite: bool,
     ) -> Result<()> {
+        if let Source::Local { path } = sound.get_source() {
+            let mut sound_path = self.get_sounds_path()?;
+            sound_path.push(path);
+
+            if sound_path == source_path {
+                return self.add_sound(sound);
+            }
+        } else {
+            return Err(anyhow!("not a local source sound"));
+        }
         let mut file = std::fs::File::open(source_path)?;
         self.add_sound_with_reader(sound, &mut file, overwrite)
     }
