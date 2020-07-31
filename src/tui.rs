@@ -40,7 +40,7 @@ fn select_soundboard(
 ) -> (sound_state_list::SoundStateList, hotkey::HotkeyManager) {
     let soundboard = soundboards::get_soundboards()
         .get(id)
-        .expect(&format!("soundboard id not found {}", id))
+        .unwrap_or_else(|| panic!("soundboard id not found {}", id))
         .clone();
     let current_sounds = soundboard.iter();
     let hotkeys = register_hotkeys(current_sounds, gui_sender);
@@ -135,7 +135,7 @@ impl SoundboardState {
         if !soundboards::get_soundboards().contains_key(&self.soundboards[new_index].1) {
             self.reload_soundboards();
         }
-        if self.soundboards.len() > 0 {
+        if !self.soundboards.is_empty() {
             if new_index >= self.soundboards.len() {
                 new_index = self.soundboards.len() - 1;
             }
@@ -304,12 +304,10 @@ pub fn draw_terminal(
                         } else {
                             format!("{}\n  {}:{}", sound.get_name(), play_minutes, play_seconds)
                         }
+                    } else if s.0 == sound::SoundStatus::Downloading {
+                        "<error: unknown id>\n  downloading".to_string()
                     } else {
-                        if s.0 == sound::SoundStatus::Downloading {
-                            format!("<error: unknown id>\n  downloading")
-                        } else {
-                            format!("<error: unknown id>\n  {}:{}", play_minutes, play_seconds)
-                        }
+                        format!("<error: unknown id>\n  {}:{}", play_minutes, play_seconds)
                     }
                 })
                 .collect();

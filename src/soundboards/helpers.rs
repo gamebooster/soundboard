@@ -7,7 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-pub(super) fn get_soundboards_path() -> Result<PathBuf> {
+pub fn get_soundboards_path() -> Result<PathBuf> {
     let mut relative_from_exe = std::env::current_exe()?;
     relative_from_exe.pop();
     relative_from_exe.push("soundboards");

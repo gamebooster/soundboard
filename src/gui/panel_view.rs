@@ -24,7 +24,7 @@ pub enum PanelViewMessage {
 
 impl PanelView {
     pub fn new(sounds: &[soundboards::Sound]) -> Self {
-        if sounds.len() > 0 {
+        if !sounds.is_empty() {
             let (mut pane_state, first) =
                 pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton {
                     state: button::State::new(),
@@ -60,7 +60,7 @@ impl PanelView {
                 active_sounds: Vec::new(),
             }
         } else {
-            let (mut pane_state, first) =
+            let (pane_state, _first) =
                 pane_grid::State::<PanelButtonView>::new(PanelButtonView::new(SoundButton {
                     state: button::State::new(),
                     sound: soundboards::Sound::new(

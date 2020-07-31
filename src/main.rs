@@ -134,7 +134,7 @@ fn try_main() -> Result<()> {
             let null_sink_module_id: Option<u32>;
             let loopback_module_id: Option<u32>;
 
-            config::MainConfig::set_no_duplex_device_option(Some(true));
+            app_config::set_stream_input_to_loop_option(Some(true));
             let module_name = "module-null-sink";
             let module_args = "sink_name=SoundboardNullSink sink_properties=device.description=SoundboardNullSink";
             match pulseauto::load_module(module_name, module_args) {
@@ -207,7 +207,7 @@ fn try_main() -> Result<()> {
 
     #[cfg(feature = "http")]
     {
-        if !app_config::get_app_config().http_server.unwrap_or_default() {
+        if app_config::get_app_config().http_server.unwrap_or_default() {
             let gui_sender_clone = gui_sender.clone();
             let gui_receiver_clone = gui_receiver.clone();
             std::thread::spawn(move || {

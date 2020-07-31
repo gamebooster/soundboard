@@ -283,10 +283,10 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
                 .find_map(|alt| {
                     if let Ok(audio) = core.run(AudioItem::get_audio_item(&session, *alt)) {
                         if audio.available {
-                            return Some(audio.clone());
+                            return Some(audio);
                         }
                     }
-                    return None;
+                    None
                 })
             {
                 audio
@@ -378,7 +378,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     if file_path.exists() {
         Ok(file_path)
     } else {
-        return Err(anyhow!("Unknown spotify error"));
+        Err(anyhow!("Unknown spotify error"))
     }
 
     // use futures::{future, Future};

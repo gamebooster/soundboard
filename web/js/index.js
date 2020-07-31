@@ -1,20 +1,20 @@
 MobileDragDrop.polyfill({
   // use this to make use of the scroll behaviour
   dragImageTranslateOverride:
-      MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
+    MobileDragDrop.scrollBehaviourDragImageTranslateOverride,
 });
 
 const ModalForm = {
-  props: ['initialName', 'initialHotkey', 'initialPath'],
-  data: function() {
+  props: ['initialName', 'initialHotkey', 'initialSource'],
+  data: function () {
     return {
       name: this.initialName,
       hotkey: this.initialHotkey,
-      path: this.initialPath
+      source: JSON.stringify(this.initialSource)
     };
   },
   template: `
-        <form @submit.prevent="$emit('submit', {name: name, hotkey: hotkey, path: path});  $parent.close();">
+        <form @submit.prevent="$emit('submit', {name: name, hotkey: hotkey, source: source});  $parent.close();">
             <div class="modal-card">
                 <header class="modal-card-head">
                     <p class="modal-card-title">Edit sound</p>
@@ -25,8 +25,8 @@ const ModalForm = {
                         </b-input>
                     </b-field>
 
-                    <b-field label="Path" label-position="on-border">
-                        <b-input :value="path" v-model="path" type="textarea" required>
+                    <b-field label="Source" label-position="on-border">
+                        <b-input :value="source" v-model="source" type="textarea" required>
                         </b-input>
                     </b-field>
 
@@ -60,7 +60,7 @@ const ModalForm = {
 
 var app = new Vue({
   el: '#app',
-  components: {ModalForm},
+  components: { ModalForm },
   data: {
     activeSounds: [],
     soundboards: [],
@@ -74,22 +74,22 @@ var app = new Vue({
     showLoadingModal: true,
     registeredHotkeys: new Map(),
   },
-  created: function() {
+  created: function () {
     this.reloadData(window.location.search.includes('reload') ? true : false);
     this.createEventSources();
   },
   watch: {
-    filter: function(val, oldVal) {
+    filter: function (val, oldVal) {
       this.matchedSoundNames = new Map();
-      fuzzysort.go(val, this.soundNames, {allowTypo: true, threshold: -25000})
-          .forEach((s) => this.matchedSoundNames.set(s.target, s));
+      fuzzysort.go(val, this.soundNames, { allowTypo: true, threshold: -25000 })
+        .forEach((s) => this.matchedSoundNames.set(s.target, s));
     },
-    volume: function(val, oldVal) {
-      axios.post('/api/sounds/volume', {volume: val}).catch(function(error) {
+    volume: function (val, oldVal) {
+      axios.post('/api/sounds/volume', { volume: val }).catch(function (error) {
         self.showStatusModal = true;
       });
     },
-    showBottomMenu: function(val, oldVal) {
+    showBottomMenu: function (val, oldVal) {
       if (val) {
         document.querySelector('nav').classList.remove('hide_bottom_menu');
       } else {
@@ -98,19 +98,19 @@ var app = new Vue({
     },
   },
   methods: {
-    sortChanged(soundboard, value) {
-      if (value === 'Name Ascending') {
-        soundboard.sounds.sort((a, b) => a.name.localeCompare(b.name));
-      } else if (value === 'Name Descending') {
-        soundboard.sounds.sort((a, b) => -a.name.localeCompare(b.name));
-      } else if (value === 'Hotkey') {
-        soundboard.sounds.sort(
-            (a, b) => a.hotkey ? (a.hotkey).localeCompare(b.hotkey) :
-                                 (b.hotkey ? 1 : a.id - b.id));
-      } else {
-        soundboard.sounds.sort((a, b) => a.id - b.id);
-      }
-    },
+    // sortChanged(soundboard, value) {
+    //   if (value === 'Name Ascending') {
+    //     soundboard.sounds.sort((a, b) => a.name.localeCompare(b.name));
+    //   } else if (value === 'Name Descending') {
+    //     soundboard.sounds.sort((a, b) => -a.name.localeCompare(b.name));
+    //   } else if (value === 'Hotkey') {
+    //     soundboard.sounds.sort(
+    //       (a, b) => a.hotkey ? (a.hotkey).localeCompare(b.hotkey) :
+    //         (b.hotkey ? 1 : a.id - b.id));
+    //   } else {
+    //     soundboard.sounds.sort((a, b) => a.id.localeCompare(b.id));
+    //   }
+    // },
     createEventSources() {
       this.soundEvents = new EventSource('/api/sounds/events');
       this.soundEvents.onmessage = (event) => {
@@ -123,7 +123,7 @@ var app = new Vue({
         }
         this.showStatusModal = false;
         if (getComputedStyle(document.querySelector('#bottom_menu'), null)
-                .display === 'none') {
+          .display === 'none') {
           this.showBottomMenu = true;
         }
       };
@@ -151,62 +151,62 @@ var app = new Vue({
       const self = this;
       self.showLoadingModal = true;
       axios
-          .get(
-              reload_from_disk ? '/api/soundboards?reload' : '/api/soundboards')
-          .then((response) => {
-            response.data.data.sounds = [];
-            this.soundboards = response.data.data;
-            this.soundNames = [];
-            let requests = [];
-            for (soundboard of this.soundboards) {
-              requests.push(
-                  axios.get('/api/soundboards/' + soundboard.id + '/sounds'));
-            }
-            Promise.all(requests)
-                .then((sounds_responses) => {
-                  let soundboard_id = 0;
-                  for (const response of sounds_responses) {
-                    let soundboard = self.soundboards[soundboard_id];
-                    soundboard.sounds = response.data.data;
-                    for (const sound of soundboard.sounds) {
-                      self.soundNames.push(sound.name);
-                      if (!sound.hotkey) continue;
-                      self.registerHotkey(sound.hotkey, {
-                        soundboard_id: soundboard_id,
-                        sound_id: sound.id,
-                      });
-                    }
-                    soundboard.order = 'Index';
-                    soundboard_id++;
-                  }
-                  self.showLoadingModal = false;
-                  self.registerHotkey('CTRL-ALT-E', {special: 'STOPALL'});
-                })
-                .catch((errors) => {
-                  self.showStatusModal = true;
-                });
-          })
-          .catch((error) => {
-            self.showStatusModal = true;
-          });
+        .get(
+          reload_from_disk ? '/api/soundboards?reload' : '/api/soundboards')
+        .then((response) => {
+          response.data.data.sounds = [];
+          this.soundboards = response.data.data;
+          this.soundNames = [];
+          let requests = [];
+          for (soundboard of this.soundboards) {
+            requests.push(
+              axios.get('/api/soundboards/' + soundboard.id));
+          }
+          Promise.all(requests)
+            .then((sounds_responses) => {
+              let soundboard_index = 0;
+              for (const response of sounds_responses) {
+                let soundboard = self.soundboards[soundboard_index];
+                soundboard.sounds = response.data.data.sounds;
+                for (const sound of soundboard.sounds) {
+                  self.soundNames.push(sound.name);
+                  if (!sound.hotkey) continue;
+                  self.registerHotkey(sound.hotkey, {
+                    soundboard_id: soundboard.id,
+                    sound_id: sound.id,
+                  });
+                }
+                soundboard.order = 'Index';
+                soundboard_index++;
+              }
+              self.showLoadingModal = false;
+              self.registerHotkey('CTRL-ALT-E', { special: 'STOPALL' });
+            })
+            .catch((errors) => {
+              self.showStatusModal = true;
+            });
+        })
+        .catch((error) => {
+          self.showStatusModal = true;
+        });
     },
     hideKeyboard() {
       document.activeElement.blur();
     },
     showResponseError(text, err) {
       this.showWarning(
-          text + ' error: ' +
-          (err.response ? JSON.stringify(err.response.data.errors) :
-                          JSON.stringify(err)));
+        text + ' error: ' +
+        (err.response ? JSON.stringify(err.response.data.errors) :
+          JSON.stringify(err)));
     },
     showWarning(text) {
       this.$buefy.toast.open(
-          {message: text, type: 'is-danger', duration: 5000, queue: false});
+        { message: text, type: 'is-danger', duration: 5000, queue: false });
     },
     showSuccess(text) {
-      this.$buefy.toast.open({message: text, type: 'is-success', queue: false});
+      this.$buefy.toast.open({ message: text, type: 'is-success', queue: false });
     },
-    registerHotkey: function(hotkey, eventObject) {
+    registerHotkey: function (hotkey, eventObject) {
       if (this.registeredHotkeys.has(hotkey)) {
         return;
         // this.showWarning(  'registerHotkey failed: ' + hotkey + ' already
@@ -214,53 +214,53 @@ var app = new Vue({
       }
 
       axios
-          .post('/api/hotkeys', {
+        .post('/api/hotkeys', {
+          hotkey: hotkey,
+        })
+        .then((response) => {
+          this.registeredHotkeys.set(hotkey, eventObject);
+        })
+        .catch((error) => {
+          this.showResponseError('registerHotkey', error);
+        });
+    },
+    deregisterHotkey: function (hotkey) {
+      axios
+        .delete('/api/hotkeys', {
+          data: {
             hotkey: hotkey,
-          })
-          .then((response) => {
-            this.registeredHotkeys.set(hotkey, eventObject);
-          })
-          .catch((error) => {
-            this.showResponseError('registerHotkey', error);
-          });
+          }
+        })
+        .then((response) => {
+          this.showSuccess('deregisterHotkey: ' + response.data.data.hotkey);
+          this.registeredHotkeys.delete(hotkey);
+        })
+        .catch((error) => {
+          this.showResponseError('deregisterHotkey', error);
+        });
     },
-    deregisterHotkey: function(hotkey) {
+    playSound: function (soundboard_id, sound_id) {
       axios
-          .delete('/api/hotkeys', {
-            data: {
-              hotkey: hotkey,
-            }
+        .post(
+          '/api/soundboards/' + soundboard_id + '/sounds/' + sound_id +
+          '/play',
+          {
+            devices: this.selectedDevice,
           })
-          .then((response) => {
-            this.showSuccess('deregisterHotkey: ' + response.data.data.hotkey);
-            this.registeredHotkeys.delete(hotkey);
-          })
-          .catch((error) => {
-            this.showResponseError('deregisterHotkey', error);
-          });
+        .then((response) => (this.lastRequestAnswer = response.data.data));
     },
-    playSound: function(soundboard_id, sound_id) {
+    stopSound: function (soundboard_id, sound_id) {
       axios
-          .post(
-              '/api/soundboards/' + soundboard_id + '/sounds/' + sound_id +
-                  '/play',
-              {
-                devices: this.selectedDevice,
-              })
-          .then((response) => (this.lastRequestAnswer = response.data.data));
+        .post(
+          '/api/soundboards/' + soundboard_id + '/sounds/' + sound_id +
+          '/stop')
+        .then((response) => (this.lastRequestAnswer = response.data.data));
     },
-    stopSound: function(soundboard_id, sound_id) {
-      axios
-          .post(
-              '/api/soundboards/' + soundboard_id + '/sounds/' + sound_id +
-              '/stop')
-          .then((response) => (this.lastRequestAnswer = response.data.data));
-    },
-    stopAllSound: function() {
+    stopAllSound: function () {
       axios.post('/api/sounds/stopall')
-          .then((response) => (this.lastRequestAnswer = response.data.data));
+        .then((response) => (this.lastRequestAnswer = response.data.data));
     },
-    addSoundFromPaste: function(soundboard_id, event) {
+    addSoundFromPaste: function (soundboard_id, event) {
       event.preventDefault();
 
       let text = event.clipboardData.getData('text/plain');
@@ -272,50 +272,50 @@ var app = new Vue({
           },
           trapFocus: true,
           onConfirm: (value) => {
-            var last_id = this.soundboards[soundboard_id].sounds.length - 1;
-            this.addSound(soundboard_id, last_id, value, text);
+            let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+            var last_id = soundboard.sounds[soundboard.sounds.length - 1].id;
+            this.addSound(soundboard_id, last_id, value, { http: { url: text } });
           },
         });
       } else if (event.clipboardData.files.length > 0) {
-        var last_id = this.soundboards[soundboard_id].sounds.length - 1;
         this.addSoundFromFiles(
-            soundboard_id, sound_id, event.clipboardData.files);
+          soundboard_id, sound_id, event.clipboardData.files);
       } else {
         this.showWarning('addSoundFromPaste failed: unsupported data');
       }
     },
-    soundDragStart: function(soundboard_id, sound_id, event) {
+    soundDragStart: function (soundboard_id, sound_id, event) {
       var data = {
         soundboard_id: soundboard_id,
         sound_id: sound_id,
       };
       this.dragData = data;
       event.dataTransfer.setData(
-          'application/soundboard', JSON.stringify(data));
+        'application/soundboard', JSON.stringify(data));
     },
-    soundboardDragOver: function(soundboard_id, event) {
+    soundboardDragOver: function (soundboard_id, event) {
       event.preventDefault();
     },
-    soundboardDragEnter: function(soundboard_id, event) {
+    soundboardDragEnter: function (soundboard_id, event) {
       event.preventDefault();
     },
-    soundboardDragLeave: function(soundboard_id, event) {
+    soundboardDragLeave: function (soundboard_id, event) {
       event.preventDefault();
     },
-    soundDragOver: function(soundboard_id, sound_id, event) {
+    soundDragOver: function (soundboard_id, sound_id, event) {
       if (this.dragData && soundboard_id === this.dragData.soundboard_id &&
-          sound_id == this.dragData.sound_id) {
+        sound_id == this.dragData.sound_id) {
         return;
       }
       event.preventDefault();
     },
-    soundDragEnter: function(soundboard_id, sound_id, event) {
+    soundDragEnter: function (soundboard_id, sound_id, event) {
       event.preventDefault();
     },
-    soundDragLeave: function(soundboard_id, sound_id, event) {
+    soundDragLeave: function (soundboard_id, sound_id, event) {
       event.preventDefault();
     },
-    addSoundFromDrop: function(soundboard_id, sound_id, event) {
+    addSoundFromDrop: function (soundboard_id, sound_id, event) {
       event.stopPropagation();
       event.preventDefault();
       this.dragData = null;
@@ -330,30 +330,31 @@ var app = new Vue({
           },
           trapFocus: true,
           onConfirm: (value) => {
-            this.addSound(soundboard_id, sound_id, value, text);
+            this.addSound(soundboard_id, sound_id, value, { http: { url: text } });
           },
         });
       } else if (move_data !== '') {
         let data = JSON.parse(move_data);
         this.sendCopyExistingSound(
-            soundboard_id, sound_id, data.soundboard_id, data.sound_id,
-            soundboard_id == data.soundboard_id ? true : false);
+          soundboard_id, sound_id, data.soundboard_id, data.sound_id,
+          soundboard_id == data.soundboard_id ? true : false);
 
       } else if (event.dataTransfer.files.length > 0) {
         this.addSoundFromFiles(
-            soundboard_id, sound_id, event.dataTransfer.files);
+          soundboard_id, sound_id, event.dataTransfer.files);
       } else {
         this.showWarning('addSoundFromDrop failed: unsupported data');
       }
     },
-    updateSoundboardIds: function(soundboard_id) {
-      let soundboard = this.soundboards[soundboard_id];
-      for (let i = 0; i < soundboard.sounds.length; i++) {
-        soundboard.sounds[i].id = i;
-      }
+    updateSoundboardIds: function (soundboard_id) {
+      // let soundboard = this.soundboards[soundboard_id];
+      // for (let i = 0; i < soundboard.sounds.length; i++) {
+      //   soundboard.sounds[i].id = i;
+      // }
     },
-    addSoundFromFiles: function(soundboard_id, sound_id, files) {
-      let soundboard = this.soundboards[soundboard_id];
+    addSoundFromFiles: function (soundboard_id, sound_id, files) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+
       let data = new FormData();
 
       for (var i = 0; i < files.length; i++) {
@@ -362,64 +363,59 @@ var app = new Vue({
       }
 
       const config = {
-        headers: {'content-type': 'multipart/form-data'},
+        headers: { 'content-type': 'multipart/form-data' },
       };
 
       return axios
-          .post(
-              '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, data,
-              config)
-          .then((response) => {
-            let sounds = response.data.data;
-            sounds.forEach((element) => {
-              this.showSuccess(
-                  'addSound: ' + element.name + ' to ' + soundboard.name);
-            });
-            soundboard.sounds.sort((a, b) => a.id - b.id);
-            soundboard.sounds.splice(sounds[0].id, 0, ...response.data.data);
-            this.updateSoundboardIds(soundboard.id);
-          })
-          .catch((error) => {
-            this.showResponseError('addSoundFromFiles', error);
-            this.reloadData();
-          });
-    },
-    sendCopyExistingSound: function(
-        target_soundboard_id, target_sound_id, source_soundboard_id,
-        source_sound_id, delete_source_sound) {
-      let soundboard = this.soundboards[target_soundboard_id];
-      axios
-          .post(
-              '/api/soundboards/' + soundboard.id + '/sounds/' +
-                  target_sound_id,
-              {
-                source_soundboard_id: source_soundboard_id,
-                source_sound_id: source_sound_id,
-              },
-              {headers: {'x-method': 'copy'}})
-          .then((response) => {
-            let sound = response.data.data;
+        .post(
+          '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, data,
+          config)
+        .then((response) => {
+          let sounds = response.data.data;
+          sounds.forEach((element) => {
             this.showSuccess(
-                'copySound: ' + sound.name + ' to ' + soundboard.name);
-            this.soundboards[target_soundboard_id].sounds.sort(
-                (a, b) => a.id - b.id);
-            this.soundboards[target_soundboard_id].sounds.splice(
-                sound.id, 0, sound);
-            this.updateSoundboardIds(target_soundboard_id);
-            if (delete_source_sound) {
-              if (source_soundboard_id == target_soundboard_id &&
-                  target_sound_id < source_sound_id) {
-                source_sound_id += 1;
-              }
-              this.deleteSound(source_soundboard_id, source_sound_id, true);
-            }
-          })
-          .catch((error) => {
-            this.showResponseError('sendCopyExistingSound', error);
-            this.reloadData();
+              'addSound: ' + element.name + ' to ' + soundboard.name);
           });
+
+          soundboard.sounds.splice(soundboard.sounds.findIndex((s) => s.id === sound_id) + 1, 0, ...response.data.data);
+        })
+        .catch((error) => {
+          this.showResponseError('addSoundFromFiles', error);
+          this.reloadData();
+        });
     },
-    editSound: function(soundboard_id, sound_id) {
+    sendCopyExistingSound: function (
+      target_soundboard_id, target_sound_id, source_soundboard_id,
+      source_sound_id, delete_source_sound) {
+      let soundboard = this.soundboards.find((s) => s.id === target_soundboard_id);
+
+      axios
+        .post(
+          '/api/soundboards/' + soundboard.id + '/sounds/' +
+          target_sound_id,
+          {
+            source_soundboard_id: source_soundboard_id,
+            source_sound_id: source_sound_id,
+          },
+          { headers: { 'x-method': 'copy' } })
+        .then((response) => {
+          let sound = response.data.data;
+          this.showSuccess(
+            'copySound: ' + sound.name + ' to ' + soundboard.name);
+
+          let index = soundboard.sounds.findIndex((s) => s.id === target_sound_id);
+          soundboard.sounds.splice(index + 1, 0, sound);
+
+          if (delete_source_sound) {
+            this.deleteSound(source_soundboard_id, source_sound_id, true);
+          }
+        })
+        .catch((error) => {
+          this.showResponseError('sendCopyExistingSound', error);
+          this.reloadData();
+        });
+    },
+    editSound: function (soundboard_id, sound_id) {
       let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
       if (!soundboard) return;
       let sound = soundboard.sounds.find((s) => s.id === sound_id);
@@ -428,7 +424,7 @@ var app = new Vue({
       let props = {
         'initialName': sound.name,
         'initialHotkey': sound.hotkey,
-        'initialPath': sound.path
+        'initialSource': sound.source
       };
 
       this.$buefy.modal.open({
@@ -445,6 +441,12 @@ var app = new Vue({
             if (new_data.hotkey === '') {
               new_data.hotkey = null;
             }
+            try {
+              new_data.source = JSON.parse(new_data.source);
+            } catch (e) {
+              this.showWarning("failed to parse source for sound");
+              return;
+            }
             this.changeSound(soundboard_id, sound_id, new_data);
           },
           'delete': () => {
@@ -453,82 +455,83 @@ var app = new Vue({
         }
       });
     },
-    changeSound: function(soundboard_id, sound_id, new_data) {
-      let soundboard = this.soundboards[soundboard_id];
+    changeSound: function (soundboard_id, sound_id, new_data) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
       axios
-          .put('/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, {
-            name: new_data.name,
-            hotkey: new_data.hotkey,
-            path: new_data.path,
-          })
-          .then((response) => {
-            let sound = response.data.data;
-            this.showSuccess(
-                'changeSound: ' + sound.name + ' to ' + soundboard.name);
-            soundboard.sounds.sort((a, b) => a.id - b.id);
-            Vue.set(soundboard.sounds, sound_id, sound);
-            if (sound.hotkey) {
-              this.registerHotkey(sound.hotkey, {
-                soundboard_id: soundboard_id,
-                sound_id: sound.id,
-              });
-            }
-          })
-          .catch((error) => {
-            this.showResponseError('changeSound', error);
-            this.reloadData();
-          });
+        .put('/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, {
+          name: new_data.name,
+          hotkey: new_data.hotkey,
+          source: new_data.source,
+        })
+        .then((response) => {
+          let sound = response.data.data;
+          this.showSuccess(
+            'changeSound: ' + sound.name + ' to ' + soundboard.name);
+
+          Vue.set(soundboard.sounds, soundboard.sounds.findIndex((s) => s.id === sound.id), sound);
+
+          if (sound.hotkey) {
+            this.registerHotkey(sound.hotkey, {
+              soundboard_id: soundboard_id,
+              sound_id: sound.id,
+            });
+          }
+        })
+        .catch((error) => {
+          this.showResponseError('changeSound', error);
+          this.reloadData();
+        });
     },
-    addSound: function(soundboard_id, sound_id, name, path) {
-      let soundboard = this.soundboards[soundboard_id];
+    addSound: function (soundboard_id, sound_id, name, source) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
       axios
-          .post(
-              '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, {
-                name: name,
-                hotkey: null,
-                path: path,
-              },
-              {headers: {'x-method': 'create'}})
-          .then((response) => {
-            let sound = response.data.data;
-            this.showSuccess(
-                'addSound: ' + sound.name + ' to ' + soundboard.name);
-            soundboard.sounds.sort((a, b) => a.id - b.id);
-            soundboard.sounds.splice(sound.id, 0, sound);
-            this.updateSoundboardIds(soundboard.id);
-          })
-          .catch((error) => {
-            this.showResponseError('addSound', error);
-            this.reloadData();
-          });
+        .post(
+          '/api/soundboards/' + soundboard.id + '/sounds/' + sound_id, {
+          name: name,
+          hotkey: null,
+          source: source,
+        },
+          { headers: { 'x-method': 'create' } })
+        .then((response) => {
+          let sound = response.data.data;
+          this.showSuccess(
+            'addSound: ' + sound.name + ' to ' + soundboard.name);
+
+          soundboard.sounds.splice(soundboard.sounds.findIndex((s) => s.id === sound_id) + 1, 0, sound);
+
+        })
+        .catch((error) => {
+          this.showResponseError('addSound', error);
+          this.reloadData();
+        });
     },
-    sendDeleteSound: function(soundboard_id, sound_id) {
-      let soundboard = this.soundboards[soundboard_id];
-      let sound = soundboard.sounds[sound_id];
+    sendDeleteSound: function (soundboard_id, sound_id) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+      let sound = soundboard.sounds.find((s) => s.id === sound_id);
 
       axios.delete('/api/soundboards/' + soundboard.id + '/sounds/' + sound.id)
-          .then((response) => {
-            this.showSuccess(
-                'deleteSound: ' + sound.name + ' from ' + soundboard.name);
-            soundboard.sounds.sort((a, b) => a.id - b.id);
-            soundboard.sounds.splice(sound.id, 1);
-            this.updateSoundboardIds(soundboard.id);
-          })
-          .catch((error) => {
-            this.showResponseError('deleteSound', error);
-            this.reloadData();
-          });
+        .then((response) => {
+          this.showSuccess(
+            'deleteSound: ' + sound.name + ' from ' + soundboard.name);
+
+          soundboard.sounds.splice(soundboard.sounds.findIndex((s) => s.id === sound.id), 1);
+
+        })
+        .catch((error) => {
+          this.showResponseError('deleteSound', error);
+          this.reloadData();
+        });
     },
-    deleteSound: function(soundboard_id, sound_id, without_confirmation) {
-      let soundboard = this.soundboards[soundboard_id];
-      let sound = soundboard.sounds[sound_id];
+    deleteSound: function (soundboard_id, sound_id, without_confirmation) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+      let sound = soundboard.sounds.find((s) => s.id === sound_id);
 
       if (without_confirmation) {
         this.sendDeleteSound(soundboard_id, sound_id);
       } else {
         this.$buefy.dialog.confirm({
           message: 'Remove sound <b>' + sound.name +
-              '</b> from soundboard <b>' + soundboard.name + '</b>?',
+            '</b> from soundboard <b>' + soundboard.name + '</b>?',
           type: 'is-danger',
           onConfirm: () => {
             this.sendDeleteSound(soundboard_id, sound_id);
@@ -536,22 +539,23 @@ var app = new Vue({
         });
       }
     },
-    updateSoundboard: function(soundboard_id) {
-      let soundboard = this.soundboards[soundboard_id];
+    updateSoundboard: function (soundboard_id) {
+      let soundboard = this.soundboards.find((s) => s.id === soundboard_id);
+
       axios
-          .post('/api/soundboards/' + soundboard.id, {
-            name: soundboard.name,
-            hotkey: soundboard.hotkey,
-            position: soundboard.position,
-          })
-          .then((response) => {
-            this.showSuccess(
-                'Updated soundboard name to: ' + response.data.data.name);
-          })
-          .catch((error) => {
-            this.showResponseError('updateSoundboard', error);
-            this.reloadData();
-          });
+        .post('/api/soundboards/' + soundboard.id, {
+          name: soundboard.name,
+          hotkey: soundboard.hotkey,
+          position: soundboard.position,
+        })
+        .then((response) => {
+          this.showSuccess(
+            'Updated soundboard name to: ' + response.data.data.name);
+        })
+        .catch((error) => {
+          this.showResponseError('updateSoundboard', error);
+          this.reloadData();
+        });
     },
   },
 });
@@ -568,4 +572,4 @@ function isValidHttpUrl(string) {
   return url.protocol === 'http:' || url.protocol === 'https:';
 }
 
-window.addEventListener('touchmove', function() {});
+window.addEventListener('touchmove', function () { });
