@@ -125,11 +125,6 @@ name = 'favorites'
 position = 0 # always position ahead of other soundboards
 
 [[sound]]
-hotkey = 'CTRL-SHIFT-BACKSPACE'
-name = 'Soldier of Fortune'
-source = {local = {path = 'vodka/Razor1911 - Soldier Of Fortune intro.xm'}}
-
-[[sound]]
 name = 'steam incoming'
 source = {http = {url = 'https://www.myinstants.com/media/sounds/message_2.mp3'}}
 
@@ -201,3 +196,5 @@ soundboards/
 ```
 
 </details>
+
+For more examples: https://github.com/gamebooster/soundboard/tree/master/soundboards
