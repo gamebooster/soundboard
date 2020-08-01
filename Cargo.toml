@@ -79,7 +79,7 @@ iced = {version = "0.1", optional = true, features = ["tokio"]}
 iced_native = {version = "0.2", optional = true}
 
 futures = {version = "0.3", optional = true}
-warp = {version = "0.2", optional = true}
+warp = {version = "0.2", features = ["tls"], optional = true}
 
 audiopus = {version = "0.2", optional = true}
 claxon = {version = "0.4", optional = true}

@@ -982,14 +982,11 @@ pub async fn run(
             .or(hotkey_routes)
             .or(help_api),
     );
-    let browser_address = {
-        if socket_addr.ip().is_unspecified() {
-            ([127, 0, 0, 1], socket_addr.port()).into()
-        } else {
-            socket_addr
-        }
-    };
-    if let Err(err) = webbrowser::open(&format!("http://{}", browser_address)) {
+
+    if let Err(err) = webbrowser::open(&format!(
+        "https://soundboard.skomski.com:{}",
+        socket_addr.port()
+    )) {
         error!("failed to open browser to display ui {}", err);
     }
 
@@ -1007,7 +1004,12 @@ pub async fn run(
             .or(warp::get().and(warp::path::tail()).and_then(serve)));
 
         let routes = routes.with(cors).recover(handle_rejection);
-        warp::serve(routes).run(socket_addr).await;
+        warp::serve(routes)
+            .tls()
+            .cert_path("tls/cert.pem")
+            .key_path("tls/key.rsa")
+            .run(socket_addr)
+            .await;
     }
 
     unreachable!();
