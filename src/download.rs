@@ -103,6 +103,22 @@ pub fn local_path_for_sound_config_exists(sound: &soundboards::Sound) -> Result<
     }
 }
 
+fn get_command_path(command_name: &str) -> Result<PathBuf> {
+    let mut local_command_path = std::env::current_exe()?;
+    local_command_path.pop();
+    local_command_path.push(command_name);
+    let command_path = {
+        if local_command_path.is_file() {
+            local_command_path
+        } else if local_command_path.with_extension("exe").is_file() {
+            local_command_path.with_extension("exe")
+        } else {
+            PathBuf::from(command_name)
+        }
+    };
+    Ok(command_path)
+}
+
 pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<PathBuf> {
     use std::io::{self, Write};
 
@@ -126,7 +142,8 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
             }
 
             let temp_file_path = format!("{}{}", file_path.to_str().unwrap(), "_temp");
-            let output = Command::new("youtube-dl")
+
+            let output = Command::new(get_command_path("youtube-dl")?)
                 .args(&[
                     "-f",
                     "250/251/249",
@@ -142,7 +159,8 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
                 io::stderr().write_all(&output.stderr).unwrap();
                 return Err(anyhow!("youtube-dl error"));
             }
-            let output = Command::new("mkvextract")
+
+            let output = Command::new(get_command_path("mkvextract")?)
                 .args(&[
                     &temp_file_path,
                     "tracks",
