@@ -6,6 +6,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str::FromStr;
 
+use super::app_config;
 use super::soundboards;
 use super::utils;
 
@@ -247,13 +248,37 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     use std::sync::atomic::{AtomicBool, Ordering};
     use tokio_core::reactor::Core;
 
+    if app_config::get_app_config()
+        .spotify_user
+        .clone()
+        .unwrap_or_default()
+        .is_empty()
+    {
+        return Err(anyhow!("spotify: no spotify_user specified"));
+    }
+
+    if app_config::get_app_config()
+        .spotify_pass
+        .clone()
+        .unwrap_or_default()
+        .is_empty()
+    {
+        return Err(anyhow!("spotify: no spotify_pass specified"));
+    }
+
     let session_config = SessionConfig::default();
     let mut core = Core::new()?;
     let handle = core.handle();
 
     let credentials = Credentials::with_password(
-        std::env::var("SB_SPOTIFY_USER")?,
-        std::env::var("SB_SPOTIFY_PASS")?,
+        app_config::get_app_config()
+            .spotify_user
+            .clone()
+            .unwrap_or_default(),
+        app_config::get_app_config()
+            .spotify_pass
+            .clone()
+            .unwrap_or_default(),
     );
 
     let track = match SpotifyId::from_base62(&id) {
@@ -268,11 +293,14 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     let mut audio = match core.run(AudioItem::get_audio_item(&session, track)) {
         Ok(audio) => audio,
         Err(err) => {
-            return Err(anyhow!("Unable to load audio item. {:?}", err));
+            return Err(anyhow!("spotify: Unable to load audio item. {:?}", err));
         }
     };
 
-    info!("Loading <{}> with Spotify URI <{}>", audio.name, audio.uri);
+    info!(
+        "spotify: Loading <{}> with Spotify URI <{}>",
+        audio.name, audio.uri
+    );
 
     if !audio.available {
         audio = {
@@ -291,7 +319,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
             {
                 audio
             } else {
-                return Err(anyhow!("audio <{}> is not available", audio.uri));
+                return Err(anyhow!("spotify: audio <{}> is not available", audio.uri));
             }
         };
     }
@@ -311,7 +339,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
         Some(&file_id) => file_id,
         None => {
             return Err(anyhow!(
-                "<{}> in not available in format {:?}",
+                "spotify: <{}> in not available in format {:?}",
                 audio.name,
                 format
             ));
@@ -327,7 +355,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     let encrypted_file = match core.run(encrypted_file) {
         Ok(encrypted_file) => encrypted_file,
         Err(err) => {
-            return Err(anyhow!("Unable to load encrypted file. {:?}", err));
+            return Err(anyhow!("spotify: Unable to load encrypted file. {:?}", err));
         }
     };
 
@@ -338,13 +366,13 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     let key = match core.run(key) {
         Ok(key) => key,
         Err(err) => {
-            return Err(anyhow!("Unable to load decryption key. {:?}", err));
+            return Err(anyhow!("spotify: Unable to load decryption key. {:?}", err));
         }
     };
 
     let mut decrypted_file = AudioDecrypt::new(key, encrypted_file);
 
-    println!("<{}> ({} ms) loaded", audio.name, audio.duration);
+    info!("spotify: <{}> ({} ms) loaded", audio.name, audio.duration);
 
     let mut buffer = Vec::new();
 
@@ -354,16 +382,16 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     std::thread::spawn(move || {
         if let Err(err) = decrypted_file.seek(std::io::SeekFrom::Start(0xa7)) {
             finished_clone.store(true, Ordering::Relaxed);
-            error!("Unable to seek file. {}", err);
+            error!("spotify: Unable to seek file. {}", err);
             return;
         }
         if let Err(err) = decrypted_file.read_to_end(&mut buffer) {
             finished_clone.store(true, Ordering::Relaxed);
-            error!("Unable to read file. {}", err);
+            error!("spotify: Unable to read file. {}", err);
             return;
         }
         if let Err(err) = std::fs::write(&file_path_clone, &buffer) {
-            error!("Unable to write file. {}", err);
+            error!("spotify: Unable to write file. {}", err);
         }
         finished_clone.store(true, Ordering::Relaxed);
     });
@@ -380,106 +408,4 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     } else {
         Err(anyhow!("Unknown spotify error"))
     }
-
-    // use futures::{future, Future};
-    // use librespot::audio::{AudioDecrypt, AudioFile, StreamLoaderController};
-    // use librespot::core::authentication::Credentials;
-    // use librespot::core::config::SessionConfig;
-    // use librespot::core::session::Session;
-    // use librespot::core::spotify_id::SpotifyId;
-    // use librespot::metadata::{AudioItem, FileFormat};
-    // use librespot::playback::config::PlayerConfig;
-    // use std::io::{Read, Seek, SeekFrom};
-    // use tokio::runtime::{Builder, Runtime};
-
-    // let mut runtime = Builder::new()
-    //     .basic_scheduler()
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-    // let handle = runtime.handle();
-
-    // let session_config = SessionConfig::default();
-
-    // let credentials = Credentials::with_password(
-    //     std::env::var("SB_SPOTIFY_USER").unwrap(),
-    //     std::env::var("SB_SPOTIFY_PASS").unwrap(),
-    // );
-
-    // let track = SpotifyId::from_base62(&id).unwrap();
-
-    // println!("Connecting ..");
-    // let session = runtime
-    //     .block_on(Session::connect(session_config, credentials, None, handle))
-    //     .unwrap();
-
-    // let audio = match runtime.block_on(AudioItem::get_audio_item(&session, track)) {
-    //     Ok(audio) => audio,
-    //     Err(err) => {
-    //         return Err(anyhow!("Unable to load audio item. {}", err));
-    //     }
-    // };
-
-    // info!("Loading <{}> with Spotify URI <{}>", audio.name, audio.uri);
-
-    // let duration_ms = audio.duration as u32;
-
-    // // (Most) podcasts seem to support only 96 bit Vorbis, so fall back to it
-    // let formats = [
-    //     FileFormat::OGG_VORBIS_96,
-    //     FileFormat::OGG_VORBIS_160,
-    //     FileFormat::OGG_VORBIS_320,
-    // ];
-    // let format = formats
-    //     .iter()
-    //     .find(|format| audio.files.contains_key(format))
-    //     .unwrap();
-
-    // let file_id = match audio.files.get(&format) {
-    //     Some(&file_id) => file_id,
-    //     None => {
-    //         return Err(anyhow!(
-    //             "<{}> in not available in format {:?}",
-    //             audio.name,
-    //             format
-    //         ));
-    //     }
-    // };
-
-    // const bytes_per_second: usize = 64 * 1024;
-    // let play_from_beginning = true;
-
-    // let key = session.audio_key().request(track, file_id);
-    // let encrypted_file = AudioFile::open(&session, file_id, bytes_per_second, play_from_beginning);
-
-    // let encrypted_file = match runtime.block_on(encrypted_file) {
-    //     Ok(encrypted_file) => encrypted_file,
-    //     Err(err) => {
-    //         return Err(anyhow!("Unable to load encrypted file. {}", err));
-    //     }
-    // };
-
-    // let mut stream_loader_controller = encrypted_file.get_stream_loader_controller();
-
-    // stream_loader_controller.set_stream_mode();
-
-    // let key = match runtime.block_on(key) {
-    //     Ok(key) => key,
-    //     Err(err) => {
-    //         return Err(anyhow!("Unable to load decryption key. {}", err));
-    //     }
-    // };
-
-    // let mut decrypted_file = AudioDecrypt::new(key, encrypted_file);
-
-    // println!("<{}> ({} ms) loaded", audio.name, audio.duration);
-
-    // let mut buffer = Vec::new();
-
-    // decrypted_file.seek(std::io::SeekFrom::Start(0xa7));
-    // decrypted_file.read_to_end(&mut buffer)?;
-
-    // std::fs::write(file_path, buffer)?;
-
-    // Ok(file_path)
 }
