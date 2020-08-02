@@ -149,7 +149,7 @@
                                 <template v-else>
                                     <div class="buttons has-addons">
                                         <button class="button is-success" @click="playSound(soundboard.id, sound.id)"
-                                            :key="sound.id" @contextmenu.prevent="deleteSound(soundboard.id, sound.id)"
+                                            :key="sound.id" @contextmenu.prevent="editSound(soundboard.id, sound.id)"
                                             draggable="true"
                                             @dragstart="soundDragStart(soundboard.id, sound.id,$event)"><span
                                                 v-html="!filter.length ? sound.name : fuzzysort.highlight(matchedSoundNames.get(sound.name)) "></span>
