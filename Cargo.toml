@@ -7,7 +7,7 @@ exclude = [
   "/soundboards",
   "/extern",
 ]
-license = "Unlicense"
+license = "AGPL-3.0-or-later"
 name = "soundboard"
 repository = "https://github.com/gamebooster/soundboard"
 version = "0.0.2"
