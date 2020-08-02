@@ -333,9 +333,11 @@ async fn send_sound_with_name(api: &Api, message: Message, name: &str) -> Result
 
     if let Some(sound) = maybe_sound {
         let sound_clone = sound.clone();
-        let local_path =
-            task::spawn_blocking(move || download::get_local_path_from_sound_config(&sound_clone))
-                .await??;
+        let local_path = task::spawn_blocking(move || {
+            download::get_local_path_from_sound_config(&sound_clone, true)
+        })
+        .await??
+        .unwrap();
         let file = tgbot::types::InputFile::path(local_path.as_path())
             .await
             .unwrap();

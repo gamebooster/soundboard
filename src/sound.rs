@@ -377,7 +377,7 @@ fn run_sound_message_loop(
                         sound.unwrap()
                     };
                     let maybe_path = {
-                        let result = download::local_path_for_sound_config_exists(&sound);
+                        let result = download::get_local_path_from_sound_config(&sound, false);
                         if let Err(err) = result {
                             error!("local_path_for_sound_config_exists error {}", err);
                             continue;
@@ -413,8 +413,8 @@ fn run_sound_message_loop(
                         }
                         let gui_sender_clone = gui_sender.clone();
                         std::thread::spawn(
-                            move || match download::get_local_path_from_sound_config(&sound) {
-                                Ok(path) => {
+                            move || match download::get_local_path_from_sound_config(&sound, true) {
+                                Ok(Some(path)) => {
                                     gui_sender_clone
                                         .send(Message::_PlaySoundDownloaded(
                                             sound_id,
@@ -422,6 +422,12 @@ fn run_sound_message_loop(
                                             path,
                                         ))
                                         .expect("sound channel send error");
+                                }
+                                Ok(None) => {
+                                    gui_sender_clone
+                                        .send(Message::StopSound(sound_id))
+                                        .expect("sound channel error");
+                                    error!("get_local_path_from_sound_config failed unknown error")
                                 }
                                 Err(err) => {
                                     gui_sender_clone

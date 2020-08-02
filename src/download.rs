@@ -13,113 +13,10 @@ use super::utils;
 #[cfg(feature = "text-to-speech")]
 pub mod ttsclient;
 
-fn resolve_local_sound_path(sound: &soundboards::Sound, sound_path: PathBuf) -> Result<PathBuf> {
-    if sound_path.is_absolute() {
-        if !sound_path.exists() || !sound_path.is_file() {
-            return Err(anyhow!(
-                "expected local sound file at {}",
-                sound_path.display()
-            ));
-        }
-        return Ok(sound_path);
-    }
-    let parent_board_sounds_path = soundboards::get_soundboards()
-        .values()
-        .find(|sb| sb.get_sounds().get(&sound.get_id()).is_some())
-        .ok_or_else(|| anyhow!("unknown sound id"))?
-        .get_sounds_path()?;
-    let mut new_path = parent_board_sounds_path;
-    new_path.push(sound_path);
-    if !new_path.exists() || !new_path.is_file() {
-        return Err(anyhow!(
-            "expected local sound file at {}",
-            new_path.to_str().unwrap()
-        ));
-    }
-    Ok(new_path)
-}
-
-pub fn local_path_for_sound_config_exists(sound: &soundboards::Sound) -> Result<Option<PathBuf>> {
-    match sound.get_source() {
-        soundboards::Source::Http { url, headers } => {
-            let mut headers_tuple = Vec::new();
-            if let Some(headers) = &headers {
-                for header in headers {
-                    headers_tuple.push((header.name.clone(), header.value.clone()));
-                }
-            }
-            let string_hash = utils::calculate_hash(&(&url, &headers_tuple)).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                Ok(Some(file_path))
-            } else {
-                Ok(None)
-            }
-        }
-        soundboards::Source::Local { path } => {
-            Ok(Some(resolve_local_sound_path(sound, PathBuf::from(path))?))
-        }
-        soundboards::Source::Youtube { id } => {
-            let string_hash = utils::calculate_hash(&id).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                Ok(Some(file_path))
-            } else {
-                Ok(None)
-            }
-        }
-        #[cfg(feature = "text-to-speech")]
-        soundboards::Source::TTS { ssml, lang } => {
-            let string_hash = utils::calculate_hash(&(&ssml, lang)).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                Ok(Some(file_path))
-            } else {
-                Ok(None)
-            }
-        }
-        #[cfg(not(feature = "text-to-speech"))]
-        soundboards::Source::TTS { ssml: _, lang: _ } => {
-            Err(anyhow!("text-to-speech feature not compiled in binary"))
-        }
-        #[cfg(feature = "spotify")]
-        soundboards::Source::Spotify { id } => {
-            let string_hash = utils::calculate_hash(&id).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                Ok(Some(file_path))
-            } else {
-                Ok(None)
-            }
-        }
-        #[cfg(not(feature = "spotify"))]
-        soundboards::Source::Spotify { id: _ } => {
-            Err(anyhow!("spotify feature not compiled in binary"))
-        }
-    }
-}
-
-fn get_command_path(command_name: &str) -> Result<PathBuf> {
-    let mut local_command_path = std::env::current_exe()?;
-    local_command_path.pop();
-    local_command_path.push(command_name);
-    let command_path = {
-        if local_command_path.is_file() {
-            local_command_path
-        } else if local_command_path.with_extension("exe").is_file() {
-            local_command_path.with_extension("exe")
-        } else {
-            PathBuf::from(command_name)
-        }
-    };
-    Ok(command_path)
-}
-
-pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<PathBuf> {
+pub fn get_local_path_from_sound_config(
+    sound: &soundboards::Sound,
+    download: bool,
+) -> Result<Option<PathBuf>> {
     use std::io::{self, Write};
 
     match sound.get_source() {
@@ -130,15 +27,24 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
                     headers_tuple.push((header.name.clone(), header.value.clone()));
                 }
             }
-            download_file_if_needed(&url, headers_tuple)
+            let file_path = get_file_path_from_hash(&(&url, &headers_tuple));
+            if file_path.is_file() {
+                Ok(Some(file_path))
+            } else if !download {
+                Ok(None)
+            } else {
+                Ok(Some(download_from_http(file_path, &url, headers_tuple)?))
+            }
         }
-        soundboards::Source::Local { path } => resolve_local_sound_path(sound, PathBuf::from(path)),
+        soundboards::Source::Local { path } => {
+            Ok(Some(resolve_local_sound_path(sound, PathBuf::from(path))?))
+        }
         soundboards::Source::Youtube { id } => {
-            let string_hash = utils::calculate_hash(&id).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                return Ok(file_path);
+            let file_path = get_file_path_from_hash(&id);
+            if file_path.is_file() {
+                return Ok(Some(file_path));
+            } else if !download {
+                return Ok(None);
             }
 
             let temp_file_path = format!("{}{}", file_path.to_str().unwrap(), "_temp");
@@ -175,19 +81,20 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
                 io::stderr().write_all(&output.stderr).unwrap();
                 return Err(anyhow!("mkvextract error"));
             }
-            if file_path.exists() {
-                Ok(file_path)
+
+            if file_path.is_file() {
+                Ok(Some(file_path))
             } else {
                 Err(anyhow!("unknown youtube download error"))
             }
         }
         #[cfg(feature = "text-to-speech")]
         soundboards::Source::TTS { ssml, lang } => {
-            let string_hash = utils::calculate_hash(&(&ssml, &lang)).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                return Ok(file_path);
+            let file_path = get_file_path_from_hash(&(&ssml, &lang));
+            if file_path.is_file() {
+                return Ok(Some(file_path));
+            } else if !download {
+                return Ok(None);
             }
 
             let mut client =
@@ -196,8 +103,9 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
                 .synthesize_speech(ssml, lang, None)
                 .context("tts: failed to synthesize speech")?;
             std::fs::write(&file_path, data).context("tts: failed to write result file")?;
-            if file_path.exists() {
-                Ok(file_path)
+
+            if file_path.is_file() {
+                Ok(Some(file_path))
             } else {
                 Err(anyhow!("unknown text to speech download error"))
             }
@@ -210,14 +118,14 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
 
         #[cfg(feature = "spotify")]
         soundboards::Source::Spotify { id } => {
-            let string_hash = utils::calculate_hash(&id).to_string();
-            let mut file_path = std::env::temp_dir();
-            file_path.push(string_hash);
-            if file_path.exists() {
-                return Ok(file_path);
+            let file_path = get_file_path_from_hash(&id);
+            if file_path.is_file() {
+                Ok(Some(file_path))
+            } else if !download {
+                Ok(None)
+            } else {
+                Ok(Some(download_from_spotify(file_path, id)?))
             }
-
-            download_from_spotify(file_path, id)
         }
         #[cfg(not(feature = "spotify"))]
         soundboards::Source::Spotify { id: _ } => {
@@ -226,16 +134,61 @@ pub fn get_local_path_from_sound_config(sound: &soundboards::Sound) -> Result<Pa
     }
 }
 
-pub fn download_file_if_needed(url: &str, headers: Vec<(String, String)>) -> Result<PathBuf> {
-    let string_hash = utils::calculate_hash(&(&url, &headers)).to_string();
+fn get_command_path(command_name: &str) -> Result<PathBuf> {
+    let mut local_command_path = std::env::current_exe()?;
+    local_command_path.pop();
+    local_command_path.push(command_name);
+    let command_path = {
+        if local_command_path.is_file() {
+            local_command_path
+        } else if local_command_path.with_extension("exe").is_file() {
+            local_command_path.with_extension("exe")
+        } else {
+            PathBuf::from(command_name)
+        }
+    };
+    Ok(command_path)
+}
+
+fn resolve_local_sound_path(sound: &soundboards::Sound, sound_path: PathBuf) -> Result<PathBuf> {
+    if sound_path.is_absolute() {
+        if !sound_path.exists() || !sound_path.is_file() {
+            return Err(anyhow!(
+                "expected local sound file at {}",
+                sound_path.display()
+            ));
+        }
+        return Ok(sound_path);
+    }
+    let parent_board_sounds_path = soundboards::get_soundboards()
+        .values()
+        .find(|sb| sb.get_sounds().get(&sound.get_id()).is_some())
+        .ok_or_else(|| anyhow!("unknown sound id"))?
+        .get_sounds_path()?;
+    let mut new_path = parent_board_sounds_path;
+    new_path.push(sound_path);
+    if !new_path.exists() || !new_path.is_file() {
+        return Err(anyhow!(
+            "expected local sound file at {}",
+            new_path.to_str().unwrap()
+        ));
+    }
+    Ok(new_path)
+}
+
+fn get_file_path_from_hash<T: std::hash::Hash>(t: &T) -> PathBuf {
+    let string_hash = utils::calculate_hash(t).to_string();
     let mut file_path = std::env::temp_dir();
     file_path.push(string_hash);
+    file_path
+}
 
-    if file_path.exists() {
-        return Ok(file_path);
-    }
-
-    info!("{:?}", headers);
+fn download_from_http(
+    file_path: PathBuf,
+    url: &str,
+    headers: Vec<(String, String)>,
+) -> Result<PathBuf> {
+    // info!("{:?}", headers);
 
     let client = reqwest::blocking::Client::new();
     let mut header_map = HeaderMap::new();
@@ -248,7 +201,7 @@ pub fn download_file_if_needed(url: &str, headers: Vec<(String, String)>) -> Res
         std::fs::write(&file_path, resp.bytes().unwrap())?;
         Ok(file_path)
     } else {
-        Err(anyhow!("request failed"))
+        Err(anyhow!("http request failed {}", resp.status()))
     }
 }
 
