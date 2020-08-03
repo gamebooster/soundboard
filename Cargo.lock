@@ -2687,6 +2687,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nix"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83450fe6a6142ddd95fb064b746083fc4ef1705fe81f64a64e1d4b39f54a1055"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
+]
+
+[[package]]
 name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4144,6 +4156,7 @@ dependencies = [
  "miniaudio",
  "minimp3",
  "mp3-duration",
+ "nix 0.18.0",
  "ogg 0.7.0",
  "ogg_metadata",
  "once_cell",

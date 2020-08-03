@@ -134,7 +134,7 @@ fn try_main() -> Result<()> {
             let null_sink_module_id: Option<u32>;
             let loopback_module_id: Option<u32>;
 
-            app_config::set_stream_input_to_loop_option(Some(true));
+            app_config::set_stream_input_to_loop_option(Some(false));
             let module_name = "module-null-sink";
             let module_args = "sink_name=SoundboardNullSink sink_properties=device.description=SoundboardNullSink";
             match pulseauto::load_module(module_name, module_args) {
@@ -240,7 +240,13 @@ fn try_main() -> Result<()> {
             std::thread::spawn(move || {
                 tui::draw_terminal(gui_sender_clone, gui_receiver_clone)
                     .expect("failed to run textui");
+
+                #[cfg(not(feature = "autoloop"))]
                 std::process::exit(0);
+
+                #[cfg(feature = "autoloop")]
+                nix::sys::signal::raise(nix::sys::signal::Signal::SIGTERM)
+                    .expect("failed to send signal");
             });
         }
     }
