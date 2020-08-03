@@ -58,7 +58,7 @@ cross-platform desktop application to spice up your audio/video conferences
    or `cargo install soundboard` (compile time is a coffee break)
 2. create soundboard config directory with soundboards (see below for example config)
 3. provide virtual microphone (instructions below)
-4. (optional) add `youtube-dl` and `mkvextract` to PATH variable to use youtube as source
+4. (optional) add `youtube-dl` and `mkvextract` to PATH variable or besides the soundboard executable to use youtube as source
 5. (optional) provide `spotify-user` and `spotify-pass` via args, config, or env to use spotify as source. You need a premium account.
 
 ## default usage

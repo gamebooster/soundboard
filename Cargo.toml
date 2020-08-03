@@ -54,8 +54,8 @@ reqwest = {version = "0.10", features = ["blocking"]}
 rust-embed = {version = "5.6.0", features = ["interpolate-folder-path"]}
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
-strum = "0.18"
-strum_macros = "0.18"
+strum = "0.19.1"
+strum_macros = "0.19.1"
 thiserror = "1"
 tokio = {version = "0.2", features = ["macros", "full", "sync", "time"]}
 toml = "0.5"
