@@ -54,12 +54,17 @@ cross-platform desktop application to spice up your audio/video conferences
 
 ### install
 
-1. use compiled release package from https://github.com/gamebooster/soundboard/releases/
-   or `cargo install soundboard` (compile time is a coffee break)
-2. create soundboard config directory with soundboards (see below for example config)
-3. provide virtual microphone (instructions below)
-4. (optional) add `youtube-dl` and `mkvextract` to PATH variable or besides the soundboard executable to use youtube as source
-5. (optional) provide `spotify-user` and `spotify-pass` via args, config, or env to use spotify as source. You need a premium account.
+1. 
+  * simple: download compiled release package from https://github.com/gamebooster/soundboard/releases/
+  * or via cargo: `cargo install soundboard` (compile time is a coffee break)
+    * `cargo install` needed dependencies:
+      * windows: `llvm` in PATH  
+      * unix: `sudo apt-get install llvm autoconf libtool automake libpulse0 libgtk-3-dev`
+      * mac: `brew install llvm opus`
+    * create soundboards directory with at least one soundboard (see below for example config)
+2. provide virtual microphone (instructions below)
+3. (optional) add `youtube-dl` and `mkvextract` to PATH variable or besides the soundboard executable to use youtube as source
+4. (optional) provide `spotify-user` and `spotify-pass` via args, config, or env to use spotify as source. You need a premium account.
 
 ## default usage
 
