@@ -62,20 +62,29 @@ soundboard encountered an fatal error:
         } else {
             location_info += "panic occurred but can't get location information...";
         }
+        let error_message;
         if let Some(payload) = panic_info.payload().downcast_ref::<&str>() {
-            error!(FATAL_ERROR_MESSAGE!(), payload, location_info);
+            error_message = format!(FATAL_ERROR_MESSAGE!(), payload, location_info);
         } else if let Some(payload) = panic_info.payload().downcast_ref::<String>() {
-            error!(FATAL_ERROR_MESSAGE!(), payload, location_info);
+            error_message = format!(FATAL_ERROR_MESSAGE!(), payload, location_info);
         } else {
-            error!(
+            error_message = format!(
                 FATAL_ERROR_MESSAGE!(),
                 "No description location: {}", location_info
             );
         }
 
+        error!("{}", &error_message);
+
         if std::env::var("SB_BACKTRACE").is_ok() {
             eprintln!("\nBacktrace:\n\n{:?}", backtrace::Backtrace::new());
         }
+
+        msgbox::create(
+            "soundboard: fatal error",
+            &error_message,
+            msgbox::IconType::Error,
+        );
 
         std::process::exit(1);
     }));
@@ -111,6 +120,9 @@ fn try_main() -> Result<()> {
         sound::print_possible_devices_and_exit();
         return Ok(());
     }
+
+    // check for soundboards
+    let _ = soundboards::get_soundboards();
 
     let (sound_sender, gui_receiver): (
         crossbeam_channel::Sender<sound::Message>,
