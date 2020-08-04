@@ -90,7 +90,13 @@ soundboard encountered an fatal error:
     }));
 
     if let Err(err) = try_main() {
-        error!(FATAL_ERROR_MESSAGE!(), err, "No location");
+        let error_message = format!(FATAL_ERROR_MESSAGE!(), err, "No location");
+        error!("{}", &error_message);
+        msgbox::create(
+            "soundboard: fatal error",
+            &error_message,
+            msgbox::IconType::Error,
+        );
         std::process::exit(1);
     }
     info!("Auf Wiedersehen!");
