@@ -202,7 +202,7 @@ fn load_and_parse_app_config() -> Result<AppConfig> {
             toml::from_str(&toml_str)
                 .with_context(|| format!("Failed to parse {}", config_path.display()))?
         } else {
-            AppConfig::default()
+            toml::from_str("")? // empty config but with correct defaults
         }
     };
 
