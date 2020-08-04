@@ -1861,7 +1861,7 @@ dependencies = [
 
 [[package]]
 name = "hotkey-soundboard"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "cc",
  "thiserror",
@@ -2470,7 +2470,7 @@ dependencies = [
 
 [[package]]
 name = "libxm-soundboard"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "cc",
  "libc",
@@ -4395,7 +4395,7 @@ dependencies = [
 
 [[package]]
 name = "soundboard"
-version = "0.0.2"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "audiopus",

@@ -10,7 +10,7 @@ exclude = [
 license = "AGPL-3.0-or-later"
 name = "soundboard"
 repository = "https://github.com/gamebooster/soundboard"
-version = "0.0.2"
+version = "0.1.0"
 
 [profile.release]
 codegen-units = 1
@@ -41,7 +41,7 @@ clap = "3.0.0-beta.1"
 crossbeam-channel = "0.4"
 dirs = "3"
 env_logger = "0.7"
-hotkey-soundboard = {path = "extern/hotkey-rs", version = "0.0.2"}
+hotkey-soundboard = {path = "extern/hotkey-rs", version = "0.0.3"}
 indexmap = "1.5"
 log = "0.4"
 mime_guess = "2.0.3"
@@ -87,7 +87,7 @@ audiopus = {version = "0.2", optional = true}
 claxon = {version = "0.4", optional = true}
 hound = {version = "3", optional = true}
 lewton = {version = "0.10", optional = true}
-libxm-soundboard = {version = "0.0.2", path = "extern/libxm-rs", optional = true}
+libxm-soundboard = {version = "0.0.3", path = "extern/libxm-rs", optional = true}
 minimp3 = {version = "0.3", optional = true}
 mp3-duration = {version = "0.1.10", optional = true}
 ogg = {version = "0.7", optional = true}
