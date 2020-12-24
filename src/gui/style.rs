@@ -18,7 +18,7 @@ impl button::StyleSheet for Button {
                 if *selected {
                     button::Style {
                         background: Some(Background::Color(Color::from_rgb(0.95, 0.95, 0.95))),
-                        border_radius: 5,
+                        border_radius: 5.0,
                         text_color: Color::BLACK,
                         ..button::Style::default()
                     }
@@ -31,7 +31,7 @@ impl button::StyleSheet for Button {
                     button::Style {
                         background: Some(Background::Color(Color::from_rgb(0.2, 0.4, 0.7))),
                         border_color: Color::from_rgb(0.9, 0.9, 0.9),
-                        border_radius: 5,
+                        border_radius: 5.0,
                         text_color: Color::WHITE,
                         ..button::Style::default()
                     }
@@ -39,7 +39,7 @@ impl button::StyleSheet for Button {
                     button::Style {
                         background: Some(Background::Color(Color::from_rgb(0.4, 0.6, 0.9))),
                         border_color: Color::from_rgb(0.9, 0.9, 0.9),
-                        border_radius: 5,
+                        border_radius: 5.0,
                         ..button::Style::default()
                     }
                 }
@@ -50,21 +50,21 @@ impl button::StyleSheet for Button {
             },
             Button::Destructive => button::Style {
                 background: Some(Background::Color(Color::from_rgb(0.8, 0.2, 0.2))),
-                border_radius: 5,
+                border_radius: 5.0,
                 text_color: Color::WHITE,
                 shadow_offset: Vector::new(1.0, 1.0),
                 ..button::Style::default()
             },
             Button::Constructive(color) => button::Style {
                 background: Some(Background::Color(*color)),
-                border_radius: 5,
+                border_radius: 5.0,
                 text_color: Color::WHITE,
                 shadow_offset: Vector::new(1.0, 1.0),
                 ..button::Style::default()
             },
             Button::Neutral => button::Style {
                 background: Some(Background::Color(Color::from_rgb(0.8, 0.8, 0.8))),
-                border_radius: 5,
+                border_radius: 5.0,
                 text_color: Color::WHITE,
                 shadow_offset: Vector::new(1.0, 1.0),
                 ..button::Style::default()
@@ -98,15 +98,15 @@ impl container::StyleSheet for Container {
             Container::Entry => container::Style {
                 text_color: Some(Color::from_rgb(0.5, 0.5, 0.5)),
                 background: Some(Background::Color(Color::from_rgb(0.95, 0.95, 0.95))),
-                border_radius: 5,
-                border_width: 1,
+                border_radius: 5.0,
+                border_width: 1.0,
                 border_color: Color::from_rgb(0.9, 0.9, 0.9),
             },
             Container::Background => container::Style {
                 text_color: Some(Color::from_rgb(0.5, 0.5, 0.5)),
                 background: Some(Background::Color(Color::from_rgb(0.98, 0.98, 0.98))),
-                border_radius: 5,
-                border_width: 1,
+                border_radius: 5.0,
+                border_width: 1.0,
                 border_color: Color::from_rgb(0.9, 0.9, 0.9),
             },
         }

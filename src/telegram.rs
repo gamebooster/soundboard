@@ -415,12 +415,14 @@ impl UpdateHandler for Handler {
             }
             UpdateKind::Message(message) => {
                 if let Ok(command) = Command::try_from(message.clone()) {
-                    let pos = command.get_message().commands.as_ref().unwrap()[0]
-                        .data
-                        .offset
-                        + command.get_message().commands.as_ref().unwrap()[0]
-                            .data
-                            .length;
+                    let raw_command = &message.get_text().unwrap().get_bot_commands().unwrap()[0];
+                    let name = raw_command.command.clone();
+
+                    let offset = message.get_text().unwrap().data.find(&name).unwrap_or(0);
+                    let length =
+                        name.len() + raw_command.bot_name.as_ref().map(|x| x.len()).unwrap_or(0);
+                    let pos = offset + length;
+
                     let raw_args: Vec<u16> = message
                         .get_text()
                         .unwrap()

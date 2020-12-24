@@ -84,7 +84,8 @@ soundboard encountered an fatal error:
             "soundboard: fatal error",
             &error_message,
             msgbox::IconType::Error,
-        );
+        )
+        .expect("cannot fail");
 
         std::process::exit(1);
     }));
@@ -96,7 +97,8 @@ soundboard encountered an fatal error:
             "soundboard: fatal error",
             &error_message,
             msgbox::IconType::Error,
-        );
+        )
+        .expect("cannot fail");
         std::process::exit(1);
     }
     info!("Auf Wiedersehen!");
@@ -274,7 +276,7 @@ fn try_main() -> Result<()> {
         if app_config::get_app_config().gui.unwrap_or_default() {
             let mut settings = Settings::with_flags((gui_sender, gui_receiver));
             settings.window.size = (500, 350);
-            gui::Soundboard::run(settings);
+            gui::Soundboard::run(settings).expect("should not fail");
         }
     }
 

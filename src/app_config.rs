@@ -7,6 +7,7 @@ use anyhow::{anyhow, Context, Result};
 use clap::{crate_authors, crate_description, crate_version, App, Arg};
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
+use paste::paste;
 use serde::Deserialize;
 use serde::Serialize;
 use std::borrow::Cow;
@@ -143,7 +144,126 @@ fn save_app_config_to_disk(config: &AppConfig) -> Result<()> {
 /// Merges the file config with command line args and enviroment args
 fn load_and_merge_app_config() -> Result<AppConfig> {
     let mut config = load_and_parse_app_config()?;
-    let arguments = parse_arguments(&config);
+    macro_rules! add_arg {
+        ($name:ident) => {
+            paste! {
+            let [<command_string_ $name>] = stringify!($name).replace("_", "-");
+            let [<default_string_ $name>] = format!("{:?}", config.$name.clone().unwrap_or_default());
+            let $name = Arg::with_name([<command_string_ $name>].as_str())
+                .long(&[<command_string_ $name>])
+                .takes_value(true)
+                .default_value(&[<default_string_ $name>]);
+            }
+        };
+    }
+
+    add_arg!(input_device);
+    add_arg!(output_device);
+    add_arg!(loopback_device);
+    add_arg!(spotify_user);
+    add_arg!(spotify_pass);
+    add_arg!(stop_hotkey);
+    add_arg!(print_possible_devices);
+    add_arg!(simultaneous_playback);
+    add_arg!(stream_input_to_loop);
+
+    #[cfg(feature = "autoloop")]
+    add_arg!(auto_loop_device);
+
+    #[cfg(feature = "gui")]
+    add_arg!(gui);
+
+    #[cfg(feature = "textui")]
+    add_arg!(tui);
+
+    #[cfg(feature = "http")]
+    add_arg!(http_server);
+    #[cfg(feature = "http")]
+    add_arg!(http_socket_addr);
+    #[cfg(feature = "http")]
+    add_arg!(embed_web);
+
+    #[cfg(feature = "telegram-bot")]
+    add_arg!(telegram_token);
+
+    let mut matches = App::new("soundboard")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!());
+
+    matches = matches.args(&[
+        input_device.short("i").help("Sets the input device to use"),
+        output_device
+            .short("o")
+            .help("Sets the output device to use"),
+        loopback_device
+            .short("l")
+            .help("Sets the loopback device to use"),
+        spotify_user.help("Sets the spotify user name to use spotify as source"),
+        spotify_pass.help("Sets the spotify passowrd to use spotify as source"),
+        stop_hotkey.help("Sets the stop hotkey to stop all sounds"),
+        print_possible_devices
+            .short("P")
+            .help("Print possible devices")
+            .takes_value(false),
+        simultaneous_playback
+            .possible_values(&["true", "false"])
+            .help("Enable/disable simultaneous-playback of sounds"),
+        stream_input_to_loop
+            .takes_value(true)
+            .possible_values(&["true", "false"])
+            .help("Enable/disable to stream audio from input device to loopback device"),
+    ]);
+
+    #[cfg(feature = "autoloop")]
+    {
+        matches = matches.arg(
+            auto_loop_device
+                .short("A")
+                .possible_values(&["true", "false"])
+                .help("Enable/disable the automatic creation of a PulseAudio loopback device"),
+        );
+    }
+
+    #[cfg(feature = "gui")]
+    {
+        matches = matches.arg(
+            gui.possible_values(&["true", "false"])
+                .help("Enable/disable the graphical user interface"),
+        );
+    }
+
+    #[cfg(feature = "textui")]
+    {
+        matches = matches.arg(
+            tui.possible_values(&["true", "false"])
+                .help("Enable/disable the text user interface"),
+        );
+    }
+
+    #[cfg(feature = "http")]
+    {
+        matches = matches.args(&[
+            http_server
+                .possible_values(&["true", "false"])
+                .help("Enable/disable the http server api and web user interface"),
+            http_socket_addr.help("Specify the socket addr for http server"),
+            embed_web
+                .possible_values(&["true", "false"])
+                .help("Enable/disable the usage of the embed web ui resource files."),
+        ]);
+    }
+
+    #[cfg(feature = "telegram-bot")]
+    {
+        matches = matches.arg(
+            telegram_token
+                .help("Set the telegram token for the telegram bot")
+                .takes_value(true),
+        );
+    }
+
+    let arguments = matches.get_matches();
 
     macro_rules! merge_option_with_args_and_env {
         ($name:ident) => {
@@ -225,119 +345,4 @@ fn save_app_config(config: &AppConfig) -> Result<()> {
     fs::write(&config_path, pretty_string)?;
     info!("Saved config file at {:?}", config_path.display());
     Ok(())
-}
-
-fn parse_arguments(config: &AppConfig) -> clap::ArgMatches {
-    let mut matches = App::new("soundboard")
-        .version(crate_version!())
-        .author(crate_authors!())
-        .about(crate_description!());
-
-    macro_rules! add_arg {
-        ($name:ident) => {
-            let command_string = stringify!($name).replace("_", "-");
-            let default_string = format!("{:?}", config.$name.clone().unwrap_or_default());
-            let $name = Arg::with_name(&command_string)
-                .long(&command_string)
-                .takes_value(true)
-                .default_value(&default_string);
-        };
-    }
-
-    add_arg!(input_device);
-    add_arg!(output_device);
-    add_arg!(loopback_device);
-    add_arg!(spotify_user);
-    add_arg!(spotify_pass);
-    add_arg!(stop_hotkey);
-    add_arg!(print_possible_devices);
-    add_arg!(simultaneous_playback);
-    add_arg!(stream_input_to_loop);
-
-    matches = matches.args(&[
-        input_device
-            .short('i')
-            .about("Sets the input device to use"),
-        output_device
-            .short('o')
-            .about("Sets the output device to use"),
-        loopback_device
-            .short('l')
-            .about("Sets the loopback device to use"),
-        spotify_user.about("Sets the spotify user name to use spotify as source"),
-        spotify_pass.about("Sets the spotify passowrd to use spotify as source"),
-        stop_hotkey.about("Sets the stop hotkey to stop all sounds"),
-        print_possible_devices
-            .short('P')
-            .about("Print possible devices")
-            .takes_value(false),
-        simultaneous_playback
-            .possible_values(&["true", "false"])
-            .about("Enable/disable simultaneous-playback of sounds"),
-        stream_input_to_loop
-            .takes_value(true)
-            .possible_values(&["true", "false"])
-            .about("Enable/disable to stream audio from input device to loopback device"),
-    ]);
-
-    #[cfg(feature = "autoloop")]
-    add_arg!(auto_loop_device);
-    #[cfg(feature = "autoloop")]
-    {
-        matches = matches.arg(
-            auto_loop_device
-                .short('A')
-                .possible_values(&["true", "false"])
-                .about("Enable/disable the automatic creation of a PulseAudio loopback device"),
-        );
-    }
-
-    #[cfg(feature = "gui")]
-    add_arg!(gui);
-    #[cfg(feature = "gui")]
-    {
-        matches = matches.arg(
-            gui.possible_values(&["true", "false"])
-                .about("Enable/disable the graphical user interface"),
-        );
-    }
-
-    #[cfg(feature = "textui")]
-    add_arg!(tui);
-    #[cfg(feature = "textui")]
-    {
-        matches = matches.arg(
-            tui.possible_values(&["true", "false"])
-                .about("Enable/disable the text user interface"),
-        );
-    }
-    #[cfg(feature = "http")]
-    add_arg!(http_server);
-    #[cfg(feature = "http")]
-    add_arg!(http_socket_addr);
-    #[cfg(feature = "http")]
-    add_arg!(embed_web);
-    #[cfg(feature = "http")]
-    {
-        matches = matches.args(&[
-            http_server
-                .possible_values(&["true", "false"])
-                .about("Enable/disable the http server api and web user interface"),
-            http_socket_addr.about("Specify the socket addr for http server"),
-            embed_web
-                .possible_values(&["true", "false"])
-                .about("Enable/disable the usage of the embed web ui resource files."),
-        ]);
-    }
-    #[cfg(feature = "telegram-bot")]
-    add_arg!(telegram_token);
-    #[cfg(feature = "telegram-bot")]
-    {
-        matches = matches.arg(
-            telegram_token
-                .about("Set the telegram token for the telegram bot")
-                .takes_value(true),
-        );
-    }
-    matches.get_matches()
 }

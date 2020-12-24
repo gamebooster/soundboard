@@ -53,7 +53,7 @@ impl PanelView {
                         }),
                     )
                     .unwrap();
-                panels.push(new_panel);
+                panels.push(new_panel.0);
             });
             PanelView {
                 panes: pane_state,
@@ -110,13 +110,13 @@ impl PanelView {
             }
         });
 
-        PaneGrid::new(&mut self.panes, |pane, content, focus| {
-            content.view(pane, focus)
+        PaneGrid::new(&mut self.panes, |pane, content| {
+            pane_grid::Content::new(content.view(pane))
         })
         .width(Length::Fill)
         .height(Length::FillPortion(18))
         .on_drag(PanelViewMessage::Dragged)
-        .on_resize(PanelViewMessage::Resized)
+        .on_resize(1, PanelViewMessage::Resized)
         .spacing(10)
         .into()
     }
@@ -152,11 +152,7 @@ impl PanelButtonView {
             status: sound::SoundStatus::Downloading,
         }
     }
-    fn view(
-        &mut self,
-        _pane: pane_grid::Pane,
-        _focus: Option<pane_grid::Focus>,
-    ) -> Element<PanelViewMessage> {
+    fn view(&mut self, _pane: pane_grid::Pane) -> Element<PanelViewMessage> {
         let hotkey_text = {
             if let Some(hotkey) = self.sound_button.sound.get_hotkey() {
                 hotkey.to_string()
