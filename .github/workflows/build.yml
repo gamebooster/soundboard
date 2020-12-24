@@ -47,7 +47,7 @@ jobs:
         run: |
           Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')
           scoop install llvm --global
-          echo $env:Path >> $GITHUB_PATH
+          echo $env:Path | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
       - name: Build debug soundboard binary
         env:
           LIBCLANG_PATH: "C:\\ProgramData\\scoop\\apps\\llvm\\current\\bin"
