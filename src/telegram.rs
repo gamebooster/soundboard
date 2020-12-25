@@ -523,7 +523,8 @@ pub async fn run(sender: Sender<sound::Message>, receiver: Receiver<sound::Messa
         .as_ref()
         .unwrap()
         .clone();
-    let api = Api::new(Config::new(token)).expect("Failed to create API");
+    let api = Api::new(Config::new(token.clone())).expect("Failed to create API");
+    log::info!("running telegram bot with token {}", token);
     api.execute(tgbot::methods::SetMyCommands::new(vec![
         tgbot::types::BotCommand::new("play", "play the sound with the provided name (fuzzy)")
             .unwrap(),
