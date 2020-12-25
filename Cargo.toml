@@ -10,7 +10,7 @@ exclude = [
 license = "AGPL-3.0-or-later"
 name = "soundboard"
 repository = "https://github.com/gamebooster/soundboard"
-version = "0.1.0"
+version = "0.1.1"
 
 [profile.release]
 codegen-units = 1
