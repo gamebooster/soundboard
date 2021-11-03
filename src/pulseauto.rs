@@ -53,7 +53,7 @@ pub fn unload_module(loop_module_id: u32) -> Result<()> {
 
     let result = match receiver.recv() {
         Err(err) => Err(anyhow!("Failed to unload pulse module {}", err)),
-        Ok(false) => Err(anyhow!("Failed to unload pulse module {}")),
+        Ok(false) => Err(anyhow!("Failed to unload pulse module")),
         Ok(true) => Ok(()),
     };
 
