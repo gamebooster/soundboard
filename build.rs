@@ -20,7 +20,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         fs_extra::dir::copy("soundboards", target_dir_path, &copy_options).expect("copy failed");
     }
 
-    tonic_build::compile_protos("src/download/ttsclient/cloud_tts.proto")?;
+    tonic_build::configure().format(false).compile(
+        &["src/download/ttsclient/cloud_tts.proto"],
+        &["src/download/ttsclient"],
+    )?;
     Ok(())
 }
 
