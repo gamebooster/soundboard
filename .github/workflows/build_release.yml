@@ -83,10 +83,7 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.rust }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: install opus
         run: |
-          wget https://homebrew.bintray.com/bottles/opus-1.3.1.catalina.bottle.1.tar.gz
-          tar -xvf opus-1.3.1.catalina.bottle.1.tar.gz opus/1.3.1/lib opus/1.3.1/include
-          sudo cp -a opus/1.3.1/lib /usr/local
-          sudo cp -a opus/1.3.1/include /usr/local
+          brew install opus
       - name: Build soundboard binary
         env:
           MACOSX_DEPLOYMENT_TARGET: 10.14
