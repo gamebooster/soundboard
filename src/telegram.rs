@@ -3,25 +3,28 @@ use super::download;
 use super::{app_config, sound, soundboards};
 use anyhow::{anyhow, Context, Result};
 use crossbeam_channel::{Receiver, Sender};
+use futures::StreamExt;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::{env, path::PathBuf};
+
+use futures::future::BoxFuture;
 use tgbot::{
-    async_trait,
     longpoll::LongPoll,
     methods::{GetFile, SendMessage},
     types::{
         Audio, CallbackQuery, Command, Document, InlineKeyboardButton, Message, MessageData,
         Update, UpdateKind, Voice,
     },
-    Api, Config, UpdateHandler,
+    Api, UpdateHandler,
 };
 use tokio::task;
-use tokio::{self, fs::File, io::AsyncWriteExt, stream::StreamExt};
+use tokio::{self, fs::File, io::AsyncWriteExt};
 
+#[derive(Clone)]
 struct Handler {
     api: Api,
     sender: Sender<sound::Message>,
@@ -63,7 +66,7 @@ async fn download_file(api: &Api, file_id: &str, file_name: &str) -> Result<Path
     if !temp_path.is_file() {
         let mut file = File::create(&temp_path).await?;
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
+            let chunk = chunk.unwrap();
             file.write_all(&chunk).await?;
         }
     }
@@ -360,159 +363,165 @@ async fn send_sound_with_name(api: &Api, message: Message, name: &str) -> Result
     Err(anyhow!("could not find sound {}", name))
 }
 
-#[async_trait]
 impl UpdateHandler for Handler {
-    async fn handle(&mut self, update: Update) {
-        // info!("got an update: {:?}\n", update);
+    type Future = BoxFuture<'static, ()>;
 
-        match update.kind {
-            UpdateKind::CallbackQuery(query) => {
-                if query.message.is_some() {
-                    let parsed = query.parse_data::<CallbackSoundSelectionData>();
-                    if parsed.is_err() || parsed.unwrap().is_none() {
-                        error!("callback query parse error");
-                        return;
-                    }
-                    let data = query
-                        .parse_data::<CallbackSoundSelectionData>()
-                        .unwrap()
-                        .unwrap();
-                    match data.method {
-                        MethodType::Download => {
-                            let method = tgbot::methods::SendChatAction::new(
-                                query.message.as_ref().unwrap().get_chat_id(),
-                                tgbot::types::ChatAction::UploadAudio,
-                            );
-                            if let Err(err) = self.api.execute(method).await {
-                                error!("telegram api error: {}", err);
+    fn handle(&self, update: Update) -> Self::Future {
+        let this = self.clone();
+
+        Box::pin(async move {
+            // info!("got an update: {:?}\n", update);
+
+            match update.kind {
+                UpdateKind::CallbackQuery(query) => {
+                    if query.message.is_some() {
+                        let parsed = query.parse_data::<CallbackSoundSelectionData>();
+                        if parsed.is_err() || parsed.unwrap().is_none() {
+                            error!("callback query parse error");
+                            return;
+                        }
+                        let data = query
+                            .parse_data::<CallbackSoundSelectionData>()
+                            .unwrap()
+                            .unwrap();
+                        match data.method {
+                            MethodType::Download => {
+                                let method = tgbot::methods::SendChatAction::new(
+                                    query.message.as_ref().unwrap().get_chat_id(),
+                                    tgbot::types::ChatAction::UploadVoice,
+                                );
+                                if let Err(err) = this.api.execute(method).await {
+                                    error!("telegram api error: {}", err);
+                                }
+                                if let Err(err) = send_sound_with_name(
+                                    &this.api,
+                                    query.message.unwrap(),
+                                    &data.sound_name,
+                                )
+                                .await
+                                {
+                                    error!("send sound error: {}", err);
+                                } else {
+                                    let method = tgbot::methods::AnswerCallbackQuery::new(query.id)
+                                        .text(format!("Send sound: {}", &data.sound_name));
+                                    if let Err(err) = this.api.execute(method).await {
+                                        error!("telegram api error: {}", err);
+                                    }
+                                }
                             }
-                            if let Err(err) = send_sound_with_name(
-                                &self.api,
-                                query.message.unwrap(),
-                                &data.sound_name,
-                            )
-                            .await
-                            {
-                                error!("send sound error: {}", err);
-                            } else {
+                            MethodType::Play => {
+                                play_sound_with_name(&this.sender, &data.sound_name.clone());
                                 let method = tgbot::methods::AnswerCallbackQuery::new(query.id)
-                                    .text(format!("Send sound: {}", &data.sound_name));
-                                if let Err(err) = self.api.execute(method).await {
+                                    .text(format!("Playing sound: {}", &data.sound_name));
+                                if let Err(err) = this.api.execute(method).await {
                                     error!("telegram api error: {}", err);
                                 }
                             }
                         }
-                        MethodType::Play => {
-                            play_sound_with_name(&self.sender, &data.sound_name.clone());
-                            let method = tgbot::methods::AnswerCallbackQuery::new(query.id)
-                                .text(format!("Playing sound: {}", &data.sound_name));
-                            if let Err(err) = self.api.execute(method).await {
-                                error!("telegram api error: {}", err);
+                    }
+                }
+                UpdateKind::Message(message) => {
+                    if let Ok(command) = Command::try_from(message.clone()) {
+                        let raw_command =
+                            &message.get_text().unwrap().get_bot_commands().unwrap()[0];
+                        let name = raw_command.command.clone();
+
+                        let offset = message.get_text().unwrap().data.find(&name).unwrap_or(0);
+                        let length = name.len()
+                            + raw_command.bot_name.as_ref().map(|x| x.len()).unwrap_or(0);
+                        let pos = offset + length;
+
+                        let raw_args: Vec<u16> = message
+                            .get_text()
+                            .unwrap()
+                            .data
+                            .encode_utf16()
+                            .skip(pos)
+                            .collect();
+                        let raw_args = String::from_utf16(&raw_args).unwrap().trim().to_owned();
+
+                        match command.get_name() {
+                            "/play" => {
+                                handle_sound_command(
+                                    &this.api,
+                                    &this.sender,
+                                    command.get_message(),
+                                    raw_args,
+                                    MethodType::Play,
+                                )
+                                .await;
+                            }
+                            "/download" => {
+                                handle_sound_command(
+                                    &this.api,
+                                    &this.sender,
+                                    command.get_message(),
+                                    raw_args,
+                                    MethodType::Download,
+                                )
+                                .await;
+                            }
+                            "/stopall" => {
+                                handle_stopall_command(
+                                    &this.api,
+                                    &this.sender,
+                                    command.get_message(),
+                                    raw_args,
+                                )
+                                .await;
+                            }
+                            _ => {
+                                let method = SendMessage::new(
+                                    command.get_message().get_chat_id(),
+                                    format!("Unsupported command received: {}", command.get_name()),
+                                );
+                                if let Err(err) = this.api.execute(method).await {
+                                    error!("telegram api error: {}", err);
+                                }
+                            }
+                        }
+                    } else {
+                        let result;
+                        match &message.data {
+                            MessageData::Audio { data, .. } => {
+                                result = handle_audio(&this.api, &this.sender, data).await;
+                            }
+                            MessageData::Voice { data, .. } => {
+                                result = handle_voice(&this.api, &this.sender, data).await;
+                            }
+                            MessageData::Document { data, .. } => {
+                                result = handle_document(&this.api, &this.sender, data).await;
+                            }
+                            _ => {
+                                return;
+                            }
+                        }
+
+                        match result {
+                            Ok(name) => {
+                                let method = SendMessage::new(
+                                    message.get_chat_id(),
+                                    format!("PlaySound {}", name),
+                                );
+                                if let Err(err) = this.api.execute(method).await {
+                                    error!("telegram api error: {}", err);
+                                }
+                            }
+                            Err(err) => {
+                                let method = SendMessage::new(
+                                    message.get_chat_id(),
+                                    format!("PlaySoundError {:#}", err),
+                                );
+                                if let Err(err) = this.api.execute(method).await {
+                                    error!("telegram api error: {}", err);
+                                }
                             }
                         }
                     }
                 }
+                _ => {}
             }
-            UpdateKind::Message(message) => {
-                if let Ok(command) = Command::try_from(message.clone()) {
-                    let raw_command = &message.get_text().unwrap().get_bot_commands().unwrap()[0];
-                    let name = raw_command.command.clone();
-
-                    let offset = message.get_text().unwrap().data.find(&name).unwrap_or(0);
-                    let length =
-                        name.len() + raw_command.bot_name.as_ref().map(|x| x.len()).unwrap_or(0);
-                    let pos = offset + length;
-
-                    let raw_args: Vec<u16> = message
-                        .get_text()
-                        .unwrap()
-                        .data
-                        .encode_utf16()
-                        .skip(pos)
-                        .collect();
-                    let raw_args = String::from_utf16(&raw_args).unwrap().trim().to_owned();
-
-                    match command.get_name() {
-                        "/play" => {
-                            handle_sound_command(
-                                &self.api,
-                                &self.sender,
-                                command.get_message(),
-                                raw_args,
-                                MethodType::Play,
-                            )
-                            .await;
-                        }
-                        "/download" => {
-                            handle_sound_command(
-                                &self.api,
-                                &self.sender,
-                                command.get_message(),
-                                raw_args,
-                                MethodType::Download,
-                            )
-                            .await;
-                        }
-                        "/stopall" => {
-                            handle_stopall_command(
-                                &self.api,
-                                &self.sender,
-                                command.get_message(),
-                                raw_args,
-                            )
-                            .await;
-                        }
-                        _ => {
-                            let method = SendMessage::new(
-                                command.get_message().get_chat_id(),
-                                format!("Unsupported command received: {}", command.get_name()),
-                            );
-                            if let Err(err) = self.api.execute(method).await {
-                                error!("telegram api error: {}", err);
-                            }
-                        }
-                    }
-                } else {
-                    let result;
-                    match &message.data {
-                        MessageData::Audio { data, .. } => {
-                            result = handle_audio(&self.api, &self.sender, data).await;
-                        }
-                        MessageData::Voice { data, .. } => {
-                            result = handle_voice(&self.api, &self.sender, data).await;
-                        }
-                        MessageData::Document { data, .. } => {
-                            result = handle_document(&self.api, &self.sender, data).await;
-                        }
-                        _ => {
-                            return;
-                        }
-                    }
-
-                    match result {
-                        Ok(name) => {
-                            let method = SendMessage::new(
-                                message.get_chat_id(),
-                                format!("PlaySound {}", name),
-                            );
-                            if let Err(err) = self.api.execute(method).await {
-                                error!("telegram api error: {}", err);
-                            }
-                        }
-                        Err(err) => {
-                            let method = SendMessage::new(
-                                message.get_chat_id(),
-                                format!("PlaySoundError {:#}", err),
-                            );
-                            if let Err(err) = self.api.execute(method).await {
-                                error!("telegram api error: {}", err);
-                            }
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
+        })
     }
 }
 
@@ -523,7 +532,7 @@ pub async fn run(sender: Sender<sound::Message>, receiver: Receiver<sound::Messa
         .as_ref()
         .unwrap()
         .clone();
-    let api = Api::new(Config::new(token.clone())).expect("Failed to create API");
+    let api = Api::new(token.clone()).expect("Failed to create API");
     log::info!("running telegram bot with token {}", token);
     api.execute(tgbot::methods::SetMyCommands::new(vec![
         tgbot::types::BotCommand::new("play", "play the sound with the provided name (fuzzy)")

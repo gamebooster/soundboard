@@ -189,7 +189,7 @@ impl HotkeyListener for Listener {
             if event_handler_ref.is_null() {
                 eprintln!("register_event_handler_callback failed!");
                 unsafe {
-                    Box::from_raw(saved_callback);
+                    let _ = Box::from_raw(saved_callback);
                 };
                 return;
             }
@@ -248,7 +248,7 @@ impl HotkeyListener for Listener {
                         if result != 0 {
                             eprintln!("drop: uninstall_event_handler failed: {}", result);
                         }
-                        Box::from_raw(saved_callback);
+                        let _ = Box::from_raw(saved_callback);
                         break;
                     },
                     Err(err) => {

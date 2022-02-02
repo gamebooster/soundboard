@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::{env, fs};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=soundboard.toml");
     println!("cargo:rerun-if-changed=soundboards");
 
@@ -19,6 +19,9 @@ fn main() {
     if Path::new("soundboards").exists() {
         fs_extra::dir::copy("soundboards", target_dir_path, &copy_options).expect("copy failed");
     }
+
+    tonic_build::compile_protos("src/download/ttsclient/cloud_tts.proto")?;
+    Ok(())
 }
 
 fn copy_file<S: AsRef<std::ffi::OsStr> + ?Sized, P: Copy + AsRef<Path>>(

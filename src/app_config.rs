@@ -141,18 +141,22 @@ fn save_app_config_to_disk(config: &AppConfig) -> Result<()> {
     Ok(())
 }
 
+fn string_to_static_str(s: String) -> &'static str {
+    Box::leak(s.into_boxed_str())
+}
+
 /// Merges the file config with command line args and enviroment args
 fn load_and_merge_app_config() -> Result<AppConfig> {
     let mut config = load_and_parse_app_config()?;
     macro_rules! add_arg {
         ($name:ident) => {
             paste! {
-            let [<command_string_ $name>] = stringify!($name).replace("_", "-");
-            let [<default_string_ $name>] = format!("{:?}", config.$name.clone().unwrap_or_default());
-            let $name = Arg::with_name([<command_string_ $name>].as_str())
+            let [<command_string_ $name>]: &str = string_to_static_str(stringify!($name).replace("_", "-"));
+            let [<default_string_ $name>]: &str = string_to_static_str(format!("{:?}", config.$name.clone().unwrap_or_default()));
+            let $name = Arg::new([<command_string_ $name>])
                 .long(&[<command_string_ $name>])
                 .takes_value(true)
-                .default_value(&[<default_string_ $name>]);
+                .default_value([<default_string_ $name>]);
             }
         };
     }
@@ -192,18 +196,18 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
         .about(crate_description!());
 
     matches = matches.args(&[
-        input_device.short("i").help("Sets the input device to use"),
+        input_device.short('i').help("Sets the input device to use"),
         output_device
-            .short("o")
+            .short('o')
             .help("Sets the output device to use"),
         loopback_device
-            .short("l")
+            .short('l')
             .help("Sets the loopback device to use"),
         spotify_user.help("Sets the spotify user name to use spotify as source"),
         spotify_pass.help("Sets the spotify passowrd to use spotify as source"),
         stop_hotkey.help("Sets the stop hotkey to stop all sounds"),
         print_possible_devices
-            .short("P")
+            .short('P')
             .help("Print possible devices")
             .takes_value(false),
         simultaneous_playback
@@ -219,7 +223,7 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     {
         matches = matches.arg(
             auto_loop_device
-                .short("A")
+                .short('A')
                 .possible_values(&["true", "false"])
                 .help("Enable/disable the automatic creation of a PulseAudio loopback device"),
         );
@@ -294,11 +298,21 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
         };
     }
 
+    #[cfg(feature = "autoloop")]
     merge_bool_option_with_args_and_env!(auto_loop_device);
+
+    #[cfg(feature = "http")]
     merge_bool_option_with_args_and_env!(http_server);
+
+    #[cfg(feature = "textui")]
     merge_bool_option_with_args_and_env!(tui);
+
+    #[cfg(feature = "gui")]
     merge_bool_option_with_args_and_env!(gui);
+
+    #[cfg(feature = "http")]
     merge_bool_option_with_args_and_env!(embed_web);
+
     merge_bool_option_with_args_and_env!(stream_input_to_loop);
     merge_bool_option_with_args_and_env!(simultaneous_playback);
 

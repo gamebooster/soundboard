@@ -207,7 +207,9 @@ fn download_from_http(
 
 // TODO: wait for libspotify to get tokio 0.2 support
 #[cfg(feature = "spotify")]
-fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
+#[tokio::main(flavor = "current_thread")]
+async fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
+    use futures::stream::FuturesUnordered;
     use librespot::audio::{AudioDecrypt, AudioFile, StreamLoaderController};
     use librespot::core::authentication::Credentials;
     use librespot::core::config::SessionConfig;
@@ -217,7 +219,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     use librespot::playback::config::PlayerConfig;
     use std::io::{Read, Seek, SeekFrom};
     use std::sync::atomic::{AtomicBool, Ordering};
-    use tokio_core::reactor::Core;
+    use tokio::time::Sleep;
 
     if app_config::get_app_config()
         .spotify_user
@@ -238,8 +240,6 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     }
 
     let session_config = SessionConfig::default();
-    let mut core = Core::new()?;
-    let handle = core.handle();
 
     let credentials = Credentials::with_password(
         app_config::get_app_config()
@@ -259,9 +259,9 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
         }
     };
 
-    let session = core.run(Session::connect(session_config, credentials, None, handle))?;
+    let session = Session::connect(session_config, credentials, None).await?;
 
-    let mut audio = match core.run(AudioItem::get_audio_item(&session, track)) {
+    let mut audio = match AudioItem::get_audio_item(&session, track).await {
         Ok(audio) => audio,
         Err(err) => {
             return Err(anyhow!("spotify: Unable to load audio item. {:?}", err));
@@ -275,19 +275,17 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
 
     if !audio.available {
         audio = {
-            if let Some(audio) = audio
-                .alternatives
-                .unwrap_or_default()
-                .iter()
-                .find_map(|alt| {
-                    if let Ok(audio) = core.run(AudioItem::get_audio_item(&session, *alt)) {
-                        if audio.available {
-                            return Some(audio);
-                        }
+            let ids = audio.alternatives.unwrap_or_default();
+            let mut found_audio = None;
+            for id in ids {
+                if let Ok(audio) = AudioItem::get_audio_item(&session, id).await {
+                    if audio.available {
+                        found_audio = Some(audio);
+                        break;
                     }
-                    None
-                })
-            {
+                }
+            }
+            if let Some(audio) = found_audio {
                 audio
             } else {
                 return Err(anyhow!("spotify: audio <{}> is not available", audio.uri));
@@ -323,18 +321,18 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     let key = session.audio_key().request(track, file_id);
     let encrypted_file = AudioFile::open(&session, file_id, BYTES_PER_SECOND, play_from_beginning);
 
-    let encrypted_file = match core.run(encrypted_file) {
+    let encrypted_file = match encrypted_file.await {
         Ok(encrypted_file) => encrypted_file,
         Err(err) => {
             return Err(anyhow!("spotify: Unable to load encrypted file. {:?}", err));
         }
     };
 
-    let mut stream_loader_controller = encrypted_file.get_stream_loader_controller();
+    let stream_loader_controller = encrypted_file.get_stream_loader_controller();
 
     stream_loader_controller.set_stream_mode();
 
-    let key = match core.run(key) {
+    let key = match key.await {
         Ok(key) => key,
         Err(err) => {
             return Err(anyhow!("spotify: Unable to load decryption key. {:?}", err));
@@ -368,7 +366,7 @@ fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> {
     });
 
     loop {
-        core.turn(Some(std::time::Duration::from_millis(50)));
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
         if finished.load(Ordering::Relaxed) {
             break;
         }

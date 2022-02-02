@@ -112,7 +112,11 @@ impl Application for Soundboard {
         String::from("soundboard")
     }
 
-    fn update(&mut self, message: SoundboardMessage) -> Command<SoundboardMessage> {
+    fn update(
+        &mut self,
+        message: SoundboardMessage,
+        clipboard: &mut iced::Clipboard,
+    ) -> Command<SoundboardMessage> {
         match message {
             SoundboardMessage::Tick => {
                 self.sound_sender
@@ -181,14 +185,17 @@ impl Application for Soundboard {
                     );
                     soundboard_buttons[0].selected = true;
                     self.soundboard_button_states = soundboard_buttons;
-                    self.update(SoundboardMessage::ShowSoundboard(
-                        soundboards::get_soundboards()
-                            .values()
-                            .next()
-                            .unwrap()
-                            .get_name()
-                            .to_string(),
-                    ));
+                    self.update(
+                        SoundboardMessage::ShowSoundboard(
+                            soundboards::get_soundboards()
+                                .values()
+                                .next()
+                                .unwrap()
+                                .get_name()
+                                .to_string(),
+                        ),
+                        clipboard,
+                    );
                     self.current_state = SoundboardState::Loaded;
                 }
                 Err(err) => error!("could not load data {}", err),
@@ -257,9 +264,9 @@ impl Application for Soundboard {
             }
             SoundboardMessage::HandlePanelViewMessage(panel_view_message) => {
                 if let panel_view::PanelViewMessage::PlaySound(path) = panel_view_message {
-                    self.update(SoundboardMessage::PlaySound(path));
+                    self.update(SoundboardMessage::PlaySound(path), clipboard);
                 } else if let panel_view::PanelViewMessage::StopSound(path) = panel_view_message {
-                    self.update(SoundboardMessage::StopSound(path));
+                    self.update(SoundboardMessage::StopSound(path), clipboard);
                 } else {
                     self.panel_view.update(panel_view_message);
                 }
@@ -267,7 +274,7 @@ impl Application for Soundboard {
             #[allow(irrefutable_let_patterns)]
             SoundboardMessage::HandleListViewMessage(list_view_message) => {
                 if let list_view::ListViewMessage::PlaySound(path) = list_view_message {
-                    self.update(SoundboardMessage::PlaySound(path));
+                    self.update(SoundboardMessage::PlaySound(path), clipboard);
                 } else {
                     self.list_view.update(list_view_message);
                 }
@@ -278,7 +285,7 @@ impl Application for Soundboard {
     }
 
     fn subscription(&self) -> Subscription<SoundboardMessage> {
-        every(Duration::from_millis(10)).map(|_| SoundboardMessage::Tick)
+        iced_futures::time::every(Duration::from_millis(10)).map(|_| SoundboardMessage::Tick)
     }
 
     fn view(&mut self) -> Element<SoundboardMessage> {
@@ -461,38 +468,5 @@ impl Application for Soundboard {
             .height(Length::Fill)
             .padding(10)
             .into()
-    }
-}
-
-pub fn every(duration: std::time::Duration) -> iced::Subscription<std::time::Instant> {
-    iced::Subscription::from_recipe(Every(duration))
-}
-
-struct Every(std::time::Duration);
-
-impl<H, E> iced_native::subscription::Recipe<H, E> for Every
-where
-    H: std::hash::Hasher,
-{
-    type Output = std::time::Instant;
-
-    fn hash(&self, state: &mut H) {
-        use std::hash::Hash;
-
-        std::any::TypeId::of::<Self>().hash(state);
-        self.0.hash(state);
-    }
-
-    fn stream(
-        self: Box<Self>,
-        _input: futures::stream::BoxStream<'static, E>,
-    ) -> futures::stream::BoxStream<'static, Self::Output> {
-        use futures::stream::StreamExt;
-
-        let start = tokio::time::Instant::now() + self.0;
-
-        tokio::time::interval_at(start, self.0)
-            .map(|_| std::time::Instant::now())
-            .boxed()
     }
 }

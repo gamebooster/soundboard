@@ -45,7 +45,7 @@ soundboard encountered an fatal error:
   Additional:
     If unexpected please file a bug report at https://github.com/gamebooster/soundboard/issues"
     };
-  };
+  }
     panic::set_hook(Box::new(|panic_info| {
         #[cfg(feature = "textui")]
         let _ = crossterm::terminal::disable_raw_mode();

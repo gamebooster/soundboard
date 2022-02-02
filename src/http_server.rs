@@ -4,7 +4,7 @@ use super::sound;
 use super::soundboards;
 use anyhow::{anyhow, Context, Result};
 use bytes::BufMut;
-use futures::{Future, Stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{Future, Stream, StreamExt, TryFuture, TryFutureExt, TryStreamExt};
 use log::{error, info, trace, warn};
 use parking_lot::Mutex;
 use serde::Deserialize;
@@ -13,9 +13,11 @@ use std::convert::Infallible;
 use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::IntervalStream;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use ulid::Ulid;
 use warp::http::StatusCode;
-use warp::{reject, sse::ServerSentEvent, Filter, Rejection, Reply};
+use warp::{reject, sse::Event, Filter, Rejection, Reply};
 
 #[derive(Debug, Deserialize, Clone, Serialize)]
 struct HotkeyRegisterRequest {
@@ -741,8 +743,8 @@ pub async fn run(
                 )
             });
 
-    fn sse_json(id: PlayStatusResponse) -> Result<impl ServerSentEvent, Infallible> {
-        Ok(warp::sse::json(id))
+    fn sse_json(id: PlayStatusResponse) -> Result<warp::sse::Event, Infallible> {
+        Ok(warp::sse::Event::default().json_data(id).unwrap())
     }
 
     let gui_sender_clone = gui_sender.clone();
@@ -752,36 +754,36 @@ pub async fn run(
         .map(move || {
             let gui_sender_clone = gui_sender_clone.clone();
             let gui_receiver_clone = gui_receiver_clone.clone();
-            let event_stream =
-                tokio::time::interval(tokio::time::Duration::from_millis(111)).map(move |_| loop {
-                    gui_sender_clone
-                        .send(sound::Message::PlayStatus(Vec::new(), 0.0))
-                        .unwrap();
-                    if let Ok(sound::Message::PlayStatus(sounds, volume)) =
-                        gui_receiver_clone.recv()
-                    {
-                        let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
-                        for sound in sounds {
-                            if let Some(full_sound) = soundboards::find_sound(sound.1) {
-                                sound_info.push(StrippedSoundActiveInfo {
-                                    status: sound.0,
-                                    name: full_sound.get_name().to_string(),
-                                    id: sound.1,
-                                    play_duration: sound.2.as_secs_f32(),
-                                    total_duration: sound
-                                        .3
-                                        .unwrap_or_else(|| std::time::Duration::from_secs(0))
-                                        .as_secs_f32(),
-                                });
-                            }
+            let event_stream = IntervalStream::new(tokio::time::interval(
+                tokio::time::Duration::from_millis(111),
+            ))
+            .map(move |_| loop {
+                gui_sender_clone
+                    .send(sound::Message::PlayStatus(Vec::new(), 0.0))
+                    .unwrap();
+                if let Ok(sound::Message::PlayStatus(sounds, volume)) = gui_receiver_clone.recv() {
+                    let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
+                    for sound in sounds {
+                        if let Some(full_sound) = soundboards::find_sound(sound.1) {
+                            sound_info.push(StrippedSoundActiveInfo {
+                                status: sound.0,
+                                name: full_sound.get_name().to_string(),
+                                id: sound.1,
+                                play_duration: sound.2.as_secs_f32(),
+                                total_duration: sound
+                                    .3
+                                    .unwrap_or_else(|| std::time::Duration::from_secs(0))
+                                    .as_secs_f32(),
+                            });
                         }
-                        let play_status_response = PlayStatusResponse {
-                            sounds: sound_info,
-                            volume,
-                        };
-                        return sse_json(play_status_response);
                     }
-                });
+                    let play_status_response = PlayStatusResponse {
+                        sounds: sound_info,
+                        volume,
+                    };
+                    return sse_json(play_status_response);
+                }
+            });
             warp::sse::reply(warp::sse::keep_alive().stream(event_stream))
         });
 
@@ -825,8 +827,8 @@ pub async fn run(
     let senders: HotkeySenders = HotkeySenders::default();
     let senders_filter = warp::any().map(move || senders.clone());
 
-    fn sse_event(id: String) -> Result<impl ServerSentEvent, Infallible> {
-        Ok(warp::sse::data(id))
+    fn sse_event(id: String) -> Result<warp::sse::Event, Infallible> {
+        Ok(warp::sse::Event::default().data(id))
     }
 
     let hotkey_events_route = warp::path!("hotkeys" / "events")
@@ -836,7 +838,7 @@ pub async fn run(
             let event_stream = || {
                 let (tx, rx) = mpsc::unbounded_channel::<HotkeyMessage>();
                 senders.lock().push(tx);
-                rx.map(|msg| match msg {
+                UnboundedReceiverStream::new(rx).map(|msg| match msg {
                     HotkeyMessage::Pressed(id) => sse_event(id),
                 })
             };
@@ -958,7 +960,7 @@ pub async fn run(
         let asset = WebAsset::get(path).ok_or_else(warp::reject::not_found)?;
         let mime = mime_guess::from_path(path).first_or_octet_stream();
 
-        let mut res = warp::reply::Response::new(asset.into());
+        let mut res = warp::reply::Response::new(asset.data.into());
         res.headers_mut().insert(
             "content-type",
             warp::http::header::HeaderValue::from_str(mime.as_ref()).unwrap(),

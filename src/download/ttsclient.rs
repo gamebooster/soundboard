@@ -4,12 +4,16 @@ use serde::Deserialize;
 use serde::Serialize;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{
+    codegen::InterceptedService,
     metadata::MetadataValue,
+    service::Interceptor,
     transport::{Certificate, Channel, ClientTlsConfig},
-    Request,
+    Request, Status,
 };
 
-mod google_cloud_texttospeech_v1;
+mod google_cloud_texttospeech_v1 {
+    tonic::include_proto!("google.cloud.texttospeech.v1");
+}
 
 use google_cloud_texttospeech_v1::synthesis_input::InputSource;
 use google_cloud_texttospeech_v1::text_to_speech_client::TextToSpeechClient;
@@ -24,11 +28,11 @@ use google_cloud_texttospeech_v1::VoiceSelectionParams;
 const ENDPOINT: &str = "https://texttospeech.googleapis.com";
 
 pub struct TTSClient {
-    client: TextToSpeechClient<tonic::transport::Channel>,
+    client: TextToSpeechClient<InterceptedService<Channel, KeyInterceptor>>,
     rt: Runtime,
 }
 
-#[derive(Clone, Default, Serialize, Deserialize, Debug)]
+#[derive(Clone, Default, Debug)]
 pub struct SynthesisOptions {
     pub speaking_rate: Option<f64>,
     pub pitch: Option<f64>,
@@ -60,13 +64,21 @@ impl std::hash::Hash for SynthesisOptions {
     }
 }
 
+struct KeyInterceptor;
+
+impl Interceptor for KeyInterceptor {
+    fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+        req.metadata_mut().insert(
+            "x-goog-api-key",
+            MetadataValue::from_str("AIzaSyDP7orD6c32-E2TvzyEXbAimY1Fwbif_6c").unwrap(),
+        );
+        Ok(req)
+    }
+}
+
 impl TTSClient {
     pub fn connect() -> Result<Self, tonic::transport::Error> {
-        let mut rt = Builder::new()
-            .basic_scheduler()
-            .enable_all()
-            .build()
-            .unwrap();
+        let rt = Builder::new_current_thread().enable_all().build().unwrap();
 
         let tls_config = ClientTlsConfig::new().domain_name("texttospeech.googleapis.com");
 
@@ -76,20 +88,7 @@ impl TTSClient {
                 .connect(),
         )?;
 
-        let client =
-            TextToSpeechClient::with_interceptor(channel, move |mut req: tonic::Request<()>| {
-                req.metadata_mut().insert(
-                    "x-goog-api-key",
-                    MetadataValue::from_str(
-                        &"BJ{bTzCn8OjogPvzcur.XXldGNpjIIyN{71ryk1"
-                            .chars()
-                            .map(|c| (c as u8 - 1 as u8) as char)
-                            .collect::<String>(),
-                    )
-                    .unwrap(),
-                );
-                Ok(req)
-            });
+        let client = TextToSpeechClient::with_interceptor(channel, KeyInterceptor);
 
         Ok(Self { rt, client })
     }

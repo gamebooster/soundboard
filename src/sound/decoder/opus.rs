@@ -42,8 +42,8 @@ where
 
         let mut decoded_data: Vec<i16> = vec![0; MAX_BUFFER_SIZE];
         let mut decoder = Decoder::new(
-            audiopus::SampleRate::try_from(SAMPLE_RATE as i32).unwrap(),
-            audiopus::Channels::try_from(CHANNELS as i32).unwrap(),
+            <audiopus::SampleRate as audiopus::TryFrom<i32>>::try_from(SAMPLE_RATE as i32).unwrap(),
+            <audiopus::Channels as audiopus::TryFrom<i32>>::try_from(CHANNELS as i32).unwrap(),
         )
         .unwrap();
         loop {

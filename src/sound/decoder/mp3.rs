@@ -89,7 +89,7 @@ where
                                 Err(_) => return None,
                             }
                         }
-                    };
+                    }
                     trace!("mp3-duration: used decoder duration");
                     get_duration(reader)
                 }
