@@ -12,7 +12,7 @@ pub enum SampleFormat {
 }
 
 /// Trait for containers that contain PCM data.
-pub unsafe trait Sample: Copy + Clone {
+pub trait Sample: Copy + Clone {
     /// The `SampleFormat` corresponding to this data type.
     const FORMAT: SampleFormat;
 
@@ -27,7 +27,7 @@ pub unsafe trait Sample: Copy + Clone {
         S: Sample;
 }
 
-unsafe impl Sample for i16 {
+impl Sample for i16 {
     const FORMAT: SampleFormat = SampleFormat::I16;
 
     #[inline]
@@ -53,7 +53,7 @@ unsafe impl Sample for i16 {
     }
 }
 
-unsafe impl Sample for f32 {
+impl Sample for f32 {
     const FORMAT: SampleFormat = SampleFormat::F32;
 
     #[inline]

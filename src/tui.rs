@@ -45,7 +45,7 @@ fn select_soundboard(
     let current_sounds = soundboard.iter();
     let hotkeys = register_hotkeys(current_sounds, gui_sender);
     let mut sound_list = sound_state_list::SoundStateList::new(
-        &soundboard.get_name(),
+        soundboard.get_name(),
         current_sounds.cloned().collect(),
     );
     sound_list.state.select(Some(0));

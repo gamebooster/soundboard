@@ -481,21 +481,20 @@ impl UpdateHandler for Handler {
                             }
                         }
                     } else {
-                        let result;
-                        match &message.data {
+                        let result = match &message.data {
                             MessageData::Audio { data, .. } => {
-                                result = handle_audio(&this.api, &this.sender, data).await;
+                                handle_audio(&this.api, &this.sender, data).await
                             }
                             MessageData::Voice { data, .. } => {
-                                result = handle_voice(&this.api, &this.sender, data).await;
+                                handle_voice(&this.api, &this.sender, data).await
                             }
                             MessageData::Document { data, .. } => {
-                                result = handle_document(&this.api, &this.sender, data).await;
+                                handle_document(&this.api, &this.sender, data).await
                             }
                             _ => {
                                 return;
                             }
-                        }
+                        };
 
                         match result {
                             Ok(name) => {

@@ -20,10 +20,7 @@ impl SoundStateList {
         }
     }
     pub fn index(&self) -> usize {
-        match self.state.selected() {
-            Some(i) => i,
-            None => 0,
-        }
+        self.state.selected().unwrap_or(0)
     }
 
     pub fn update_filter(&mut self, new_filter: &str) {

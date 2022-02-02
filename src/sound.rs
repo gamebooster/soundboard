@@ -70,7 +70,7 @@ fn print_possible_devices(context: &Context, full: bool) {
             for (idx, device) in playback_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&context, DeviceType::Playback, device.id());
+                    print_device_info(context, DeviceType::Playback, device.id());
                 }
             }
 
@@ -78,7 +78,7 @@ fn print_possible_devices(context: &Context, full: bool) {
             for (idx, device) in capture_devices.iter().enumerate() {
                 info!("\t\t{}: {}", idx, device.name());
                 if full {
-                    print_device_info(&context, DeviceType::Capture, device.id());
+                    print_device_info(context, DeviceType::Capture, device.id());
                 }
             }
         })
@@ -346,13 +346,7 @@ fn run_sound_message_loop(
     let mut volume: f32 = 1.0;
     let mut sinks: SoundMap = HashMap::new();
 
-    let output_device_id = {
-        if let Some(device) = output_device.clone() {
-            Some(device.id().clone())
-        } else {
-            None
-        }
-    };
+    let output_device_id = { output_device.clone().map(|device| device.id().clone()) };
 
     let mut output_sink =
         SinkDecoder::new(&context, output_device_id).expect("failed to create output sink");
@@ -517,8 +511,8 @@ fn run_sound_message_loop(
         };
         sinks.retain(|key, (status, _, _)| {
             *status == SoundStatus::Downloading
-                || output_sink.is_playing(&key)
-                || loopback_sink.is_playing(&key)
+                || output_sink.is_playing(key)
+                || loopback_sink.is_playing(key)
         });
         if loopback_sink.stopped() {
             loopback_sink

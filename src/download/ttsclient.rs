@@ -109,12 +109,15 @@ impl TTSClient {
         let mut request = SynthesizeSpeechRequest::default();
         let options = options.unwrap_or_default();
 
-        let mut input = SynthesisInput::default();
-        input.input_source = Some(InputSource::Ssml(ssml.to_owned()));
+        let input = SynthesisInput {
+            input_source: Some(InputSource::Ssml(ssml.to_owned())),
+        };
         request.input = Some(input);
 
-        let mut voice_selection = VoiceSelectionParams::default();
-        voice_selection.language_code = language_code.to_owned();
+        let mut voice_selection = VoiceSelectionParams {
+            language_code: language_code.to_owned(),
+            ..Default::default()
+        };
         if let Some(voice_name) = options.voice_name {
             voice_selection.name = voice_name;
         }
@@ -123,12 +126,13 @@ impl TTSClient {
         }
         request.voice = Some(voice_selection);
 
-        let mut audio_config = AudioConfig::default();
-        audio_config.audio_encoding = AudioEncoding::OggOpus as i32;
-        audio_config.pitch = options.pitch.unwrap_or_default();
-        audio_config.speaking_rate = options.speaking_rate.unwrap_or_default();
-        audio_config.volume_gain_db = options.volume_gain_db.unwrap_or_default();
-        request.audio_config = Some(audio_config);
+        request.audio_config = Some(AudioConfig {
+            audio_encoding: AudioEncoding::OggOpus as i32,
+            pitch: options.pitch.unwrap_or_default(),
+            speaking_rate: options.speaking_rate.unwrap_or_default(),
+            volume_gain_db: options.volume_gain_db.unwrap_or_default(),
+            ..Default::default()
+        });
         let response = self.synthesize_speech_request(request)?.into_inner();
         Ok(response.audio_content)
     }

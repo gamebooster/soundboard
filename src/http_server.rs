@@ -167,7 +167,7 @@ fn format_json_error<T: std::fmt::Display>(err: T) -> warp::reply::WithStatus<wa
     warp::reply::with_status(
         warp::reply::json(&ResultErrors::with_error(
             "500",
-            &"Internal Server Error",
+            "Internal Server Error",
             &format!("{:#}", err),
         )),
         warp::http::StatusCode::INTERNAL_SERVER_ERROR,

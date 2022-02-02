@@ -144,22 +144,20 @@ pub fn parse_hotkey(hotkey_string: &str) -> Result<Hotkey> {
         .ok_or_else(|| anyhow!("No valid hotkey match"))?;
     let mut modifier = Vec::new();
     let mut key: Option<Key> = None;
-    for caps in caps.iter().skip(1) {
-        if let Some(caps) = caps {
-            let mut mat = caps.as_str().to_uppercase();
-            if mat.parse::<usize>().is_ok() {
-                mat = format!("KEY_{}", mat);
-            }
-            if let Ok(res) = Modifier::from_str(&mat) {
-                modifier.push(res);
-                continue;
-            }
-            if key.is_some() {
-                return Err(anyhow!("hotkey has alread a key specified"));
-            }
-            if let Ok(res) = Key::from_str(&mat) {
-                key = Some(res);
-            }
+    for caps in caps.iter().skip(1).flatten() {
+        let mut mat = caps.as_str().to_uppercase();
+        if mat.parse::<usize>().is_ok() {
+            mat = format!("KEY_{}", mat);
+        }
+        if let Ok(res) = Modifier::from_str(&mat) {
+            modifier.push(res);
+            continue;
+        }
+        if key.is_some() {
+            return Err(anyhow!("hotkey has alread a key specified"));
+        }
+        if let Ok(res) = Key::from_str(&mat) {
+            key = Some(res);
         }
     }
     if key.is_none() {
@@ -183,6 +181,8 @@ impl Hotkey {
     }
 }
 
+#[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(
     Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq,
 )]
@@ -201,6 +201,7 @@ impl fmt::Display for Modifier {
 }
 
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 #[derive(
     Debug, Deserialize, Copy, Clone, Serialize, strum_macros::EnumString, PartialEq, Hash, Eq,
 )]
@@ -288,7 +289,7 @@ impl fmt::Display for Hotkey {
         });
         let hotkey_string = {
             if !modifier_string.is_empty() {
-                format!("{}-{}", modifier_string, self.key.to_string())
+                format!("{}-{}", modifier_string, self.key)
             } else {
                 self.key.to_string()
             }

@@ -103,7 +103,7 @@ where
                 return Some(real_val as i16);
             }
 
-            let buffer = mem::replace(&mut self.current_block, Vec::new());
+            let buffer = std::mem::take(&mut self.current_block);
             match self.reader.blocks().read_next_or_eof(buffer) {
                 Ok(Some(block)) => {
                     self.current_block_channel_len = (block.len() / block.channels()) as usize;

@@ -33,7 +33,7 @@ pub fn get_local_path_from_sound_config(
             } else if !download {
                 Ok(None)
             } else {
-                Ok(Some(download_from_http(file_path, &url, headers_tuple)?))
+                Ok(Some(download_from_http(file_path, url, headers_tuple)?))
             }
         }
         soundboards::Source::Local { path } => {
@@ -89,7 +89,7 @@ pub fn get_local_path_from_sound_config(
             }
         }
         #[cfg(feature = "text-to-speech")]
-        soundboards::Source::TTS { ssml, lang } => {
+        soundboards::Source::Tts { ssml, lang } => {
             let file_path = get_file_path_from_hash(&(&ssml, &lang));
             if file_path.is_file() {
                 return Ok(Some(file_path));
@@ -112,7 +112,7 @@ pub fn get_local_path_from_sound_config(
         }
 
         #[cfg(not(feature = "text-to-speech"))]
-        soundboards::Source::TTS { ssml: _, lang: _ } => {
+        soundboards::Source::Tts { ssml: _, lang: _ } => {
             Err(anyhow!("text-to-speech feature not compiled in binary"))
         }
 
@@ -162,7 +162,7 @@ fn resolve_local_sound_path(sound: &soundboards::Sound, sound_path: PathBuf) -> 
     }
     let parent_board_sounds_path = soundboards::get_soundboards()
         .values()
-        .find(|sb| sb.get_sounds().get(&sound.get_id()).is_some())
+        .find(|sb| sb.get_sounds().get(sound.get_id()).is_some())
         .ok_or_else(|| anyhow!("unknown sound id"))?
         .get_sounds_path()?;
     let mut new_path = parent_board_sounds_path;
@@ -252,7 +252,7 @@ async fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> 
             .unwrap_or_default(),
     );
 
-    let track = match SpotifyId::from_base62(&id) {
+    let track = match SpotifyId::from_base62(id) {
         Ok(track) => track,
         Err(err) => {
             return Err(anyhow!("Unable to parse spotify id {:?}", err));
@@ -304,7 +304,7 @@ async fn download_from_spotify(file_path: PathBuf, id: &str) -> Result<PathBuf> 
         .find(|format| audio.files.contains_key(format))
         .unwrap();
 
-    let file_id = match audio.files.get(&format) {
+    let file_id = match audio.files.get(format) {
         Some(&file_id) => file_id,
         None => {
             return Err(anyhow!(

@@ -242,9 +242,9 @@ where
         unlocked.remove(key);
     }
 
-    pub fn is_playing(&mut self, key: &T) -> bool {
+    pub fn is_playing(&self, key: &T) -> bool {
         let unlocked = self.sources.lock();
-        unlocked.contains_key(&key)
+        unlocked.contains_key(key)
     }
 
     /// Gets the volume of the sound.

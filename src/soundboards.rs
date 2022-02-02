@@ -154,7 +154,7 @@ impl Soundboard {
         }
         let hotkey = {
             if let Some(hotkey) = config.hotkey.as_ref() {
-                Some(hotkey::parse_hotkey(&hotkey)?)
+                Some(hotkey::parse_hotkey(hotkey)?)
             } else {
                 None
             }
@@ -184,7 +184,7 @@ impl Soundboard {
         config.position = *self.get_position();
         config.sounds = Some(
             self.iter()
-                .map(|s| SoundConfig::from(s))
+                .map(SoundConfig::from)
                 .collect::<Vec<SoundConfig>>(),
         );
 
@@ -361,11 +361,7 @@ impl Soundboard {
     }
 
     pub fn get_hotkey_string_or_none(&self) -> Option<String> {
-        if let Some(hotkey) = self.get_hotkey() {
-            Some(hotkey.to_string())
-        } else {
-            None
-        }
+        self.get_hotkey().as_ref().map(|hotkey| hotkey.to_string())
     }
 
     pub fn get_sounds(&self) -> &SoundMap {
@@ -381,7 +377,7 @@ impl Soundboard {
     }
 
     pub fn iter(&self) -> SoundIterator {
-        SoundIterator::new(&self)
+        SoundIterator::new(self)
     }
 }
 
@@ -433,7 +429,7 @@ impl Sound {
     fn from_config(config: SoundConfig) -> Result<Self> {
         let hotkey = {
             if let Some(hotkey) = config.hotkey.as_ref() {
-                Some(hotkey::parse_hotkey(&hotkey)?)
+                Some(hotkey::parse_hotkey(hotkey)?)
             } else {
                 None
             }
@@ -478,11 +474,7 @@ impl Sound {
     }
 
     pub fn get_hotkey_string_or_none(&self) -> Option<String> {
-        if let Some(hotkey) = self.get_hotkey() {
-            Some(hotkey.to_string())
-        } else {
-            None
-        }
+        self.get_hotkey().as_ref().map(|hotkey| hotkey.to_string())
     }
 
     pub fn set_hotkey(&mut self, hotkey: Option<hotkey::Hotkey>) {
@@ -571,7 +563,7 @@ pub enum Source {
     #[serde(rename = "youtube")]
     Youtube { id: String },
     #[serde(rename = "tts")]
-    TTS { ssml: String, lang: String },
+    Tts { ssml: String, lang: String },
     #[serde(rename = "spotify")]
     Spotify { id: String },
 }
@@ -594,13 +586,7 @@ impl SoundConfig {
     }
 
     pub fn from(sound: &Sound) -> Self {
-        let hotkey = {
-            if let Some(hotkey) = sound.get_hotkey() {
-                Some(hotkey.to_string())
-            } else {
-                None
-            }
-        };
+        let hotkey = { sound.get_hotkey().as_ref().map(|hotkey| hotkey.to_string()) };
         Self {
             name: sound.get_name().to_string(),
             source: sound.get_source().clone(),
@@ -680,18 +666,17 @@ fn load_and_parse_soundboards() -> Result<SoundboardMap> {
 
 fn load_soundboard_config(soundboard_path: &Path) -> Result<SoundboardConfig> {
     let file_str = fs::read_to_string(&soundboard_path)?;
-    let soundboard_config: SoundboardConfig;
-
-    if PathBuf::from(soundboard_path)
+    let soundboard_config: SoundboardConfig = if PathBuf::from(soundboard_path)
         .extension()
         .unwrap_or_default()
         .to_string_lossy()
         == "toml"
     {
-        soundboard_config = toml::from_str(&file_str)?;
+        toml::from_str(&file_str)?
     } else {
-        soundboard_config = serde_json::from_str(&file_str)?;
-    }
+        serde_json::from_str(&file_str)?
+    };
+
     Ok(soundboard_config)
 }
 
@@ -699,19 +684,17 @@ fn check_soundboard_config_mutated_on_disk(path: &Path, last_hash: u64) -> Resul
     let file_str = fs::read_to_string(&path)
         .with_context(|| format!("Failed to read_to_string {}", path.display()))?;
 
-    let soundboard_config: SoundboardConfig;
-    if PathBuf::from(path)
+    let soundboard_config: SoundboardConfig = if PathBuf::from(path)
         .extension()
         .unwrap_or_default()
         .to_string_lossy()
         == "toml"
     {
-        soundboard_config = toml::from_str(&file_str)
-            .with_context(|| format!("Failed to parse {}", path.display()))?;
+        toml::from_str(&file_str).with_context(|| format!("Failed to parse {}", path.display()))?
     } else {
-        soundboard_config = serde_json::from_str(&file_str)
-            .with_context(|| format!("Failed to parse {}", path.display()))?;
-    }
+        serde_json::from_str(&file_str)
+            .with_context(|| format!("Failed to parse {}", path.display()))?
+    };
 
     let old_config_hash = utils::calculate_hash(&soundboard_config);
 
@@ -737,7 +720,7 @@ fn save_soundboard_config(
     }
 
     if last_hash.is_some()
-        && check_soundboard_config_mutated_on_disk(&soundboard_config_path, last_hash.unwrap())?
+        && check_soundboard_config_mutated_on_disk(soundboard_config_path, last_hash.unwrap())?
     {
         return Err(anyhow!(
             "save_soundboard: soundboard config file mutated on disk",

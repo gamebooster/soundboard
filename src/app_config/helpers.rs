@@ -40,7 +40,7 @@ pub(super) fn get_config_file_path() -> Result<Option<PathBuf>> {
 }
 
 pub(super) fn get_env_name_from_cli_name(name: &str) -> String {
-    "SB_".to_owned() + &name.to_ascii_uppercase().replace("-", "_")
+    "SB_".to_owned() + &name.to_ascii_uppercase().replace('-', "_")
 }
 
 pub(super) fn merge_option_with_args_and_env<T: From<String>>(

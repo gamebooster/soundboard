@@ -30,8 +30,7 @@ impl PanelView {
                     state: button::State::new(),
                     sound: sounds[0].clone(),
                 }));
-            let mut panels: Vec<pane_grid::Pane> = Vec::new();
-            panels.push(first);
+            let mut panels: Vec<pane_grid::Pane> = vec![first];
             sounds.iter().skip(1).for_each(|sound| {
                 let power = 2;
                 let power2_less = (panels.len() as f64).log(power as f64) as usize;
