@@ -64,20 +64,22 @@ impl std::hash::Hash for SynthesisOptions {
     }
 }
 
-struct KeyInterceptor;
+struct KeyInterceptor {
+    pub key: String,
+}
 
 impl Interceptor for KeyInterceptor {
     fn call(&mut self, mut req: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
         req.metadata_mut().insert(
             "x-goog-api-key",
-            MetadataValue::from_str("AIzaSyDP7orD6c32-E2TvzyEXbAimY1Fwbif_6c").unwrap(),
+            MetadataValue::from_str(&self.key).unwrap(),
         );
         Ok(req)
     }
 }
 
 impl TTSClient {
-    pub fn connect() -> Result<Self, tonic::transport::Error> {
+    pub fn connect(key: &str) -> Result<Self, tonic::transport::Error> {
         let rt = Builder::new_current_thread().enable_all().build().unwrap();
 
         let tls_config = ClientTlsConfig::new().domain_name("texttospeech.googleapis.com");
@@ -88,7 +90,10 @@ impl TTSClient {
                 .connect(),
         )?;
 
-        let client = TextToSpeechClient::with_interceptor(channel, KeyInterceptor);
+        let key_interceptor = KeyInterceptor {
+            key: key.to_string(),
+        };
+        let client = TextToSpeechClient::with_interceptor(channel, key_interceptor);
 
         Ok(Self { rt, client })
     }

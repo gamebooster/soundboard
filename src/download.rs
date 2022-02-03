@@ -97,8 +97,17 @@ pub fn get_local_path_from_sound_config(
                 return Ok(None);
             }
 
-            let mut client =
-                ttsclient::TTSClient::connect().context("tts: failed to connect to service")?;
+            let tts_key = app_config::get_app_config()
+                .tts_key
+                .clone()
+                .unwrap_or_default();
+
+            if tts_key.is_empty() {
+                return Err(anyhow!("tts: no key specified"));
+            }
+
+            let mut client = ttsclient::TTSClient::connect(&tts_key)
+                .context("tts: failed to connect to service")?;
             let data = client
                 .synthesize_speech(ssml, lang, None)
                 .context("tts: failed to synthesize speech")?;

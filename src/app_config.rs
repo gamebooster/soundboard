@@ -106,6 +106,7 @@ make_config!(AppConfig {
     print_possible_devices: false,
 
     telegram_token: String, // enables telegram bot if present
+    tts_key: String,
     http_server: true,
     tui: false,
     gui: false,
@@ -190,6 +191,9 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     #[cfg(feature = "telegram-bot")]
     add_arg!(telegram_token);
 
+    #[cfg(feature = "text-to-speech")]
+    add_arg!(tts_key);
+
     let mut matches = App::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
@@ -267,6 +271,15 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
         );
     }
 
+    #[cfg(feature = "text-to-speech")]
+    {
+        matches = matches.arg(
+            tts_key
+                .help("Set the tts api key for the tts google client")
+                .takes_value(true),
+        );
+    }
+
     let arguments = matches.get_matches();
 
     macro_rules! merge_option_with_args_and_env {
@@ -285,6 +298,7 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     merge_option_with_args_and_env!(stop_hotkey);
     merge_option_with_args_and_env!(http_socket_addr);
     merge_option_with_args_and_env!(telegram_token);
+    merge_option_with_args_and_env!(tts_key);
     merge_option_with_args_and_env!(spotify_user);
     merge_option_with_args_and_env!(spotify_pass);
 
