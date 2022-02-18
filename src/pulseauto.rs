@@ -53,7 +53,7 @@ pub fn unload_module(loop_module_id: u32) -> Result<()> {
 
     let result = match receiver.recv() {
         Err(err) => Err(anyhow!("Failed to unload pulse module {}", err)),
-        Ok(false) => Err(anyhow!("Failed to unload pulse module {}")),
+        Ok(false) => Err(anyhow!("Failed to unload pulse module")),
         Ok(true) => Ok(()),
     };
 
@@ -77,7 +77,7 @@ fn connect_pulse() -> Result<(pulse::mainloop::threaded::Mainloop, pulse::contex
             .ok_or_else(|| anyhow!("Pulse Connection Callback failed"))?;
 
     pulse_context
-        .connect(None, pulse::context::flags::NOFLAGS, None)
+        .connect(None, pulse::context::FlagSet::NOFLAGS, None)
         .map_err(|err| anyhow!("Pulse Mainloop Creation failed {}", err))?;
 
     mainloop.unlock();
