@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::mem;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
@@ -103,8 +102,9 @@ impl HotkeyListener for Listener {
 
         thread::spawn(move || unsafe {
             loop {
-                let mut msg = mem::MaybeUninit::uninit().assume_init();
+                let mut msg = std::mem::zeroed(); // initialized from PeekMessageW
                 while winuser::PeekMessageW(&mut msg, 0 as HWND, 0, 0, 1) > 0 {
+
                     if msg.wParam != 0 {
                         if let Some((_, handler)) =
                             hotkey_map.lock().unwrap().get_mut(&(msg.wParam as i32))

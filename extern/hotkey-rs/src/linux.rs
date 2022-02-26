@@ -108,14 +108,12 @@ impl HotkeyListener for Listener {
                 let root = (xlib.XDefaultRootWindow)(display);
 
                 // Only trigger key release at end of repeated keys
-                let mut supported_rtrn: i32 = mem::MaybeUninit::uninit().assume_init();
-                (xlib.XkbSetDetectableAutoRepeat)(display, 1, &mut supported_rtrn);
+                (xlib.XkbSetDetectableAutoRepeat)(display, 1, ptr::null());
 
                 (xlib.XSelectInput)(display, root, xlib::KeyReleaseMask);
-                let mut event: xlib::XEvent = mem::MaybeUninit::uninit().assume_init();
+                let mut event: xlib::XEvent = mem::zeroed(); // initialized from XNextEvent
                 loop {
-                    if (xlib.XPending)(display) > 0 {
-                        (xlib.XNextEvent)(display, &mut event);
+                    if (xlib.XPending)(display) > 0 && (xlib.XNextEvent)(display, &mut event) == 0 {
                         if let xlib::KeyRelease = event.get_type() {
                             if let Some((_, handler)) = hotkey_map
                                 .lock()
