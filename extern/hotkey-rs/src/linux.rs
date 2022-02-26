@@ -108,7 +108,7 @@ impl HotkeyListener for Listener {
                 let root = (xlib.XDefaultRootWindow)(display);
 
                 // Only trigger key release at end of repeated keys
-                (xlib.XkbSetDetectableAutoRepeat)(display, 1, ptr::null());
+                (xlib.XkbSetDetectableAutoRepeat)(display, 1, ptr::null_mut());
 
                 (xlib.XSelectInput)(display, root, xlib::KeyReleaseMask);
                 let mut event: xlib::XEvent = mem::zeroed(); // initialized from XNextEvent
