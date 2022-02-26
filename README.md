@@ -59,7 +59,7 @@ cross-platform desktop application to spice up your audio/video conferences
   * or via cargo: `cargo install soundboard` (compile time is a coffee break)
     * `cargo install` needed dependencies:
       * windows: `llvm` in PATH  
-      * unix: `sudo apt-get install llvm autoconf libtool automake libpulse0 libgtk-3-dev`
+      * unix: `sudo apt-get install llvm autoconf libtool automake libpulse0 libgtk-3-dev libclang-dev`
       * mac: `brew install llvm opus`
     * create soundboards directory with at least one soundboard (see below for example config)
 2. provide virtual microphone (instructions below)
