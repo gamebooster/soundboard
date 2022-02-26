@@ -103,6 +103,17 @@ pub fn find_sound(sound_id: Ulid) -> Option<Sound> {
     None
 }
 
+/// Iterates through all soundboards and checks for the specified sound_id
+pub fn find_soundboard_and_sound(sound_id: Ulid) -> Option<(Ulid, Sound)> {
+    for soundboard in GLOBAL_SOUNDBOARD_MAP.read().values() {
+        if let Some(sound) = soundboard.get_sounds().get(&sound_id) {
+            return Some((*soundboard.get_id(), sound.clone()));
+        }
+    }
+
+    None
+}
+
 type SoundPositions = Vec<SoundId>;
 
 /// Soundboard

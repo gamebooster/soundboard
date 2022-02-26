@@ -123,6 +123,7 @@ struct PlayStatusResponse {
 struct StrippedSoundActiveInfo {
     status: sound::SoundStatus,
     name: String,
+    soundboard_id: Ulid,
     id: soundboards::SoundId,
     total_duration: f32,
     play_duration: f32,
@@ -764,10 +765,13 @@ pub async fn run(
                 if let Ok(sound::Message::PlayStatus(sounds, volume)) = gui_receiver_clone.recv() {
                     let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
                     for sound in sounds {
-                        if let Some(full_sound) = soundboards::find_sound(sound.1) {
+                        if let Some((soundboard_id, full_sound)) =
+                            soundboards::find_soundboard_and_sound(sound.1)
+                        {
                             sound_info.push(StrippedSoundActiveInfo {
                                 status: sound.0,
                                 name: full_sound.get_name().to_string(),
+                                soundboard_id,
                                 id: sound.1,
                                 play_duration: sound.2.as_secs_f32(),
                                 total_duration: sound
@@ -798,10 +802,12 @@ pub async fn run(
                 Ok(sound::Message::PlayStatus(sounds, volume)) => {
                     let mut sound_info: Vec<StrippedSoundActiveInfo> = Vec::new();
                     for sound in sounds {
-                        let full_sound = soundboards::find_sound(sound.1).unwrap();
+                        let (soundboard_id, full_sound) =
+                            soundboards::find_soundboard_and_sound(sound.1).unwrap();
                         sound_info.push(StrippedSoundActiveInfo {
                             status: sound.0,
                             name: full_sound.get_name().to_string(),
+                            soundboard_id,
                             id: sound.1,
                             play_duration: sound.2.as_secs_f32(),
                             total_duration: sound
