@@ -296,10 +296,16 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     merge_option_with_args_and_env!(output_device);
     merge_option_with_args_and_env!(loopback_device);
     merge_option_with_args_and_env!(stop_hotkey);
+
+    #[cfg(feature = "http")]
     merge_option_with_args_and_env!(http_socket_addr);
+    #[cfg(feature = "telegram-bot")]
     merge_option_with_args_and_env!(telegram_token);
+    #[cfg(feature = "text-to-speech")]
     merge_option_with_args_and_env!(tts_key);
+    #[cfg(feature = "spotify")]
     merge_option_with_args_and_env!(spotify_user);
+    #[cfg(feature = "spotify")]
     merge_option_with_args_and_env!(spotify_pass);
 
     macro_rules! merge_bool_option_with_args_and_env {
