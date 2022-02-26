@@ -102,8 +102,9 @@ impl HotkeyListener for Listener {
 
         thread::spawn(move || unsafe {
             loop {
-                let mut msg = std::mem::zeroed(); // initialized from PeekMessageW
-                while winuser::PeekMessageW(&mut msg, 0 as HWND, 0, 0, 1) > 0 {
+                let mut msg = std::mem::MaybeUninit::uninit(); // initialized from PeekMessageW
+                while winuser::PeekMessageW(&mut *msg.as_mut_ptr(), 0 as HWND, 0, 0, 1) > 0 {
+                    let msg = msg.assume_init();
 
                     if msg.wParam != 0 {
                         if let Some((_, handler)) =

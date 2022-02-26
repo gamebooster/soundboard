@@ -89,14 +89,14 @@ impl XMContext {
     /// * `rate` - The play rate in Hz. Recommended value is 48000.
     pub fn new(mod_data: &[u8], rate: u32) -> Result<XMContext, XMError> {
         unsafe {
-            let mut raw = std::mem::zeroed(); // initialized from xm_create_context_safe
+            let mut raw = std::mem::MaybeUninit::uninit(); // initialized from xm_create_context_safe
 
             let mod_data_ptr = mod_data.as_ptr() as *const i8;
             let mod_data_len = mod_data.len() as libc::size_t;
 
             let result = raw::xm_create_context_safe(&mut raw, mod_data_ptr, mod_data_len, rate);
             match result {
-                0 => Ok(XMContext { raw }),
+                0 => Ok(XMContext { raw.assume_init() }),
                 1 => Err(XMError::ModuleDataNotSane),
                 2 => Err(XMError::MemoryAllocationFailed),
                 _ => Err(XMError::Unknown(result)),

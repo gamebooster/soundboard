@@ -111,9 +111,11 @@ impl HotkeyListener for Listener {
                 (xlib.XkbSetDetectableAutoRepeat)(display, 1, ptr::null_mut());
 
                 (xlib.XSelectInput)(display, root, xlib::KeyReleaseMask);
-                let mut event: xlib::XEvent = mem::zeroed(); // initialized from XNextEvent
+                let mut event: xlib::XEvent = mem::MaybeUninit::uninit(); // initialized from XNextEvent
                 loop {
                     if (xlib.XPending)(display) > 0 && (xlib.XNextEvent)(display, &mut event) == 0 {
+                        let event = event.assume_init();
+
                         if let xlib::KeyRelease = event.get_type() {
                             if let Some((_, handler)) = hotkey_map
                                 .lock()
