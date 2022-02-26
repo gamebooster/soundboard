@@ -4,7 +4,7 @@ use super::hotkey;
 use super::sound;
 use super::utils;
 use anyhow::{anyhow, Context, Result};
-use clap::{crate_authors, crate_description, crate_version, App, Arg};
+use clap::{crate_authors, crate_description, crate_version, Command, Arg};
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use paste::paste;
@@ -194,7 +194,7 @@ fn load_and_merge_app_config() -> Result<AppConfig> {
     #[cfg(feature = "text-to-speech")]
     add_arg!(tts_key);
 
-    let mut matches = App::new("soundboard")
+    let mut matches = Command::new("soundboard")
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!());

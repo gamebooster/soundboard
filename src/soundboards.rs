@@ -4,7 +4,7 @@ use super::hotkey;
 use super::sound;
 use super::utils;
 use anyhow::{anyhow, Context, Result};
-use clap::{crate_authors, crate_description, crate_version, App, Arg};
+use clap::{crate_authors, crate_description, crate_version, Arg};
 use log::{error, info, trace, warn};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
